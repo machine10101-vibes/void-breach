@@ -14,7 +14,7 @@ function Bar({
 }) {
   const pct = max <= 0 ? 0 : Math.max(0, Math.min(100, (value / max) * 100));
   return (
-    <div className={`w-full overflow-hidden rounded-sm bg-elevated ${height}`}>
+    <div className={`w-full overflow-hidden rounded-sm bg-elevated/80 ${height}`}>
       <div className={`h-full ${color} transition-[width] duration-150`} style={{ width: `${pct}%` }} />
     </div>
   );
@@ -44,10 +44,12 @@ export function Hud({
   hud,
   onPause,
   onMute,
+  onReload,
 }: {
   hud: HudSnapshot;
   onPause?: () => void;
   onMute?: () => void;
+  onReload?: () => void;
 }) {
   if (hud.phase === "title" || hud.phase === "boot") return null;
   const heading = ((-hud.compass * 180) / Math.PI + 36000) % 360;
@@ -58,8 +60,27 @@ export function Hud({
         <div className="absolute inset-0 bg-health/30" style={{ opacity: Math.min(0.5, hud.hitFlash) }} />
       ) : null}
 
-      <div className="absolute left-0 right-0 top-0 flex flex-col items-center gap-2 px-4 pt-3 sm:pt-4">
-        <div className="relative h-5 w-48 overflow-hidden sm:w-64">
+      <div className="absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-2 px-3 pt-[max(0.4rem,env(safe-area-inset-top))] sm:hidden">
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-mono text-[10px] uppercase tracking-[0.22em] text-accent">{hud.objective}</p>
+          {hud.boss ? (
+            <div className="mt-1 max-w-[11rem]">
+              <Bar value={hud.boss.hp} max={hud.boss.max} color="bg-void" height="h-1.5" />
+            </div>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          onClick={onPause}
+          className="pointer-events-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-surface/70 text-fg"
+          aria-label="Pause"
+        >
+          <Pause className="size-3.5" />
+        </button>
+      </div>
+
+      <div className="absolute left-0 right-0 top-0 hidden flex-col items-center gap-2 px-4 pt-4 sm:flex">
+        <div className="relative h-5 w-64 overflow-hidden">
           <div
             className="absolute top-0 flex h-5 items-center gap-6 font-mono text-[10px] uppercase tracking-[0.3em] text-faint"
             style={{ transform: `translateX(calc(50% - ${heading * 0.7}px))` }}
@@ -94,7 +115,7 @@ export function Hud({
         ))}
       </div>
 
-      <div className="pointer-events-auto absolute right-3 top-3 flex items-center gap-2 sm:right-4 sm:top-4">
+      <div className="pointer-events-auto absolute right-4 top-4 hidden items-center gap-2 sm:flex">
         <div className="text-right font-mono text-[10px] uppercase tracking-widest text-muted">
           <p>Op {hud.level}</p>
           <p className="text-fg">{hud.gold} scrap</p>
@@ -119,7 +140,30 @@ export function Hud({
         </button>
       </div>
 
-      <div className="absolute bottom-6 left-4 right-4 flex flex-col gap-3 sm:bottom-8 sm:left-6 sm:right-auto sm:w-[22rem]">
+      <div className="absolute bottom-[max(6.4rem,calc(env(safe-area-inset-bottom)+5.6rem))] left-[max(0.65rem,env(safe-area-inset-left))] w-[min(10.5rem,40vw)] sm:hidden">
+        <div className="mb-0.5 flex items-baseline justify-between gap-2">
+          <span className="font-display text-lg font-semibold tabular-nums leading-none">{Math.ceil(hud.health)}</span>
+          <button
+            type="button"
+            onClick={onReload}
+            className={`pointer-events-auto font-display text-lg font-semibold tabular-nums leading-none ${
+              hud.lowAmmo || hud.reloading ? "text-health" : "text-fg"
+            }`}
+          >
+            {hud.reloading ? "…" : hud.ammo}
+            <span className="ml-0.5 font-mono text-[10px] text-muted">/{hud.reserve}</span>
+          </button>
+        </div>
+        <Bar value={hud.health} max={hud.maxHealth} color="bg-health" height="h-1.5" />
+        <div className="mt-0.5">
+          <Bar value={hud.shield} max={hud.maxShield} color="bg-shield" height="h-1" />
+        </div>
+        <div className="mt-0.5">
+          <Bar value={hud.xp} max={hud.xpNeed} color="bg-accent" height="h-0.5" />
+        </div>
+      </div>
+
+      <div className="absolute bottom-8 left-6 hidden w-[22rem] flex-col gap-3 sm:flex">
         <div>
           <div className="mb-1 flex items-end justify-between">
             <span className="font-display text-3xl font-semibold leading-none tabular-nums">
@@ -153,7 +197,7 @@ export function Hud({
           </p>
         </div>
 
-        <div className="hidden gap-1 sm:flex">
+        <div className="flex gap-1">
           {(hud.slots ?? []).map((s, i) => (
             <div
               key={s.id + i}
@@ -185,23 +229,12 @@ export function Hud({
         })}
       </div>
 
-      <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-        <div className={`relative ${hud.ads ? "h-4 w-4" : "h-5 w-5"}`}>
-          <span
-            className={`absolute left-1/2 top-0 h-2 w-px -translate-x-1/2 ${hud.hitMarker > 0 ? "bg-void" : "bg-fg/80"}`}
-          />
-          <span
-            className={`absolute bottom-0 left-1/2 h-2 w-px -translate-x-1/2 ${hud.hitMarker > 0 ? "bg-void" : "bg-fg/80"}`}
-          />
-          <span
-            className={`absolute left-0 top-1/2 h-px w-2 -translate-y-1/2 ${hud.hitMarker > 0 ? "bg-void" : "bg-fg/80"}`}
-          />
-          <span
-            className={`absolute right-0 top-1/2 h-px w-2 -translate-y-1/2 ${hud.hitMarker > 0 ? "bg-void" : "bg-fg/80"}`}
-          />
-        </div>
+      <div className="pointer-events-none absolute left-1/2 top-[36%] -translate-x-1/2">
+        {hud.hitMarker > 0 ? (
+          <p className="font-display text-sm font-semibold text-void">HIT</p>
+        ) : null}
         {hud.combo > 1 ? (
-          <p className="mt-6 text-center font-display text-2xl font-semibold text-accent">{hud.combo}x</p>
+          <p className="mt-2 text-center font-display text-2xl font-semibold text-accent">{hud.combo}x</p>
         ) : null}
       </div>
 
@@ -221,9 +254,9 @@ export function Hud({
       ))}
 
       {hud.lockLost ? (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <div className="pointer-events-none absolute inset-0 hidden items-center justify-center sm:flex">
           <p className="rounded-md border border-border bg-surface/90 px-5 py-3 font-display text-xl font-semibold">
-            Click to recapture aim
+            Move the cursor to aim
           </p>
         </div>
       ) : null}
@@ -262,12 +295,12 @@ export function PauseOverlay({
 }) {
   const acc = stats && stats.shots > 0 ? Math.round((stats.hits / stats.shots) * 100) : 0;
   return (
-    <div className="absolute inset-0 z-20 flex items-center justify-center bg-bg/80 px-6">
-      <div className="w-full max-w-sm rounded-xl border border-border bg-surface p-8">
-        <h2 className="font-display text-4xl font-semibold tracking-tight">{title}</h2>
-        <p className="mt-3 text-sm leading-relaxed text-muted">{body}</p>
+    <div className="absolute inset-0 z-30 flex items-center justify-center bg-bg/80 px-4 py-[max(1rem,env(safe-area-inset-top))]">
+      <div className="max-h-[min(36rem,88dvh)] w-full max-w-sm overflow-y-auto rounded-xl border border-border bg-surface p-5 sm:p-8">
+        <h2 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">{title}</h2>
+        <p className="mt-2 text-sm leading-relaxed text-muted sm:mt-3">{body}</p>
         {stats ? (
-          <dl className="mt-6 grid grid-cols-2 gap-3 font-mono text-xs uppercase tracking-widest text-muted">
+          <dl className="mt-5 grid grid-cols-2 gap-3 font-mono text-xs uppercase tracking-widest text-muted">
             <div>
               <dt className="text-faint">Time</dt>
               <dd className="text-fg">{formatTime(stats.time)}</dd>
@@ -287,7 +320,7 @@ export function PauseOverlay({
           </dl>
         ) : null}
         {typeof sensitivity === "number" && onSensitivity ? (
-          <label className="mt-6 block">
+          <label className="mt-5 block">
             <span className="font-mono text-[10px] uppercase tracking-widest text-faint">Look sensitivity</span>
             <input
               type="range"
@@ -300,7 +333,7 @@ export function PauseOverlay({
             />
           </label>
         ) : null}
-        <div className="mt-8 flex flex-col gap-3">
+        <div className="mt-6 flex flex-col gap-2.5 sm:mt-8 sm:gap-3">
           <button
             type="button"
             onClick={onAction}
@@ -312,7 +345,7 @@ export function PauseOverlay({
             <button
               type="button"
               onClick={onSecondary}
-              className="flex h-12 w-full items-center justify-center rounded-lg border border-border bg-elevated font-display text-lg font-semibold text-fg"
+              className="flex h-11 w-full items-center justify-center rounded-lg border border-border bg-elevated font-display text-lg font-semibold text-fg"
             >
               {secondary}
             </button>

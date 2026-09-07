@@ -47,13 +47,27 @@ const bootHud: HudSnapshot = {
   sensitivity: 1,
 };
 
+function useTouchUi() {
+  const [on, setOn] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(pointer: coarse), (max-width: 819px)").matches : false,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(pointer: coarse), (max-width: 819px)");
+    const apply = () => setOn(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+  return on;
+}
+
 export function GameApp() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const handleRef = useRef<GameHandle | null>(null);
   const [hud, setHud] = useState<HudSnapshot>(bootHud);
   const [handle, setHandle] = useState<GameHandle | null>(null);
   const [installEvt, setInstallEvt] = useState<{ prompt: () => Promise<void> } | null>(null);
-  const coarse = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
+  const touchUi = useTouchUi();
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -106,9 +120,10 @@ export function GameApp() {
           hud={hud}
           onPause={() => handleRef.current?.pause()}
           onMute={() => handleRef.current?.setMuted(!hud.muted)}
+          onReload={() => handleRef.current?.pulse("reload")}
         />
       )}
-      <TouchControls handle={handle} visible={playing && coarse} />
+      <TouchControls handle={handle} visible={playing && touchUi} />
       {phase === "paused" ? (
         <PauseOverlay
           title="Hold"

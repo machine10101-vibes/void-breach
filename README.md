@@ -1,6 +1,6 @@
 # VOID BREACH
 
-Third-person looter-shooter. Year 2172. Earth is ash after the Shade tore a Void Gate under New Meridian. You are Vanguard-7.
+Isometric top-down survival looter-shooter. Year 2172. Earth is ash after the Shade tore a Void Gate under New Meridian. You are Vanguard-7.
 
 **Level 01 — Ashfall Gate** is playable now: exo-suit gunplay, Diablo-style loot, a Gears-weight dodge, and a Harbinger fight at the rift.
 
@@ -11,7 +11,7 @@ Open the deployed app. **Deploy** drops you into the plaza.
 | Input | Action |
 | --- | --- |
 | WASD / left stick | Move |
-| Mouse / right drag | Aim |
+| Mouse / right drag | Aim on the ground |
 | Click / Fire | Shoot |
 | Shift | Sprint |
 | Space | Dodge roll (i-frames) |

@@ -6,21 +6,23 @@ type Props = {
   visible: boolean;
 };
 
-function ActionBtn({
+function Pill({
   label,
-  sub,
+  ready = true,
   onDown,
   onUp,
 }: {
   label: string;
-  sub?: string;
+  ready?: boolean;
   onDown: () => void;
   onUp?: () => void;
 }) {
   return (
     <button
       type="button"
-      className="flex h-14 w-14 flex-col items-center justify-center rounded-full border border-border bg-surface/80 font-display text-sm font-semibold text-fg backdrop-blur-sm"
+      className={`flex h-10 min-w-10 items-center justify-center rounded-md border px-2 font-display text-xs font-semibold uppercase tracking-wide ${
+        ready ? "border-border bg-surface/55 text-fg" : "border-border/60 bg-surface/30 text-faint"
+      }`}
       onPointerDown={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -34,7 +36,6 @@ function ActionBtn({
       onPointerCancel={onUp}
     >
       {label}
-      {sub ? <span className="font-mono text-[9px] text-faint">{sub}</span> : null}
     </button>
   );
 }
@@ -69,11 +70,12 @@ export function TouchControls({ handle, visible }: Props) {
         const dx = e.clientX - origin.current.x;
         const dy = e.clientY - origin.current.y;
         const m = Math.hypot(dx, dy);
-        const max = 48;
+        const max = 36;
         const s = m > max ? max / m : 1;
         const x = (dx * s) / max;
         const y = (-dy * s) / max;
         handle.setTouchMove(x, y);
+        handle.setAction("sprint", m > max * 0.92);
         if (knob.current) {
           knob.current.style.transform = `translate(${dx * s}px, ${dy * s}px)`;
         }
@@ -90,6 +92,7 @@ export function TouchControls({ handle, visible }: Props) {
       if (e.pointerId === moveId.current) {
         moveId.current = null;
         handle?.setTouchMove(0, 0);
+        handle?.setAction("sprint", false);
         if (knob.current) knob.current.style.transform = "translate(0,0)";
       }
       if (e.pointerId === lookId.current) lookId.current = null;
@@ -100,58 +103,47 @@ export function TouchControls({ handle, visible }: Props) {
   if (!visible) return null;
 
   return (
-    <div className="absolute inset-0 z-10">
+    <div className="pointer-events-none absolute inset-0 z-20">
       <div
-        className="absolute bottom-24 left-6 flex h-28 w-28 items-center justify-center rounded-full border border-border bg-surface/40"
-        onPointerDown={onMoveDown}
-        onPointerMove={onPtrMove}
-        onPointerUp={endMove}
-        onPointerCancel={endMove}
-      >
-        <div ref={knob} className="h-14 w-14 rounded-full bg-fg/30" />
-      </div>
-
-      <div
-        className="absolute inset-y-0 right-0 w-[58%]"
+        className="pointer-events-auto absolute top-14 right-0 bottom-40 left-[32%]"
         onPointerDown={onLookDown}
         onPointerMove={onPtrMove}
         onPointerUp={endMove}
         onPointerCancel={endMove}
       />
 
-      <div className="absolute bottom-24 right-4 flex flex-col items-end gap-3">
-        <div className="flex gap-2">
-          <ActionBtn label="Q" sub="Frag" onDown={() => handle?.pulse("frag")} />
-          <ActionBtn label="E" sub="Drive" onDown={() => handle?.pulse("overdrive")} />
-          <ActionBtn label="F" sub="Cleave" onDown={() => handle?.pulse("cleave")} />
+      <div
+        className="pointer-events-auto absolute bottom-[max(0.75rem,calc(env(safe-area-inset-bottom)+0.4rem))] left-[max(0.65rem,env(safe-area-inset-left))] flex h-[5.25rem] w-[5.25rem] items-center justify-center rounded-full border border-border/70 bg-surface/25"
+        onPointerDown={onMoveDown}
+        onPointerMove={onPtrMove}
+        onPointerUp={endMove}
+        onPointerCancel={endMove}
+      >
+        <div ref={knob} className="h-9 w-9 rounded-full bg-fg/35" />
+      </div>
+
+      <div className="pointer-events-auto absolute right-[max(0.55rem,env(safe-area-inset-right))] bottom-[max(0.7rem,calc(env(safe-area-inset-bottom)+0.35rem))] flex flex-col items-end gap-1.5">
+        <div className="flex gap-1">
+          <Pill label="Frag" onDown={() => handle?.pulse("frag")} />
+          <Pill label="Drive" onDown={() => handle?.pulse("overdrive")} />
+          <Pill label="Cleave" onDown={() => handle?.pulse("cleave")} />
         </div>
-        <div className="flex gap-2">
-          <ActionBtn label="R" onDown={() => handle?.pulse("reload")} />
-          <ActionBtn
-            label="Aim"
-            onDown={() => handle?.setAction("ads", true)}
-            onUp={() => handle?.setAction("ads", false)}
-          />
-          <ActionBtn
-            label="Run"
-            onDown={() => handle?.setAction("sprint", true)}
-            onUp={() => handle?.setAction("sprint", false)}
-          />
-          <ActionBtn label="Roll" onDown={() => handle?.pulse("dodge")} />
+        <div className="flex items-end gap-1.5">
+          <Pill label="Roll" onDown={() => handle?.pulse("dodge")} />
+          <button
+            type="button"
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-accent font-display text-sm font-semibold text-accent-fg"
+            onPointerDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handle?.setAction("fire", true);
+            }}
+            onPointerUp={() => handle?.setAction("fire", false)}
+            onPointerCancel={() => handle?.setAction("fire", false)}
+          >
+            Fire
+          </button>
         </div>
-        <button
-          type="button"
-          className="flex h-20 w-20 items-center justify-center rounded-full bg-accent font-display text-lg font-semibold text-accent-fg"
-          onPointerDown={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            handle?.setAction("fire", true);
-          }}
-          onPointerUp={() => handle?.setAction("fire", false)}
-          onPointerCancel={() => handle?.setAction("fire", false)}
-        >
-          Fire
-        </button>
       </div>
     </div>
   );

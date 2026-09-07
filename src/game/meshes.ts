@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { bindPbr } from "./textures";
 import type { AABB, EnemyKind } from "./types";
 
 export type Materials = {
@@ -18,12 +19,15 @@ export type Materials = {
   rust: THREE.MeshStandardMaterial;
   neon: THREE.MeshStandardMaterial;
   warning: THREE.MeshStandardMaterial;
+  bone: THREE.MeshStandardMaterial;
 };
 
 export function makeMaterials(tex: {
   ground?: THREE.Texture;
   wall?: THREE.Texture;
   metal?: THREE.Texture;
+  armor?: THREE.Texture;
+  shade?: THREE.Texture;
 }): Materials {
   const concrete = new THREE.MeshStandardMaterial({
     color: 0x8a847c,
@@ -40,55 +44,74 @@ export function makeMaterials(tex: {
   const metal = new THREE.MeshStandardMaterial({
     color: 0x6a655c,
     map: tex.metal ?? null,
-    roughness: 0.45,
-    metalness: 0.72,
+    roughness: 0.42,
+    metalness: 0.78,
   });
+  const armor = new THREE.MeshStandardMaterial({
+    color: 0xf0ebe4,
+    map: tex.armor ?? null,
+    roughness: 0.36,
+    metalness: 0.62,
+  });
+  const shade = new THREE.MeshStandardMaterial({
+    color: 0x1a1c22,
+    map: tex.shade ?? null,
+    roughness: 0.32,
+    metalness: 0.55,
+    emissive: 0x06332f,
+    emissiveIntensity: 0.35,
+  });
+  bindPbr(concrete, tex.ground, { repeat: 1 });
+  bindPbr(wall, tex.wall, { repeat: 1 });
+  bindPbr(metal, tex.metal, { metal: true, repeat: 1 });
+  bindPbr(armor, tex.armor, { metal: true, repeat: 1.4 });
+  bindPbr(shade, tex.shade, { glow: true, repeat: 1.2 });
   return {
     concrete,
     wall,
     metal,
-    dark: new THREE.MeshStandardMaterial({ color: 0x1a1c22, roughness: 0.55, metalness: 0.4 }),
-    armor: new THREE.MeshStandardMaterial({ color: 0x2c3038, roughness: 0.34, metalness: 0.62 }),
+    armor,
+    shade,
+    dark: new THREE.MeshStandardMaterial({ color: 0x12141a, roughness: 0.5, metalness: 0.48 }),
     visor: new THREE.MeshStandardMaterial({
       color: 0x3a1a08,
       emissive: 0xe85d04,
-      emissiveIntensity: 2.6,
-      roughness: 0.18,
-      metalness: 0.12,
-    }),
-    shade: new THREE.MeshStandardMaterial({
-      color: 0x0c0d12,
-      roughness: 0.28,
-      metalness: 0.62,
+      emissiveIntensity: 3.4,
+      roughness: 0.12,
+      metalness: 0.08,
+      toneMapped: false,
     }),
     shadeGlow: new THREE.MeshStandardMaterial({
       color: 0x041014,
       emissive: 0x2dd4bf,
-      emissiveIntensity: 3.4,
-      roughness: 0.22,
-      metalness: 0.08,
+      emissiveIntensity: 4.2,
+      roughness: 0.16,
+      metalness: 0.05,
+      toneMapped: false,
     }),
     ember: new THREE.MeshStandardMaterial({
       color: 0x1a0c04,
       emissive: 0xe85d04,
-      emissiveIntensity: 1.8,
-      roughness: 0.4,
-      metalness: 0.2,
+      emissiveIntensity: 2.2,
+      roughness: 0.35,
+      metalness: 0.18,
+      toneMapped: false,
     }),
-    rubber: new THREE.MeshStandardMaterial({ color: 0x141416, roughness: 0.95, metalness: 0.02 }),
+    rubber: new THREE.MeshStandardMaterial({ color: 0x141416, roughness: 0.96, metalness: 0.02 }),
     glass: new THREE.MeshStandardMaterial({
       color: 0x88ccee,
-      roughness: 0.08,
-      metalness: 0.1,
+      roughness: 0.06,
+      metalness: 0.08,
       transparent: true,
-      opacity: 0.22,
+      opacity: 0.28,
     }),
     voidCore: new THREE.MeshStandardMaterial({
       color: 0x02040a,
       emissive: 0x22d3ee,
-      emissiveIntensity: 4.2,
-      roughness: 0.18,
+      emissiveIntensity: 5.2,
+      roughness: 0.14,
       metalness: 0.0,
+      toneMapped: false,
     }),
     asphalt: new THREE.MeshStandardMaterial({
       color: 0x3a3732,
@@ -97,26 +120,27 @@ export function makeMaterials(tex: {
       metalness: 0.08,
     }),
     rust: new THREE.MeshStandardMaterial({
-      color: 0x5a3a28,
+      color: 0x6a4030,
       map: tex.metal ?? null,
-      roughness: 0.7,
-      metalness: 0.35,
+      roughness: 0.68,
+      metalness: 0.4,
     }),
     neon: new THREE.MeshStandardMaterial({
       color: 0x041014,
       emissive: 0x2dd4bf,
-      emissiveIntensity: 2.4,
-      roughness: 0.3,
+      emissiveIntensity: 2.8,
+      roughness: 0.28,
       metalness: 0.1,
       toneMapped: false,
     }),
     warning: new THREE.MeshStandardMaterial({
       color: 0x2a1808,
       emissive: 0xe85d04,
-      emissiveIntensity: 0.9,
-      roughness: 0.6,
-      metalness: 0.2,
+      emissiveIntensity: 1.1,
+      roughness: 0.55,
+      metalness: 0.22,
     }),
+    bone: new THREE.MeshStandardMaterial({ color: 0xb7aea2, roughness: 0.62, metalness: 0.08 }),
   };
 }
 
@@ -166,12 +190,50 @@ function cyl(
   parent: THREE.Object3D,
   rx = 0,
   ry = 0,
-  segs = 8,
+  segs = 10,
 ) {
   const m = new THREE.Mesh(new THREE.CylinderGeometry(rTop, rBot, h, segs), mat);
   m.position.set(x, y, z);
   m.rotation.x = rx;
   m.rotation.y = ry;
+  m.castShadow = true;
+  m.receiveShadow = true;
+  parent.add(m);
+  return m;
+}
+
+function cap(
+  mat: THREE.Material,
+  r: number,
+  len: number,
+  x: number,
+  y: number,
+  z: number,
+  parent: THREE.Object3D,
+  rx = 0,
+  ry = 0,
+) {
+  const m = new THREE.Mesh(new THREE.CapsuleGeometry(r, len, 5, 10), mat);
+  m.position.set(x, y, z);
+  m.rotation.x = rx;
+  m.rotation.y = ry;
+  m.castShadow = true;
+  m.receiveShadow = true;
+  parent.add(m);
+  return m;
+}
+
+function sph(
+  mat: THREE.Material,
+  r: number,
+  x: number,
+  y: number,
+  z: number,
+  parent: THREE.Object3D,
+  segs = 10,
+) {
+  const m = new THREE.Mesh(new THREE.SphereGeometry(r, segs, segs), mat);
+  m.position.set(x, y, z);
   m.castShadow = true;
   m.receiveShadow = true;
   parent.add(m);
@@ -190,49 +252,75 @@ export function createExoSuit(mat: Materials): PlayerRig {
   const dark = mat.dark;
   const metal = mat.metal;
 
-  box(armor, 0.44, 0.2, 0.3, 0, 0.95, 0, group);
+  const loc = new THREE.Mesh(
+    new THREE.RingGeometry(0.42, 0.52, 28),
+    new THREE.MeshBasicMaterial({
+      color: 0xe85d04,
+      transparent: true,
+      opacity: 0.55,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      toneMapped: false,
+    }),
+  );
+  loc.rotation.x = -Math.PI / 2;
+  loc.position.y = 0.04;
+  group.add(loc);
+
+  box(armor, 0.5, 0.18, 0.32, 0, 0.94, 0.02, group);
+  box(dark, 0.22, 0.1, 0.16, 0, 0.94, 0.16, group);
 
   const torso = new THREE.Group();
-  torso.position.set(0, 1.18, 0);
+  torso.position.set(0, 1.2, 0);
   group.add(torso);
-  box(armor, 0.54, 0.5, 0.34, 0, 0.12, 0, torso);
-  box(metal, 0.38, 0.24, 0.1, 0, 0.16, 0.2, torso);
-  box(mat.ember, 0.1, 0.06, 0.05, 0, 0.24, 0.24, torso);
-  box(dark, 0.22, 0.08, 0.06, 0, 0.06, 0.22, torso);
-  box(dark, 0.74, 0.14, 0.24, 0, 0.32, -0.02, torso);
-  box(armor, 0.3, 0.4, 0.2, 0, 0.08, -0.22, torso);
-  // cables
-  cyl(dark, 0.025, 0.025, 0.36, 0.16, 0.02, -0.18, torso, 0.7);
-  cyl(dark, 0.025, 0.025, 0.36, -0.16, 0.02, -0.18, torso, 0.7);
+  cap(dark, 0.16, 0.28, 0, 0.08, -0.02, torso);
+  box(armor, 0.58, 0.42, 0.36, 0, 0.14, 0.02, torso);
+  box(armor, 0.62, 0.16, 0.4, 0, 0.34, 0, torso);
+  box(metal, 0.42, 0.2, 0.12, 0, 0.18, 0.2, torso);
+  box(mat.ember, 0.12, 0.05, 0.04, 0, 0.26, 0.26, torso);
+  box(dark, 0.2, 0.07, 0.05, 0, 0.08, 0.22, torso);
+  box(armor, 0.2, 0.18, 0.1, 0.2, 0.2, 0.2, torso);
+  box(armor, 0.2, 0.18, 0.1, -0.2, 0.2, 0.2, torso);
+  box(armor, 0.36, 0.46, 0.22, 0, 0.1, -0.2, torso);
+  cyl(dark, 0.022, 0.022, 0.34, 0.17, 0.02, -0.16, torso, 0.75);
+  cyl(dark, 0.022, 0.022, 0.34, -0.17, 0.02, -0.16, torso, 0.75);
+  box(mat.warning, 0.08, 0.03, 0.18, 0.18, 0.36, 0.08, torso);
+  box(mat.warning, 0.08, 0.03, 0.18, -0.18, 0.36, 0.08, torso);
 
   const backpack = new THREE.Group();
-  backpack.position.set(0, 1.32, -0.28);
+  backpack.position.set(0, 1.34, -0.3);
   group.add(backpack);
-  box(dark, 0.32, 0.38, 0.16, 0, 0, 0, backpack);
-  cyl(metal, 0.07, 0.07, 0.32, 0.12, 0.02, -0.02, backpack);
-  cyl(metal, 0.07, 0.07, 0.32, -0.12, 0.02, -0.02, backpack);
-  cyl(mat.ember, 0.03, 0.03, 0.08, 0, -0.16, 0.02, backpack);
-  cyl(dark, 0.015, 0.015, 0.42, 0.1, 0.34, -0.02, backpack, 0.4);
+  box(dark, 0.36, 0.42, 0.18, 0, 0, 0, backpack);
+  cyl(metal, 0.075, 0.075, 0.36, 0.12, 0.02, -0.02, backpack);
+  cyl(metal, 0.075, 0.075, 0.36, -0.12, 0.02, -0.02, backpack);
+  cyl(mat.ember, 0.035, 0.035, 0.1, 0, -0.18, 0.02, backpack);
+  cyl(dark, 0.014, 0.014, 0.46, 0.1, 0.36, -0.02, backpack, 0.42);
+  box(armor, 0.14, 0.1, 0.1, 0, 0.2, 0.08, backpack);
 
   const head = new THREE.Group();
-  head.position.set(0, 1.64, 0.04);
+  head.position.set(0, 1.66, 0.04);
   group.add(head);
-  box(armor, 0.3, 0.3, 0.32, 0, 0.08, 0, head);
-  const visor = box(mat.visor, 0.24, 0.1, 0.05, 0, 0.08, 0.17, head);
-  box(dark, 0.34, 0.07, 0.34, 0, 0.22, 0, head);
-  box(metal, 0.08, 0.06, 0.1, 0.14, 0.16, 0.08, head);
-  cyl(dark, 0.012, 0.012, 0.22, 0.12, 0.3, -0.04, head, 0.25);
+  sph(armor, 0.17, 0, 0.1, 0, head, 12);
+  box(armor, 0.3, 0.16, 0.28, 0, 0.06, 0.02, head);
+  box(dark, 0.32, 0.06, 0.3, 0, 0.2, 0, head);
+  const visor = box(mat.visor, 0.22, 0.055, 0.06, 0, 0.1, 0.16, head);
+  box(metal, 0.26, 0.03, 0.04, 0, 0.14, 0.17, head);
+  box(metal, 0.26, 0.03, 0.04, 0, 0.06, 0.17, head);
+  box(metal, 0.07, 0.055, 0.1, 0.14, 0.16, 0.06, head);
+  cyl(dark, 0.012, 0.012, 0.2, 0.11, 0.28, -0.04, head, 0.28);
+  sph(mat.ember, 0.02, 0.15, 0.16, 0.1, head, 6);
 
   const mkArm = (side: number) => {
     const root = new THREE.Group();
-    root.position.set(0.4 * side, 1.44, 0);
-    root.rotation.z = 0.18 * side;
+    root.position.set(0.42 * side, 1.46, 0);
+    root.rotation.z = 0.16 * side;
     group.add(root);
-    box(armor, 0.24, 0.16, 0.28, 0.05 * side, 0.04, 0, root);
-    cyl(dark, 0.085, 0.075, 0.34, 0.07 * side, -0.22, 0, root);
-    cyl(armor, 0.075, 0.065, 0.3, 0.07 * side, -0.5, 0.05, root);
-    box(metal, 0.12, 0.12, 0.18, 0.07 * side, -0.68, 0.1, root);
-    box(mat.ember, 0.04, 0.04, 0.04, 0.07 * side, -0.62, 0.18, root);
+    box(armor, 0.26, 0.18, 0.3, 0.04 * side, 0.05, 0, root);
+    sph(armor, 0.1, 0.05 * side, 0.02, 0, root, 8);
+    cap(dark, 0.07, 0.22, 0.07 * side, -0.22, 0, root);
+    cap(armor, 0.065, 0.2, 0.07 * side, -0.5, 0.04, root);
+    box(metal, 0.13, 0.11, 0.2, 0.07 * side, -0.68, 0.1, root);
+    box(mat.ember, 0.035, 0.035, 0.04, 0.07 * side, -0.62, 0.2, root);
     return root;
   };
   const leftArm = mkArm(-1);
@@ -240,19 +328,20 @@ export function createExoSuit(mat: Materials): PlayerRig {
 
   const mkLeg = (side: number) => {
     const thigh = new THREE.Group();
-    thigh.position.set(0.15 * side, 0.88, 0);
+    thigh.position.set(0.16 * side, 0.9, 0);
     group.add(thigh);
-    cyl(armor, 0.11, 0.095, 0.38, 0, -0.16, 0, thigh);
-    box(metal, 0.16, 0.1, 0.14, 0, -0.22, 0.08, thigh);
-    cyl(dark, 0.085, 0.075, 0.36, 0, -0.5, 0, thigh);
-    box(armor, 0.14, 0.1, 0.12, 0, -0.42, 0.06, thigh);
-    box(mat.rubber, 0.18, 0.1, 0.32, 0, -0.7, 0.05, thigh);
+    cap(armor, 0.1, 0.26, 0, -0.16, 0, thigh);
+    box(metal, 0.18, 0.1, 0.16, 0, -0.2, 0.08, thigh);
+    cap(dark, 0.075, 0.24, 0, -0.5, 0.01, thigh);
+    box(armor, 0.16, 0.1, 0.14, 0, -0.42, 0.07, thigh);
+    box(mat.rubber, 0.2, 0.1, 0.34, 0, -0.72, 0.06, thigh);
+    box(armor, 0.14, 0.06, 0.1, 0, -0.64, 0.14, thigh);
     return thigh;
   };
 
   const gun = createRifle(mat);
-  gun.position.set(0.22, -0.52, 0.28);
-  gun.rotation.set(-0.12, 0.12, 0.08);
+  gun.position.set(0.2, -0.54, 0.3);
+  gun.rotation.set(-0.14, 0.1, 0.06);
   rightArm.add(gun);
 
   return {
@@ -271,38 +360,43 @@ export function createExoSuit(mat: Materials): PlayerRig {
 
 export function createRifle(mat: Materials) {
   const g = new THREE.Group();
-  box(mat.dark, 0.08, 0.1, 0.76, 0, 0, 0, g);
-  box(mat.metal, 0.07, 0.07, 0.3, 0, 0.02, 0.4, g);
-  box(mat.dark, 0.05, 0.18, 0.12, 0, -0.12, -0.1, g);
-  box(mat.metal, 0.045, 0.045, 0.2, 0, -0.12, 0.16, g);
-  box(mat.ember, 0.035, 0.035, 0.1, 0, 0.08, 0.12, g);
-  box(mat.dark, 0.04, 0.06, 0.16, 0, 0.08, -0.16, g);
-  box(mat.metal, 0.045, 0.14, 0.3, 0, -0.08, 0.54, g);
-  for (let i = 0; i < 6; i++) {
-    box(mat.dark, 0.02, 0.07, 0.04, 0, -0.17, 0.42 + i * 0.05, g, 0, 0, 0.55);
+  box(mat.dark, 0.08, 0.1, 0.82, 0, 0, 0.02, g);
+  box(mat.metal, 0.07, 0.07, 0.34, 0, 0.02, 0.42, g);
+  box(mat.dark, 0.055, 0.2, 0.13, 0, -0.13, -0.12, g);
+  box(mat.metal, 0.045, 0.045, 0.22, 0, -0.12, 0.16, g);
+  box(mat.ember, 0.035, 0.035, 0.12, 0, 0.08, 0.12, g);
+  box(mat.dark, 0.045, 0.07, 0.18, 0, 0.09, -0.16, g);
+  box(mat.metal, 0.05, 0.16, 0.32, 0, -0.08, 0.56, g);
+  box(mat.armor, 0.18, 0.055, 0.42, 0, -0.14, 0.22, g);
+  for (let i = 0; i < 8; i++) {
+    box(mat.metal, 0.16, 0.03, 0.035, 0, -0.2, 0.08 + i * 0.05, g, 0, 0, 0.15);
   }
-  box(mat.neon, 0.02, 0.02, 0.28, 0.04, 0.04, 0.1, g);
+  box(mat.ember, 0.03, 0.03, 0.08, 0, -0.2, 0.46, g);
+  box(mat.neon, 0.018, 0.018, 0.3, 0.04, 0.045, 0.08, g);
+  sph(mat.ember, 0.02, 0, 0.09, 0.28, g, 6);
   return g;
 }
 
 export function createShotgun(mat: Materials) {
   const g = new THREE.Group();
-  box(mat.dark, 0.11, 0.13, 0.6, 0, 0, 0, g);
-  box(mat.metal, 0.05, 0.05, 0.44, 0.045, 0.025, 0.12, g);
-  box(mat.metal, 0.05, 0.05, 0.44, -0.045, 0.025, 0.12, g);
-  box(mat.dark, 0.07, 0.18, 0.14, 0, -0.12, -0.18, g);
-  box(mat.ember, 0.04, 0.04, 0.08, 0, 0.1, 0.06, g);
-  box(mat.rust, 0.12, 0.08, 0.16, 0, -0.04, -0.28, g);
+  box(mat.dark, 0.12, 0.13, 0.64, 0, 0, 0, g);
+  box(mat.metal, 0.05, 0.05, 0.48, 0.048, 0.028, 0.14, g);
+  box(mat.metal, 0.05, 0.05, 0.48, -0.048, 0.028, 0.14, g);
+  box(mat.dark, 0.075, 0.2, 0.15, 0, -0.13, -0.18, g);
+  box(mat.ember, 0.04, 0.04, 0.09, 0, 0.1, 0.06, g);
+  box(mat.rust, 0.13, 0.08, 0.18, 0, -0.04, -0.3, g);
+  box(mat.armor, 0.14, 0.05, 0.2, 0, 0.08, -0.08, g);
   return g;
 }
 
 export function createSmg(mat: Materials) {
   const g = new THREE.Group();
-  box(mat.dark, 0.07, 0.09, 0.44, 0, 0, 0, g);
-  box(mat.metal, 0.055, 0.055, 0.18, 0, 0.015, 0.26, g);
-  box(mat.dark, 0.045, 0.2, 0.09, 0, -0.12, -0.04, g);
-  box(mat.neon, 0.02, 0.02, 0.16, 0, 0.06, 0.04, g);
-  box(mat.dark, 0.04, 0.05, 0.12, 0, 0.06, -0.16, g);
+  box(mat.dark, 0.07, 0.09, 0.48, 0, 0, 0, g);
+  box(mat.metal, 0.055, 0.055, 0.2, 0, 0.015, 0.28, g);
+  box(mat.dark, 0.048, 0.2, 0.09, 0, -0.12, -0.04, g);
+  box(mat.neon, 0.02, 0.02, 0.18, 0, 0.06, 0.04, g);
+  box(mat.dark, 0.04, 0.05, 0.14, 0, 0.06, -0.16, g);
+  box(mat.ember, 0.025, 0.025, 0.06, 0, 0.07, 0.16, g);
   return g;
 }
 
@@ -327,52 +421,58 @@ function createHusk(mat: Materials): EnemyRig {
   const group = new THREE.Group();
   const glow: THREE.Mesh[] = [];
   const gMat = cloneGlow(mat.shadeGlow);
-  box(mat.shade, 0.34, 0.55, 0.28, 0, 1.15, 0.04, group, 0.35);
-  const eye = box(gMat, 0.18, 0.05, 0.04, 0, 1.42, 0.22, group);
+  cap(mat.shade, 0.14, 0.42, 0, 1.18, 0.02, group);
+  box(mat.shade, 0.3, 0.5, 0.24, 0, 1.22, 0.04, group, 0.28);
+  sph(mat.shade, 0.16, 0, 1.58, 0.06, group, 10);
+  const eye = box(gMat, 0.16, 0.04, 0.05, 0, 1.58, 0.2, group);
   glow.push(eye);
-  const crack = box(gMat, 0.03, 0.42, 0.02, 0.08, 1.12, 0.18, group);
+  const crack = box(gMat, 0.025, 0.46, 0.02, 0.07, 1.2, 0.16, group);
   glow.push(crack);
+  const rib = box(gMat, 0.18, 0.02, 0.02, 0, 1.08, 0.14, group);
+  glow.push(rib);
   const mkArm = (side: number, extra = 0) => {
     const root = new THREE.Group();
-    root.position.set(0.28 * side, 1.28, 0.06);
-    root.rotation.z = 0.45 * side;
+    root.position.set(0.26 * side, 1.36, 0.04);
+    root.rotation.z = 0.48 * side;
     group.add(root);
-    cyl(mat.shade, 0.055, 0.04, 0.85 + extra, 0.05 * side, -0.38, 0.08, root);
-    const claw = box(gMat, 0.04, 0.04, 0.22, 0.05 * side, -0.82, 0.18, root);
+    cap(mat.shade, 0.045, 0.62 + extra, 0.04 * side, -0.36, 0.06, root);
+    const claw = box(gMat, 0.035, 0.035, 0.24, 0.04 * side, -0.78, 0.16, root);
     glow.push(claw);
+    box(mat.shade, 0.03, 0.03, 0.14, 0.02 * side, -0.82, 0.22, root, 0.4);
     return root;
   };
-  cyl(mat.shade, 0.07, 0.05, 0.7, -0.1, 0.42, 0, group);
-  cyl(mat.shade, 0.07, 0.05, 0.7, 0.1, 0.42, 0, group);
-  box(mat.shade, 0.14, 0.07, 0.28, -0.1, 0.06, 0.04, group);
-  box(mat.shade, 0.14, 0.07, 0.28, 0.1, 0.06, 0.04, group);
-  return { group, kind: "husk", leftArm: mkArm(-1, 0.12), rightArm: mkArm(1), glow };
+  cap(mat.shade, 0.055, 0.48, -0.09, 0.48, 0, group);
+  cap(mat.shade, 0.055, 0.48, 0.09, 0.48, 0, group);
+  box(mat.shade, 0.12, 0.06, 0.26, -0.09, 0.08, 0.04, group);
+  box(mat.shade, 0.12, 0.06, 0.26, 0.09, 0.08, 0.04, group);
+  return { group, kind: "husk", leftArm: mkArm(-1, 0.1), rightArm: mkArm(1), glow };
 }
 
 function createStalker(mat: Materials): EnemyRig {
   const group = new THREE.Group();
   const glow: THREE.Mesh[] = [];
   const gMat = cloneGlow(mat.shadeGlow);
-  box(mat.shade, 0.28, 0.7, 0.24, 0, 1.35, 0, group);
-  box(mat.shade, 0.2, 0.36, 0.26, 0, 1.82, 0.04, group);
-  const eye = box(gMat, 0.16, 0.04, 0.04, 0, 1.86, 0.18, group);
+  cap(mat.shade, 0.11, 0.52, 0, 1.32, 0, group);
+  box(mat.shade, 0.26, 0.62, 0.22, 0, 1.38, 0, group);
+  sph(mat.shade, 0.14, 0, 1.86, 0.04, group, 10);
+  const eye = box(gMat, 0.14, 0.035, 0.04, 0, 1.88, 0.16, group);
   glow.push(eye);
-  cyl(mat.shade, 0.012, 0.012, 0.4, 0.08, 2.08, -0.04, group, 0.3);
+  cyl(mat.shade, 0.012, 0.01, 0.38, 0.08, 2.08, -0.04, group, 0.3);
   const leftArm = new THREE.Group();
-  leftArm.position.set(-0.24, 1.5, 0);
+  leftArm.position.set(-0.22, 1.52, 0);
   group.add(leftArm);
-  cyl(mat.shade, 0.05, 0.04, 0.7, -0.04, -0.28, 0.04, leftArm);
+  cap(mat.shade, 0.04, 0.5, -0.04, -0.26, 0.04, leftArm);
   const rightArm = new THREE.Group();
-  rightArm.position.set(0.26, 1.48, 0.04);
+  rightArm.position.set(0.24, 1.5, 0.04);
   group.add(rightArm);
-  cyl(mat.shade, 0.06, 0.07, 0.55, 0.04, -0.12, 0.22, rightArm, Math.PI / 2);
-  const muzzle = box(gMat, 0.08, 0.08, 0.1, 0.04, -0.12, 0.54, rightArm);
+  cap(mat.shade, 0.05, 0.36, 0.04, -0.08, 0.2, rightArm, Math.PI / 2);
+  const muzzle = box(gMat, 0.07, 0.07, 0.12, 0.04, -0.1, 0.52, rightArm);
   glow.push(muzzle);
-  cyl(mat.shade, 0.06, 0.05, 0.85, -0.1, 0.5, 0, group);
-  cyl(mat.shade, 0.06, 0.05, 0.85, 0.1, 0.5, 0, group);
-  box(mat.shade, 0.14, 0.06, 0.32, -0.1, 0.08, 0.06, group);
-  box(mat.shade, 0.14, 0.06, 0.32, 0.1, 0.08, 0.06, group);
-  group.scale.setScalar(1.08);
+  cap(mat.shade, 0.05, 0.58, -0.09, 0.52, 0, group);
+  cap(mat.shade, 0.05, 0.58, 0.09, 0.52, 0, group);
+  box(mat.shade, 0.12, 0.05, 0.3, -0.09, 0.08, 0.05, group);
+  box(mat.shade, 0.12, 0.05, 0.3, 0.09, 0.08, 0.05, group);
+  group.scale.setScalar(1.1);
   return { group, kind: "stalker", leftArm, rightArm, glow };
 }
 
@@ -380,26 +480,27 @@ function createBrute(mat: Materials): EnemyRig {
   const group = new THREE.Group();
   const glow: THREE.Mesh[] = [];
   const gMat = cloneGlow(mat.shadeGlow);
-  box(mat.shade, 0.78, 0.7, 0.42, 0, 1.35, 0, group);
-  box(mat.metal, 0.7, 0.16, 0.48, 0, 1.62, 0.02, group);
-  const furnace = box(gMat, 0.28, 0.22, 0.08, 0, 1.32, 0.24, group);
+  box(mat.shade, 0.82, 0.72, 0.46, 0, 1.38, 0, group);
+  box(mat.metal, 0.74, 0.16, 0.5, 0, 1.66, 0.02, group);
+  const furnace = box(gMat, 0.3, 0.24, 0.08, 0, 1.34, 0.26, group);
   glow.push(furnace);
-  box(mat.shade, 0.42, 0.38, 0.36, 0, 1.9, 0.04, group);
-  const eye = box(gMat, 0.22, 0.06, 0.05, 0, 1.92, 0.24, group);
+  sph(mat.shade, 0.22, 0, 1.96, 0.04, group, 10);
+  box(mat.shade, 0.4, 0.32, 0.34, 0, 1.92, 0.04, group);
+  const eye = box(gMat, 0.2, 0.055, 0.05, 0, 1.94, 0.24, group);
   glow.push(eye);
   const mkArm = (side: number) => {
     const root = new THREE.Group();
-    root.position.set(0.5 * side, 1.5, 0);
-    root.rotation.z = 0.12 * side;
+    root.position.set(0.52 * side, 1.52, 0);
+    root.rotation.z = 0.1 * side;
     group.add(root);
-    box(mat.shade, 0.28, 0.28, 0.32, 0.08 * side, 0.02, 0, root);
-    cyl(mat.shade, 0.12, 0.14, 0.7, 0.1 * side, -0.42, 0.06, root);
-    const fist = box(gMat, 0.2, 0.2, 0.24, 0.1 * side, -0.82, 0.1, root);
+    box(mat.shade, 0.3, 0.28, 0.32, 0.08 * side, 0.02, 0, root);
+    cap(mat.shade, 0.12, 0.48, 0.1 * side, -0.4, 0.05, root);
+    const fist = box(gMat, 0.2, 0.2, 0.24, 0.1 * side, -0.78, 0.1, root);
     glow.push(fist);
     return root;
   };
-  cyl(mat.shade, 0.14, 0.12, 0.7, -0.2, 0.5, 0, group);
-  cyl(mat.shade, 0.14, 0.12, 0.7, 0.2, 0.5, 0, group);
+  cap(mat.shade, 0.12, 0.46, -0.2, 0.52, 0, group);
+  cap(mat.shade, 0.12, 0.46, 0.2, 0.52, 0, group);
   box(mat.shade, 0.24, 0.12, 0.36, -0.2, 0.1, 0.06, group);
   box(mat.shade, 0.24, 0.12, 0.36, 0.2, 0.1, 0.06, group);
   group.scale.setScalar(1.28);
@@ -410,45 +511,49 @@ function createHarbinger(mat: Materials): EnemyRig {
   const group = new THREE.Group();
   const glow: THREE.Mesh[] = [];
   const gMat = cloneGlow(mat.shadeGlow);
-  box(mat.shade, 0.7, 0.9, 0.4, 0, 1.7, 0, group);
-  box(mat.shade, 0.48, 0.7, 0.38, 0, 2.5, 0.06, group);
-  for (let i = 0; i < 5; i++) {
-    const a = (i - 2) * 0.32;
-    box(mat.shade, 0.08, 0.42, 0.08, Math.sin(a) * 0.22, 2.95, Math.cos(a) * 0.08, group);
+  cap(mat.shade, 0.22, 0.7, 0, 1.7, 0, group);
+  box(mat.shade, 0.68, 0.88, 0.4, 0, 1.72, 0, group);
+  sph(mat.shade, 0.26, 0, 2.52, 0.06, group, 12);
+  box(mat.shade, 0.44, 0.62, 0.36, 0, 2.48, 0.06, group);
+  for (let i = 0; i < 6; i++) {
+    const a = (i - 2.5) * 0.28;
+    box(mat.shade, 0.07, 0.46, 0.07, Math.sin(a) * 0.24, 3.0, Math.cos(a) * 0.08, group);
   }
-  const eye = box(gMat, 0.28, 0.08, 0.06, 0, 2.55, 0.26, group);
+  const eye = box(gMat, 0.26, 0.07, 0.06, 0, 2.54, 0.26, group);
   glow.push(eye);
-  const core = new THREE.Mesh(new THREE.IcosahedronGeometry(0.28, 0), mat.voidCore.clone());
-  core.position.set(0, 1.7, 0.28);
+  const core = new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 1), mat.voidCore.clone());
+  core.position.set(0, 1.72, 0.28);
+  core.castShadow = true;
   group.add(core);
   glow.push(core);
-  const ring = new THREE.Mesh(
-    new THREE.TorusGeometry(0.72, 0.045, 8, 24),
-    mat.voidCore.clone(),
-  );
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.78, 0.04, 8, 28), mat.voidCore.clone());
   ring.rotation.x = Math.PI / 2;
-  ring.position.set(0, 1.7, 0);
+  ring.position.set(0, 1.72, 0);
   group.add(ring);
+  const ringB = new THREE.Mesh(new THREE.TorusGeometry(1.05, 0.025, 8, 32), mat.voidCore.clone());
+  ringB.rotation.x = Math.PI / 2.4;
+  ringB.position.set(0, 1.9, 0);
+  group.add(ringB);
   const mkArm = (side: number, y: number, zOff: number) => {
     const root = new THREE.Group();
-    root.position.set(0.46 * side, y, zOff);
+    root.position.set(0.48 * side, y, zOff);
     group.add(root);
-    cyl(mat.shade, 0.07, 0.05, 0.95, 0.08 * side, -0.4, 0.1, root);
-    const claw = box(gMat, 0.06, 0.06, 0.22, 0.08 * side, -0.9, 0.22, root);
+    cap(mat.shade, 0.055, 0.72, 0.08 * side, -0.38, 0.1, root);
+    const claw = box(gMat, 0.055, 0.055, 0.24, 0.08 * side, -0.86, 0.22, root);
     glow.push(claw);
     return root;
   };
-  for (let i = 0; i < 3; i++) {
-    const t = (i / 3) * Math.PI * 2;
-    const tend = cyl(mat.shade, 0.04, 0.01, 0.9, Math.cos(t) * 0.25, 0.85, Math.sin(t) * 0.25, group);
-    tend.rotation.z = Math.cos(t) * 0.4;
+  for (let i = 0; i < 4; i++) {
+    const t = (i / 4) * Math.PI * 2;
+    const tend = cyl(mat.shade, 0.035, 0.008, 1.0, Math.cos(t) * 0.28, 0.82, Math.sin(t) * 0.28, group);
+    tend.rotation.z = Math.cos(t) * 0.45;
   }
-  group.scale.setScalar(1.7);
+  group.scale.setScalar(1.72);
   return {
     group,
     kind: "harbinger",
-    leftArm: mkArm(-1, 2.05, 0),
-    rightArm: mkArm(1, 2.05, 0),
+    leftArm: mkArm(-1, 2.08, 0),
+    rightArm: mkArm(1, 2.08, 0),
     glow,
     core,
     ring,
@@ -457,15 +562,18 @@ function createHarbinger(mat: Materials): EnemyRig {
 
 export function createCar(mat: Materials) {
   const g = new THREE.Group();
-  box(mat.rust, 2.3, 0.55, 1.08, 0, 0.46, 0, g);
-  box(mat.dark, 1.15, 0.44, 0.98, -0.12, 0.9, 0, g);
-  box(mat.glass, 0.72, 0.28, 0.92, 0.18, 0.92, 0, g);
-  box(mat.warning, 0.08, 0.06, 1.05, 1.12, 0.5, 0, g);
+  box(mat.rust, 2.4, 0.5, 1.12, 0, 0.48, 0, g);
+  box(mat.dark, 1.2, 0.42, 1.0, -0.1, 0.88, 0, g);
+  box(mat.glass, 0.7, 0.26, 0.94, 0.2, 0.9, 0, g);
+  box(mat.warning, 0.08, 0.06, 1.08, 1.16, 0.5, 0, g);
+  box(mat.metal, 0.16, 0.08, 0.9, -1.1, 0.52, 0, g);
+  box(mat.rust, 0.5, 0.12, 0.4, 0.7, 0.72, 0.4, g, 0.4, 0.2, 0.15);
   const wheel = (x: number, z: number, missing = false) => {
     if (missing) return;
-    const m = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.18, 10), mat.rubber);
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.18, 12), mat.rubber);
     m.rotation.z = Math.PI / 2;
     m.position.set(x, 0.28, z);
+    m.castShadow = true;
     g.add(m);
   };
   wheel(-0.72, 0.56);
@@ -681,6 +789,63 @@ export function dressWorld(scene: THREE.Scene, mat: Materials) {
     cracks.setMatrixAt(i, dummy.matrix);
   }
   scene.add(cracks);
+
+  const skyline = new THREE.Group();
+  const sil = [
+    [-32, -20, 7, 18, 9],
+    [-28, -48, 6, 26, 8],
+    [-34, -72, 8, 32, 10],
+    [-30, -96, 6, 22, 8],
+    [32, -16, 7, 20, 9],
+    [29, -44, 6, 28, 8],
+    [35, -70, 9, 34, 11],
+    [31, -100, 7, 24, 9],
+    [-26, 16, 8, 14, 10],
+    [27, 14, 7, 16, 9],
+  ];
+  for (const [x, z, w, h, d] of sil) {
+    const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat.dark);
+    b.position.set(x, h * 0.45, z);
+    b.castShadow = true;
+    b.receiveShadow = true;
+    skyline.add(b);
+    const crown = new THREE.Mesh(new THREE.BoxGeometry(w * 0.35, h * 0.28, d * 0.35), mat.rust);
+    crown.position.set(x + (w > 7 ? 1.2 : -0.8), h * 0.72, z);
+    skyline.add(crown);
+  }
+  scene.add(skyline);
+}
+
+export function createAimReticle() {
+  const g = new THREE.Group();
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(0.28, 0.36, 24),
+    new THREE.MeshBasicMaterial({
+      color: 0xe85d04,
+      transparent: true,
+      opacity: 0.85,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      toneMapped: false,
+    }),
+  );
+  ring.rotation.x = -Math.PI / 2;
+  g.add(ring);
+  const inner = new THREE.Mesh(
+    new THREE.RingGeometry(0.04, 0.08, 12),
+    new THREE.MeshBasicMaterial({
+      color: 0x5eead4,
+      transparent: true,
+      opacity: 0.9,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      toneMapped: false,
+    }),
+  );
+  inner.rotation.x = -Math.PI / 2;
+  g.add(inner);
+  g.position.y = 0.06;
+  return g;
 }
 
 export function createPortalShader() {
