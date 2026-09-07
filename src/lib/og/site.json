@@ -1,6 +1,9 @@
 {
   "title": "Void Breach",
+  "description": "Earth 2172. Third-person exo-suit looter-shooter — breach Ashfall Gate and kill the Harbinger.",
   "type": "x:game",
   "card": "custom",
-  "color": "E85D04"
+  "color": "E85D04",
+  "image": "/og.jpg",
+  "banner": "/x-banner.jpg"
 }
