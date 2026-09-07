@@ -528,8 +528,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   }
   function placeFollowCam(dt: number, snap = false) {
     if (phase === "ship") {
-      camPos.set(px + 5.6, 5.15, pz + 6.4);
-      camLook.set(px, 1.05, pz - 0.2);
+      camPos.set(px + 4.4, 5.05, pz + 7.1);
+      camLook.set(px + 1.4, 0.95, pz - 1.6);
       if (snap || camSnap) {
         camera.position.copy(camPos);
         camSnap = false;
@@ -891,11 +891,11 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     py = 0.12;
     velX = 0;
     velZ = 0;
-    yaw = 0;
+    yaw = Math.atan2(-5.4, 4.4);
     nearCnc = false;
     phase = "ship";
     objective = "Chimera hull — ready deck";
-    hint = "Walk to the CNC printer · I inventory · Deploy from the pad";
+    hint = "Walk to the teal gantry · I inventory · Deploy from the pad";
     if (playerRig) playerRig.group.visible = true;
     drone.visible = false;
     if (aimReticle) aimReticle.visible = false;

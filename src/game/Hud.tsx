@@ -325,17 +325,15 @@ export function Hud({
         </div>
       ) : null}
 
-      {hud.phase === "ship" ? (
-        <div className="pointer-events-auto absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-30 flex w-[min(28rem,92vw)] -translate-x-1/2 flex-col items-center gap-2">
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-faint">
-            Bank {hud.scrapBank} scrap · {hud.nearCnc ? "CNC in range" : "Step onto the printer pad"}
-          </p>
-        </div>
-      ) : null}
-
-      <p className="absolute bottom-4 left-1/2 hidden -translate-x-1/2 font-mono text-[10px] uppercase tracking-[0.2em] text-faint desk:block">
-        {hud.hint}
-      </p>
+      {atShip ? (
+        <p className="absolute bottom-[max(7.2rem,calc(env(safe-area-inset-bottom)+6.4rem))] left-1/2 z-20 w-[min(28rem,92vw)] -translate-x-1/2 text-center font-mono text-[10px] uppercase tracking-[0.2em] text-faint">
+          {hud.nearCnc ? "E · use the hull CNC" : "Walk to the teal gantry to print gear"}
+        </p>
+      ) : (
+        <p className="absolute bottom-4 left-1/2 hidden -translate-x-1/2 font-mono text-[10px] uppercase tracking-[0.2em] text-faint desk:block">
+          {hud.hint}
+        </p>
+      )}
     </div>
   );
 }

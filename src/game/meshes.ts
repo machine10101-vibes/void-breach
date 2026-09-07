@@ -1185,18 +1185,31 @@ export function createShipInterior(mat: Materials) {
     root.add(strip);
   }
 
+  const path = new THREE.Mesh(
+    new THREE.BoxGeometry(1.05, 0.04, 5.2),
+    new THREE.MeshBasicMaterial({ color: 0x5eead4, toneMapped: false }),
+  );
+  path.position.set(3.4, 0.03, -2.2);
+  path.rotation.y = -0.42;
+  root.add(path);
+
   const cnc = new THREE.Group();
   cnc.position.set(5.4, 0, -4.4);
   cnc.name = "cnc";
-  box(hull, 2.6, 0.28, 2.1, 0, 0.2, 0, cnc);
-  box(mat.metal, 2.2, 0.08, 1.6, 0, 0.38, 0, cnc);
-  box(mat.ember, 1.4, 0.03, 1.0, 0, 0.44, 0, cnc);
-  box(hull, 0.16, 2.2, 0.16, -1.15, 1.4, -0.85, cnc);
-  box(hull, 0.16, 2.2, 0.16, 1.15, 1.4, -0.85, cnc);
-  box(hull, 0.16, 2.2, 0.16, -1.15, 1.4, 0.85, cnc);
-  box(hull, 0.16, 2.2, 0.16, 1.15, 1.4, 0.85, cnc);
-  box(mat.metal, 2.5, 0.12, 0.16, 0, 2.5, 0, cnc);
-  box(mat.voidCore, 0.18, 0.18, 1.8, 0, 2.35, 0, cnc);
+  box(hull, 3.1, 0.32, 2.5, 0, 0.22, 0, cnc);
+  box(mat.metal, 2.6, 0.1, 1.9, 0, 0.42, 0, cnc);
+  const bed = new THREE.Mesh(
+    new THREE.BoxGeometry(1.8, 0.05, 1.2),
+    new THREE.MeshBasicMaterial({ color: 0x5eead4, toneMapped: false }),
+  );
+  bed.position.set(0, 0.48, 0);
+  cnc.add(bed);
+  box(hull, 0.18, 2.6, 0.18, -1.35, 1.55, -1.0, cnc);
+  box(hull, 0.18, 2.6, 0.18, 1.35, 1.55, -1.0, cnc);
+  box(hull, 0.18, 2.6, 0.18, -1.35, 1.55, 1.0, cnc);
+  box(hull, 0.18, 2.6, 0.18, 1.35, 1.55, 1.0, cnc);
+  box(mat.metal, 3.0, 0.14, 0.2, 0, 2.85, 0, cnc);
+  box(mat.voidCore, 0.2, 0.2, 2.2, 0, 2.7, 0, cnc);
   const head = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.34, 0.28), mat.ember);
   head.position.set(0, 1.15, 0);
   cnc.add(head);
