@@ -48,10 +48,10 @@ export function makeMaterials(tex: {
     metalness: 0.78,
   });
   const armor = new THREE.MeshStandardMaterial({
-    color: 0xc8c4be,
+    color: 0xf0ebe4,
     map: tex.armor ?? null,
     roughness: 0.36,
-    metalness: 0.72,
+    metalness: 0.62,
   });
   const shade = new THREE.MeshStandardMaterial({
     color: 0x1a1c22,
@@ -251,6 +251,21 @@ export function createExoSuit(mat: Materials): PlayerRig {
   const armor = mat.armor;
   const dark = mat.dark;
   const metal = mat.metal;
+
+  const loc = new THREE.Mesh(
+    new THREE.RingGeometry(0.42, 0.52, 28),
+    new THREE.MeshBasicMaterial({
+      color: 0xe85d04,
+      transparent: true,
+      opacity: 0.55,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      toneMapped: false,
+    }),
+  );
+  loc.rotation.x = -Math.PI / 2;
+  loc.position.y = 0.04;
+  group.add(loc);
 
   box(armor, 0.5, 0.18, 0.32, 0, 0.94, 0.02, group);
   box(dark, 0.22, 0.1, 0.16, 0, 0.94, 0.16, group);

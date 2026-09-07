@@ -52,10 +52,10 @@ const WALK = 5.6;
 const SPRINT = 8.8;
 const DODGE_SPEED = 14.5;
 const BASE_SENS = 0.00215;
-const CAM_DIST = 12.4;
-const CAM_DIST_ADS = 9.2;
-const CAM_HEIGHT = 12.6;
-const CAM_HEIGHT_ADS = 9.4;
+const CAM_DIST = 11.6;
+const CAM_DIST_ADS = 8.6;
+const CAM_HEIGHT = 10.4;
+const CAM_HEIGHT_ADS = 7.8;
 const CAM_LOOK_Y = 0.62;
 const CAM_LOOK_AHEAD = 2.4;
 const CAM_MIN_BOOM = 7.2;
@@ -243,17 +243,17 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   renderer.setSize(canvas.clientWidth || window.innerWidth, canvas.clientHeight || window.innerHeight, false);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.12;
+  renderer.toneMappingExposure = 1.38;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x1a120c);
-  scene.fog = new THREE.FogExp2(0x1a120c, 0.013);
+  scene.fog = new THREE.FogExp2(0x2a1c12, 0.0085);
 
   const camera = new THREE.PerspectiveCamera(CAM_FOV, 1, 0.22, 280);
-  scene.add(new THREE.HemisphereLight(0xc4a070, 0x1a140f, 0.5));
-  const sun = new THREE.DirectionalLight(0xffc58a, 2.05);
+  scene.add(new THREE.HemisphereLight(0xffd2a8, 0x1c1610, 0.92));
+  const sun = new THREE.DirectionalLight(0xffd0a0, 2.55);
   sun.position.set(-28, 34, 18);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
@@ -265,10 +265,14 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   sun.shadow.camera.bottom = -40;
   sun.shadow.bias = -0.0004;
   scene.add(sun);
-  const fill = new THREE.DirectionalLight(0x4fd1c5, 0.32);
-  fill.position.set(22, 12, -28);
+  const fill = new THREE.DirectionalLight(0x6ee7e0, 0.62);
+  fill.position.set(22, 16, -28);
   scene.add(fill);
-  scene.add(new THREE.AmbientLight(0x2a241c, 0.32));
+  scene.add(new THREE.AmbientLight(0x3a3228, 0.55));
+  const playerKey = new THREE.PointLight(0xffc89a, 5.2, 16, 1.6);
+  scene.add(playerKey);
+  const playerRim = new THREE.PointLight(0x5eead4, 2.4, 10, 2);
+  scene.add(playerRim);
 
   const textures: {
     ground?: THREE.Texture;
@@ -1590,6 +1594,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     drone.lookAt(px, py + 1.4, pz);
     muzzleLight.position.set(px + f.x * 0.85, py + 1.4, pz + f.z * 0.85);
     overLight.position.set(px, py + 1.4, pz);
+    playerKey.position.set(px + 1.2, py + 4.2, pz + 1.8);
+    playerRim.position.set(px - 1.4, py + 2.2, pz - 1.2);
 
     placeFollowCam(dt);
 
