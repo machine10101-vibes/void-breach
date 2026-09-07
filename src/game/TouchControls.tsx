@@ -20,7 +20,7 @@ function Pill({
   return (
     <button
       type="button"
-      className={`flex h-10 min-w-10 items-center justify-center rounded-md border px-2 font-display text-xs font-semibold uppercase tracking-wide ${
+      className={`flex h-10 min-w-10 items-center justify-center rounded-md border px-2 font-display text-xs font-semibold uppercase tracking-wide short:h-8 short:min-w-8 short:px-1.5 short:text-[10px] ${
         ready ? "border-border bg-surface/55 text-fg" : "border-border/60 bg-surface/30 text-faint"
       }`}
       onPointerDown={(e) => {
@@ -105,7 +105,7 @@ export function TouchControls({ handle, visible }: Props) {
   return (
     <div className="pointer-events-none absolute inset-0 z-20">
       <div
-        className="pointer-events-auto absolute top-14 right-0 bottom-40 left-[32%]"
+        className="pointer-events-auto absolute top-14 right-0 bottom-40 left-[32%] short:top-12 short:right-[5.75rem] short:bottom-2 short:left-[34%]"
         onPointerDown={onLookDown}
         onPointerMove={onPtrMove}
         onPointerUp={endMove}
@@ -113,26 +113,26 @@ export function TouchControls({ handle, visible }: Props) {
       />
 
       <div
-        className="pointer-events-auto absolute bottom-[max(0.75rem,calc(env(safe-area-inset-bottom)+0.4rem))] left-[max(0.65rem,env(safe-area-inset-left))] flex h-[5.25rem] w-[5.25rem] items-center justify-center rounded-full border border-border/70 bg-surface/25"
+        className="pointer-events-auto absolute bottom-[max(0.75rem,calc(env(safe-area-inset-bottom)+0.4rem))] left-[max(0.65rem,env(safe-area-inset-left))] flex h-[5.25rem] w-[5.25rem] items-center justify-center rounded-full border border-border/70 bg-surface/25 short:h-16 short:w-16"
         onPointerDown={onMoveDown}
         onPointerMove={onPtrMove}
         onPointerUp={endMove}
         onPointerCancel={endMove}
       >
-        <div ref={knob} className="h-9 w-9 rounded-full bg-fg/35" />
+        <div ref={knob} className="h-9 w-9 rounded-full bg-fg/35 short:h-7 short:w-7" />
       </div>
 
-      <div className="pointer-events-auto absolute right-[max(0.55rem,env(safe-area-inset-right))] bottom-[max(0.7rem,calc(env(safe-area-inset-bottom)+0.35rem))] flex flex-col items-end gap-1.5">
-        <div className="flex gap-1">
+      <div className="pointer-events-auto absolute right-[max(0.55rem,env(safe-area-inset-right))] bottom-[max(0.7rem,calc(env(safe-area-inset-bottom)+0.35rem))] flex flex-col items-end gap-1.5 short:top-1/2 short:bottom-auto short:-translate-y-1/2 short:gap-1">
+        <div className="flex gap-1 short:flex-col">
           <Pill label="Frag" onDown={() => handle?.pulse("frag")} />
           <Pill label="Drive" onDown={() => handle?.pulse("overdrive")} />
           <Pill label="Cleave" onDown={() => handle?.pulse("cleave")} />
         </div>
-        <div className="flex items-end gap-1.5">
+        <div className="flex items-end gap-1.5 short:flex-col-reverse short:items-end">
           <Pill label="Roll" onDown={() => handle?.pulse("dodge")} />
           <button
             type="button"
-            className="flex h-14 w-14 items-center justify-center rounded-full bg-accent font-display text-sm font-semibold text-accent-fg"
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-accent font-display text-sm font-semibold text-accent-fg short:h-12 short:w-12 short:text-xs"
             onPointerDown={(e) => {
               e.preventDefault();
               e.stopPropagation();

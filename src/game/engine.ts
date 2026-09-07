@@ -34,6 +34,8 @@ import {
   type PlayerRig,
 } from "./meshes";
 import { ParticleField, ScorchPool } from "./particles";
+import { assetUrl } from "@/lib/asset-url";
+import { isTouchUi } from "./layout";
 import { loadSave, recordRun, writeSave, type SaveData } from "./save";
 import type {
   ControlsProbe,
@@ -156,6 +158,8 @@ export type GameHandle = {
   resume: () => void;
   setMuted: (m: boolean) => void;
   setSensitivity: (s: number) => void;
+  setInvertLookX: (v: boolean) => void;
+  setInvertLookY: (v: boolean) => void;
   setTouchMove: (x: number, y: number) => void;
   setTouchLook: (dx: number, dy: number) => void;
   setAction: (name: string, down: boolean) => void;
@@ -312,7 +316,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   scene.add(overLight);
   const drone = new THREE.Group();
   let composer: EffectComposer | null = null;
-  const isMobile = window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 820;
+  let isMobile = isTouchUi();
   let worldBuilt = false;
   let prevSlot = 0;
   let camSnap = true;
@@ -326,6 +330,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
   let mouseAim = true;
   let touchAimYaw = 0;
+  let touchAimSR = 0;
+  let touchAimSF = 8;
   let aimReticle: THREE.Group | null = null;
   const particles = new ParticleField();
   const scorch = new ScorchPool(scene);
@@ -435,12 +441,12 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   setupWorld();
 
   void Promise.allSettled([
-    loadTex("/art/ground.jpg", 18).then((t) => (textures.ground = t)),
-    loadTex("/art/wall.jpg", 4).then((t) => (textures.wall = t)),
-    loadTex("/art/metal.jpg", 3).then((t) => (textures.metal = t)),
-    loadTex("/art/armor.png", 1.6).then((t) => (textures.armor = t)),
-    loadTex("/art/shade.png", 1.4).then((t) => (textures.shade = t)),
-    loadTex("/art/sky.jpg", 1).then((t) => {
+    loadTex(assetUrl("art/ground.jpg"), 18).then((t) => (textures.ground = t)),
+    loadTex(assetUrl("art/wall.jpg"), 4).then((t) => (textures.wall = t)),
+    loadTex(assetUrl("art/metal.jpg"), 3).then((t) => (textures.metal = t)),
+    loadTex(assetUrl("art/armor.png"), 1.6).then((t) => (textures.armor = t)),
+    loadTex(assetUrl("art/shade.png"), 1.4).then((t) => (textures.shade = t)),
+    loadTex(assetUrl("art/sky.jpg"), 1).then((t) => {
       t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
       textures.sky = t;
     }),
@@ -765,18 +771,29 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     return { f: { x: fx, z: fz }, r: { x: -fz, z: fx } };
   }
 
+  function lookSign() {
+    return {
+      x: save.invertLookX ? -1 : 1,
+      y: save.invertLookY ? -1 : 1,
+    };
+  }
+
   function updateAim() {
     const pad = pollPad();
-    const stick = Math.hypot(pad.lx, pad.ly);
+    const inv = lookSign();
+    const lx = pad.lx * inv.x;
+    const ly = pad.ly * inv.y;
+    const stick = Math.hypot(lx, ly);
     if (stick > 0.22) {
       mouseAim = false;
       const b = camBasis();
       const reach = 11;
-      aimPoint.x = px + (b.f.x * -pad.ly + b.r.x * pad.lx) * reach;
-      aimPoint.z = pz + (b.f.z * -pad.ly + b.r.z * pad.lx) * reach;
+      aimPoint.x = px + (b.f.x * -ly + b.r.x * lx) * reach;
+      aimPoint.z = pz + (b.f.z * -ly + b.r.z * lx) * reach;
     } else if (isMobile) {
-      aimPoint.x = px - Math.sin(touchAimYaw) * 9;
-      aimPoint.z = pz - Math.cos(touchAimYaw) * 9;
+      const b = camBasis();
+      aimPoint.x = px + b.r.x * touchAimSR + b.f.x * touchAimSF;
+      aimPoint.z = pz + b.r.z * touchAimSR + b.f.z * touchAimSF;
     } else if (mouseAim) {
       raycaster.setFromCamera(ndc, camera);
       if (raycaster.ray.intersectPlane(groundPlane, tmpV)) {
@@ -1294,6 +1311,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       stats: { time: missionTime, kills, gold, xp, shots, hits, damageDealt },
       best: save.runs ? { kills: save.bestKills, time: save.bestTime, gold: save.bestGold, runs: save.runs } : null,
       sensitivity: save.sensitivity,
+      invertLookX: save.invertLookX,
+      invertLookY: save.invertLookY,
     };
   }
 
@@ -1454,11 +1473,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
 
     const k = keySet();
     const pad = pollPad();
-    if (Math.abs(touch.lookX) + Math.abs(touch.lookY) > 0) {
-      touchAimYaw -= touch.lookX;
-      touch.lookX = 0;
-      touch.lookY = 0;
-    }
+    touch.lookX = 0;
+    touch.lookY = 0;
     pitch = 0.08;
     updateAim();
 
@@ -1626,6 +1642,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   requestAnimationFrame(frame);
 
   function resize() {
+    isMobile = isTouchUi();
     const w = canvas.clientWidth || window.innerWidth;
     const h = canvas.clientHeight || window.innerHeight;
     camera.aspect = w / Math.max(1, h);
@@ -1756,6 +1773,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       hint = isMobile ? "Left stick move · right drag aim" : "WASD move · mouse aim · click fire · Q/E/F skills";
       aimPoint.set(px, 0, pz - 8);
       touchAimYaw = 0;
+      touchAimSR = 0;
+      touchAimSF = 8;
       placeFollowCam(1 / 60, true);
       emitHud(true);
     },
@@ -1782,14 +1801,31 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       writeSave(save);
       emitHud(true);
     },
+    setInvertLookX(v) {
+      save.invertLookX = v;
+      writeSave(save);
+      emitHud(true);
+    },
+    setInvertLookY(v) {
+      save.invertLookY = v;
+      writeSave(save);
+      emitHud(true);
+    },
     setTouchMove(x, y) {
       touch.mx = x;
       touch.my = y;
     },
     setTouchLook(dx, dy) {
-      touchAimYaw -= dx * BASE_SENS * 1.15 * save.sensitivity;
-      touch.lookX += dx * BASE_SENS * 1.15 * save.sensitivity;
-      touch.lookY += dy * BASE_SENS * 1.15 * save.sensitivity;
+      const inv = lookSign();
+      const s = BASE_SENS * 26 * save.sensitivity;
+      touchAimSR += dx * s * inv.x;
+      touchAimSF += -dy * s * inv.y;
+      const max = 14;
+      touchAimSR = THREE.MathUtils.clamp(touchAimSR, -max, max);
+      touchAimSF = THREE.MathUtils.clamp(touchAimSF, 2.2, max);
+      touchAimYaw = Math.atan2(-touchAimSR, -touchAimSF);
+      touch.lookX = 0;
+      touch.lookY = 0;
     },
     setAction(name, down) {
       if (name === "fire") held.fire = down;
