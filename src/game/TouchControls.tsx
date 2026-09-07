@@ -23,10 +23,14 @@ function ActionBtn({
       className="flex h-14 w-14 flex-col items-center justify-center rounded-full border border-border bg-surface/80 font-display text-sm font-semibold text-fg backdrop-blur-sm"
       onPointerDown={(e) => {
         e.preventDefault();
+        e.stopPropagation();
         e.currentTarget.setPointerCapture(e.pointerId);
         onDown();
       }}
-      onPointerUp={onUp}
+      onPointerUp={(e) => {
+        e.stopPropagation();
+        onUp?.();
+      }}
       onPointerCancel={onUp}
     >
       {label}
@@ -40,7 +44,6 @@ export function TouchControls({ handle, visible }: Props) {
   const lookId = useRef<number | null>(null);
   const origin = useRef({ x: 0, y: 0 });
   const last = useRef({ x: 0, y: 0 });
-  const stick = useRef<HTMLDivElement>(null);
   const knob = useRef<HTMLDivElement>(null);
 
   const onMoveDown = useCallback(
@@ -97,9 +100,8 @@ export function TouchControls({ handle, visible }: Props) {
   if (!visible) return null;
 
   return (
-    <div className="absolute inset-0 z-10 sm:hidden">
+    <div className="absolute inset-0 z-10">
       <div
-        ref={stick}
         className="absolute bottom-24 left-6 flex h-28 w-28 items-center justify-center rounded-full border border-border bg-surface/40"
         onPointerDown={onMoveDown}
         onPointerMove={onPtrMove}
@@ -124,9 +126,11 @@ export function TouchControls({ handle, visible }: Props) {
           <ActionBtn label="F" sub="Cleave" onDown={() => handle?.pulse("cleave")} />
         </div>
         <div className="flex gap-2">
+          <ActionBtn label="R" onDown={() => handle?.pulse("reload")} />
           <ActionBtn
-            label="R"
-            onDown={() => handle?.pulse("reload")}
+            label="Aim"
+            onDown={() => handle?.setAction("ads", true)}
+            onUp={() => handle?.setAction("ads", false)}
           />
           <ActionBtn
             label="Run"
@@ -140,6 +144,7 @@ export function TouchControls({ handle, visible }: Props) {
           className="flex h-20 w-20 items-center justify-center rounded-full bg-accent font-display text-lg font-semibold text-accent-fg"
           onPointerDown={(e) => {
             e.preventDefault();
+            e.stopPropagation();
             handle?.setAction("fire", true);
           }}
           onPointerUp={() => handle?.setAction("fire", false)}

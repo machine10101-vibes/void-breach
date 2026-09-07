@@ -8,23 +8,36 @@ import { collidePlayer, groundHeight, rayWorld, clamp } from "./collision";
 import { buildLevel } from "./level";
 import {
   addWorldFromBoxes,
+  createBarrel,
+  createBeam,
+  createBolt,
   createCar,
+  createCrate,
   createExoSuit,
+  createGrenade,
   createLamp,
+  createMuzzleFlash,
   createRifle,
   createRubble,
   createShade,
   createShotgun,
+  createSlash,
   createSmg,
+  createSpawnRift,
   createVoidGate,
+  createWreck,
+  dressWorld,
   makeMaterials,
   type EnemyRig,
   type Materials,
   type PlayerRig,
 } from "./meshes";
+import { ParticleField, ScorchPool } from "./particles";
+import { loadSave, recordRun, writeSave, type SaveData } from "./save";
 import type {
   ControlsProbe,
   EnemyKind,
+  FloatNum,
   HudSnapshot,
   Phase,
   Rarity,
@@ -34,10 +47,20 @@ import type {
 const PLAYER_R = 0.38;
 const PLAYER_H = 1.72;
 const GRAVITY = 22;
-const WALK = 5.4;
-const SPRINT = 8.6;
-const DODGE_SPEED = 14;
-const SENS = 0.00215;
+const WALK = 5.6;
+const SPRINT = 8.8;
+const DODGE_SPEED = 14.5;
+const BASE_SENS = 0.00215;
+const CAM_DIST = 7.6;
+const CAM_DIST_ADS = 5.4;
+const CAM_HEIGHT = 2.12;
+const CAM_LOOK_Y = 1.46;
+const CAM_LOOK_AHEAD = 4.4;
+const CAM_SHOULDER = 1.18;
+const CAM_SHOULDER_ADS = 0.58;
+const CAM_MIN_BOOM = 4.8;
+const CAM_FOV = 68;
+const CAM_FOV_ADS = 52;
 
 type Weapon = {
   id: WeaponId;
@@ -63,13 +86,17 @@ type Enemy = {
   max: number;
   yaw: number;
   attackCd: number;
-  alive: true | false;
+  alive: boolean;
+  dying: number;
   flash: number;
   rig: EnemyRig;
   radius: number;
   speed: number;
-  aggro: boolean;
-  phase: number;
+  state: "chase" | "windup" | "attack";
+  stateT: number;
+  kbX: number;
+  kbZ: number;
+  summoned: number;
 };
 
 type BulletFx = { mesh: THREE.Line; life: number };
@@ -77,17 +104,30 @@ type Drop = {
   mesh: THREE.Group;
   x: number;
   z: number;
-  kind: "gold" | "health" | "weapon";
+  kind: "gold" | "health" | "weapon" | "ammo";
   weapon?: Weapon;
   amount: number;
   rarity: Rarity;
 };
+type Proj = {
+  kind: "frag" | "bolt";
+  mesh: THREE.Object3D;
+  x: number;
+  y: number;
+  z: number;
+  vx: number;
+  vy: number;
+  vz: number;
+  life: number;
+  dmg: number;
+  r: number;
+};
 
 function defaultWeapons(): Weapon[] {
   return [
-    { id: "ar", name: "Vanguard ARX", rarity: "common", dmg: 19, pellets: 1, rpm: 560, mag: 32, reserve: 160, spread: 0.018, range: 78, reload: 1.45 },
-    { id: "shotgun", name: "Spartan 12G", rarity: "magic", dmg: 11, pellets: 8, rpm: 78, mag: 6, reserve: 36, spread: 0.11, range: 16, reload: 1.9 },
-    { id: "smg", name: "Cinder SMG", rarity: "common", dmg: 12, pellets: 1, rpm: 880, mag: 40, reserve: 200, spread: 0.04, range: 38, reload: 1.25 },
+    { id: "ar", name: "Vanguard ARX", rarity: "common", dmg: 21, pellets: 1, rpm: 580, mag: 32, reserve: 160, spread: 0.016, range: 82, reload: 1.4 },
+    { id: "shotgun", name: "Spartan 12G", rarity: "magic", dmg: 12, pellets: 8, rpm: 78, mag: 6, reserve: 36, spread: 0.105, range: 17, reload: 1.85 },
+    { id: "smg", name: "Cinder SMG", rarity: "common", dmg: 13, pellets: 1, rpm: 920, mag: 40, reserve: 200, spread: 0.038, range: 40, reload: 1.2 },
   ];
 }
 
@@ -96,10 +136,17 @@ function rarityColor(r: Rarity) {
 }
 
 function enemyStats(kind: EnemyKind) {
-  if (kind === "harbinger") return { hp: 2200, radius: 1.15, speed: 2.4, dmg: 28 };
-  if (kind === "brute") return { hp: 420, radius: 0.7, speed: 2.8, dmg: 22 };
-  if (kind === "stalker") return { hp: 140, radius: 0.45, speed: 4.4, dmg: 12 };
-  return { hp: 90, radius: 0.42, speed: 4.8, dmg: 14 };
+  if (kind === "harbinger") return { hp: 1680, radius: 1.2, speed: 2.5, dmg: 26 };
+  if (kind === "brute") return { hp: 390, radius: 0.78, speed: 2.7, dmg: 24 };
+  if (kind === "stalker") return { hp: 125, radius: 0.46, speed: 4.5, dmg: 16 };
+  return { hp: 78, radius: 0.42, speed: 5.0, dmg: 13 };
+}
+
+function radialDeadzone(x: number, y: number, dz = 0.16) {
+  const m = Math.hypot(x, y);
+  if (m < dz) return { x: 0, y: 0 };
+  const scale = (m - dz) / (1 - dz) / m;
+  return { x: x * scale, y: y * scale };
 }
 
 export type GameHandle = {
@@ -108,27 +155,36 @@ export type GameHandle = {
   pause: () => void;
   resume: () => void;
   setMuted: (m: boolean) => void;
+  setSensitivity: (s: number) => void;
   setTouchMove: (x: number, y: number) => void;
   setTouchLook: (dx: number, dy: number) => void;
   setAction: (name: string, down: boolean) => void;
   pulse: (name: string) => void;
 };
 
-export function mountGame(
-  canvas: HTMLCanvasElement,
-  onHud: (h: HudSnapshot) => void,
-): GameHandle {
+export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => void): GameHandle {
   const level = buildLevel();
   const audio = new GameAudio();
   const keys = new Set<string>();
+  const prevKeys = new Set<string>();
   const qaKeys = { active: false, codes: [] as string[] };
   const touch = { mx: 0, my: 0, lookX: 0, lookY: 0 };
-  const held = { fire: false, sprint: false, dodge: false, frag: false, overdrive: false, cleave: false, reload: false };
+  const held = {
+    fire: false,
+    sprint: false,
+    dodge: false,
+    frag: false,
+    overdrive: false,
+    cleave: false,
+    reload: false,
+    ads: false,
+  };
 
+  let save: SaveData = loadSave();
   let phase: Phase = "title";
   let destroyed = false;
   let yaw = 0;
-  let pitch = 0.12;
+  let pitch = 0.08;
   let px = level.spawn.x;
   let py = 0;
   let pz = level.spawn.z;
@@ -148,13 +204,13 @@ export function mountGame(
   let xp = 0;
   let pLevel = 1;
   let weaponIdx = 0;
-  const weapons = defaultWeapons();
+  let weapons = defaultWeapons();
   let mag = weapons[0].mag;
   let fireCd = 0;
   let reloadT = 0;
   let overdriveT = 0;
   let skillCd = { frag: 0, overdrive: 0, cleave: 0 };
-  let shake = 0;
+  let trauma = 0;
   let hitFlash = 0;
   let footT = 0;
   let objective = "Push through Ashfall Gate";
@@ -165,24 +221,39 @@ export function mountGame(
   let hudAcc = 0;
   let spawned = new Set<string>();
   let bossAlive = false;
+  let combo = 0;
+  let comboT = 0;
+  let missionTime = 0;
+  let hitMarker = 0;
+  let freeze = 0;
+  let adsT = 0;
+  let shots = 0;
+  let hits = 0;
+  let damageDealt = 0;
+  let floaters: FloatNum[] = [];
+  let floatId = 0;
+  let velX = 0;
+  let velZ = 0;
+  let lockLost = false;
+  let emptyCd = 0;
+  let recorded = false;
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
   renderer.setSize(canvas.clientWidth || window.innerWidth, canvas.clientHeight || window.innerHeight, false);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMappingExposure = 1.12;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x1a120c);
-  scene.fog = new THREE.FogExp2(0x1a120c, 0.022);
+  scene.fog = new THREE.FogExp2(0x1a120c, 0.019);
 
-  const camera = new THREE.PerspectiveCamera(62, 1, 0.12, 220);
-  const hemi = new THREE.HemisphereLight(0xc4a070, 0x1a140f, 0.55);
-  scene.add(hemi);
-  const sun = new THREE.DirectionalLight(0xffc58a, 2.15);
+  const camera = new THREE.PerspectiveCamera(CAM_FOV, 1, 0.22, 280);
+  scene.add(new THREE.HemisphereLight(0xc4a070, 0x1a140f, 0.5));
+  const sun = new THREE.DirectionalLight(0xffc58a, 2.05);
   sun.position.set(-28, 34, 18);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
@@ -194,8 +265,10 @@ export function mountGame(
   sun.shadow.camera.bottom = -40;
   sun.shadow.bias = -0.0004;
   scene.add(sun);
-  const amb = new THREE.AmbientLight(0x2a241c, 0.35);
-  scene.add(amb);
+  const fill = new THREE.DirectionalLight(0x4fd1c5, 0.32);
+  fill.position.set(22, 12, -28);
+  scene.add(fill);
+  scene.add(new THREE.AmbientLight(0x2a241c, 0.32));
 
   const textures: { ground?: THREE.Texture; wall?: THREE.Texture; metal?: THREE.Texture; sky?: THREE.Texture } = {};
   const loader = new THREE.TextureLoader();
@@ -220,16 +293,38 @@ export function mountGame(
   const enemies: Enemy[] = [];
   const fx: BulletFx[] = [];
   const drops: Drop[] = [];
-  const muzzleLight = new THREE.PointLight(0xffaa55, 0, 8, 2);
+  const projs: Proj[] = [];
+  const rifts: { mesh: THREE.Group; life: number }[] = [];
+  const muzzleLight = new THREE.PointLight(0xffaa55, 0, 9, 2);
   scene.add(muzzleLight);
+  const overLight = new THREE.PointLight(0xe85d04, 0, 6, 2);
+  scene.add(overLight);
   const drone = new THREE.Group();
   let composer: EffectComposer | null = null;
   const isMobile = window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 820;
   let worldBuilt = false;
   let prevSlot = 0;
+  let camSnap = true;
   const camPos = new THREE.Vector3();
   const camLook = new THREE.Vector3();
   const tmpV = new THREE.Vector3();
+  const tmpV2 = new THREE.Vector3();
+  const raycaster = new THREE.Raycaster();
+  const ndc = new THREE.Vector2(0, 0);
+  const particles = new ParticleField();
+  const scorch = new ScorchPool(scene);
+  scene.add(particles.object);
+  let gateGroup: THREE.Group | null = null;
+  let muzzleFlash: THREE.Group | null = null;
+  let beamMesh: THREE.Mesh | null = null;
+  let slashMesh: THREE.Mesh | null = null;
+  let slashT = 0;
+  const tracerMat = new THREE.LineBasicMaterial({
+    color: 0xffc58a,
+    transparent: true,
+    opacity: 0.85,
+    toneMapped: false,
+  });
 
   const groundGeo = new THREE.PlaneGeometry(160, 180, 1, 1);
   groundGeo.rotateX(-Math.PI / 2);
@@ -250,6 +345,7 @@ export function mountGame(
       mat.concrete.needsUpdate = true;
     }
     addWorldFromBoxes(scene, level.boxes, mat);
+    dressWorld(scene, mat);
     for (const [x, z] of level.lamps) {
       const lamp = createLamp(mat);
       lamp.position.set(x, 0, z);
@@ -266,16 +362,29 @@ export function mountGame(
       c.rotation.y = rot;
       scene.add(c);
     }
-    const gate = createVoidGate(mat);
-    gate.position.set(level.gate.x, 2.4, level.gate.z);
-    scene.add(gate);
-    const riftLight = new THREE.PointLight(0x22d3ee, 6, 28, 1.6);
+    for (const [x, z] of level.barrels) {
+      const b = createBarrel(mat);
+      b.position.set(x, 0, z);
+      scene.add(b);
+    }
+    for (const [x, z] of level.crates) {
+      const c = createCrate(mat);
+      c.position.set(x, 0, z);
+      scene.add(c);
+    }
+    const wreck = createWreck(mat);
+    wreck.position.set(level.wreck.x, 0, level.wreck.z);
+    scene.add(wreck);
+    gateGroup = createVoidGate(mat);
+    gateGroup.position.set(level.gate.x, 2.4, level.gate.z);
+    scene.add(gateGroup);
+    const riftLight = new THREE.PointLight(0x22d3ee, 7.5, 32, 1.5);
     riftLight.position.set(level.gate.x, 3.2, level.gate.z);
     scene.add(riftLight);
 
     if (textures.sky) {
       const sky = new THREE.Mesh(
-        new THREE.SphereGeometry(160, 24, 16),
+        new THREE.SphereGeometry(170, 24, 16),
         new THREE.MeshBasicMaterial({ map: textures.sky, side: THREE.BackSide, fog: false, depthWrite: false }),
       );
       sky.position.set(0, 20, -20);
@@ -284,19 +393,28 @@ export function mountGame(
 
     playerRig = createExoSuit(mat);
     scene.add(playerRig.group);
-    const dCore = new THREE.Mesh(new THREE.OctahedronGeometry(0.12, 0), mat.ember);
+    const dCore = new THREE.Mesh(new THREE.OctahedronGeometry(0.13, 0), mat.ember);
     drone.add(dCore);
+    const dRing = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.02, 6, 12), mat.voidCore);
+    drone.add(dRing);
     scene.add(drone);
+    muzzleFlash = createMuzzleFlash();
+    scene.add(muzzleFlash);
+    beamMesh = createBeam();
+    scene.add(beamMesh);
+    slashMesh = createSlash();
+    scene.add(slashMesh);
 
     if (!isMobile) {
       composer = new EffectComposer(renderer);
       composer.addPass(new RenderPass(scene, camera));
-      const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.28, 0.7, 0.82);
-      composer.addPass(bloom);
+      composer.addPass(new UnrealBloomPass(new THREE.Vector2(1, 1), 0.38, 0.65, 0.78));
       composer.addPass(new OutputPass());
     }
     resize();
   }
+
+  setupWorld();
 
   void Promise.allSettled([
     loadTex("/art/ground.jpg", 18).then((t) => (textures.ground = t)),
@@ -307,25 +425,31 @@ export function mountGame(
       textures.sky = t;
     }),
   ]).then(() => {
-    if (!worldBuilt) setupWorld();
-    else if (mat) {
-      if (textures.ground) {
-        mat.concrete.map = textures.ground;
-        mat.concrete.needsUpdate = true;
-      }
-      if (textures.wall) {
-        mat.wall.map = textures.wall;
-        mat.wall.needsUpdate = true;
-      }
-      if (textures.metal) {
-        mat.metal.map = textures.metal;
-        mat.metal.needsUpdate = true;
-      }
+    if (!mat) return;
+    if (textures.ground) {
+      mat.concrete.map = textures.ground;
+      mat.concrete.needsUpdate = true;
+      mat.asphalt.map = textures.ground;
+      mat.asphalt.needsUpdate = true;
+    }
+    if (textures.wall) {
+      mat.wall.map = textures.wall;
+      mat.wall.needsUpdate = true;
+    }
+    if (textures.metal) {
+      mat.metal.map = textures.metal;
+      mat.metal.needsUpdate = true;
+    }
+    if (textures.sky && !scene.children.some((c) => c.userData.sky)) {
+      const sky = new THREE.Mesh(
+        new THREE.SphereGeometry(170, 24, 16),
+        new THREE.MeshBasicMaterial({ map: textures.sky, side: THREE.BackSide, fog: false, depthWrite: false }),
+      );
+      sky.position.set(0, 20, -20);
+      sky.userData.sky = true;
+      scene.add(sky);
     }
   });
-
-  const tracerGeo = new THREE.BufferGeometry();
-  const tracerMat = new THREE.LineBasicMaterial({ color: 0xffc58a, transparent: true, opacity: 0.85 });
 
   function forward() {
     return { x: -Math.sin(yaw), z: -Math.cos(yaw) };
@@ -333,9 +457,75 @@ export function mountGame(
   function rightV() {
     return { x: Math.cos(yaw), z: -Math.sin(yaw) };
   }
-
+  function placeFollowCam(dt: number, snap = false) {
+    const f = forward();
+    const r = rightV();
+    const lookY = py + CAM_LOOK_Y;
+    const boom = THREE.MathUtils.lerp(CAM_DIST, CAM_DIST_ADS, adsT);
+    const sh = THREE.MathUtils.lerp(CAM_SHOULDER, CAM_SHOULDER_ADS, adsT);
+    const pitchBoom = pitch * 0.36;
+    const horiz = boom * Math.cos(pitchBoom);
+    let camX = px - f.x * horiz + r.x * sh;
+    let camY = py + CAM_HEIGHT + boom * Math.sin(pitchBoom);
+    let camZ = pz - f.z * horiz + r.z * sh;
+    if (camY < py + 1.25) camY = py + 1.25;
+    const rdx = camX - px;
+    const rdy = camY - (py + 1.62);
+    const rdz = camZ - pz;
+    const rlen = Math.hypot(rdx, rdy, rdz) || 1;
+    const occl = rayWorld(
+      level.boxes,
+      px + r.x * 0.2,
+      py + 1.62,
+      pz + r.z * 0.2,
+      rdx / rlen,
+      rdy / rlen,
+      rdz / rlen,
+      rlen,
+      (b) => b.maxy > 1.5,
+    );
+    if (occl !== null && occl < rlen - 0.4) {
+      const pull = Math.max(CAM_MIN_BOOM, occl - 0.55);
+      camX = px + (rdx / rlen) * pull;
+      camY = py + 1.62 + (rdy / rlen) * pull;
+      camZ = pz + (rdz / rlen) * pull;
+      if (camY < py + 1.4) camY = py + 1.4;
+    }
+    if (playerRig) playerRig.group.visible = Math.hypot(camX - px, camZ - pz) > 2.4;
+    camPos.set(camX, camY, camZ);
+    const ahead = THREE.MathUtils.lerp(CAM_LOOK_AHEAD, 3.6, adsT);
+    camLook.set(
+      px + f.x * ahead + r.x * sh * 0.92,
+      lookY - pitch * 2.4,
+      pz + f.z * ahead + r.z * sh * 0.92,
+    );
+    if (snap || camSnap) {
+      camera.position.copy(camPos);
+      camSnap = false;
+    } else {
+      camera.position.lerp(camPos, 1 - Math.pow(0.0002, dt));
+    }
+    camera.lookAt(camLook);
+    const shake = trauma * trauma;
+    const nt = performance.now() * 0.06;
+    camera.position.x += Math.sin(nt * 23.1) * shake * 0.32;
+    camera.position.y += Math.cos(nt * 19.4) * shake * 0.26;
+    camera.rotation.z += Math.sin(nt * 11) * shake * 0.02;
+    const targetFov = THREE.MathUtils.lerp(CAM_FOV, CAM_FOV_ADS, adsT);
+    if (Math.abs(camera.fov - targetFov) > 0.05) {
+      camera.fov += (targetFov - camera.fov) * Math.min(1, 10 * dt);
+      camera.updateProjectionMatrix();
+    }
+  }
   function currentWeapon() {
     return weapons[weaponIdx];
+  }
+  function keySet() {
+    return qaKeys.active ? new Set(qaKeys.codes) : keys;
+  }
+  function justPressed(code: string) {
+    const k = keySet();
+    return k.has(code) && !prevKeys.has(code);
   }
 
   function pushLoot(name: string, rarity: Rarity) {
@@ -343,7 +533,40 @@ export function mountGame(
     audio.pickup();
   }
 
-  function spawnEnemy(kind: EnemyKind, x: number, z: number) {
+  function pushFloat(text: string, x: number, y: number, z: number, color: FloatNum["color"]) {
+    tmpV.set(x, y, z).project(camera);
+    floaters.push({
+      id: floatId++,
+      text,
+      x: (tmpV.x * 0.5 + 0.5) * 100,
+      y: (-tmpV.y * 0.5 + 0.5) * 100,
+      color,
+      life: 0.85,
+    });
+    if (floaters.length > 14) floaters.shift();
+  }
+
+  function rumble(ms: number, strong = 0.5) {
+    const pads = navigator.getGamepads?.() ?? [];
+    const p = pads[0] as Gamepad & { vibrationActuator?: { playEffect: (t: string, o: object) => void } } | null;
+    void p?.vibrationActuator?.playEffect("dual-rumble", {
+      duration: ms,
+      strongMagnitude: strong,
+      weakMagnitude: strong * 0.6,
+    });
+  }
+
+  function spawnRift(x: number, z: number) {
+    if (!mat) return;
+    const mesh = createSpawnRift(mat);
+    mesh.position.set(x, 0.05, z);
+    scene.add(mesh);
+    rifts.push({ mesh, life: 0.9 });
+    audio.spawn();
+    particles.burst(x, 0.4, z, 16, 0x22d3ee, 3.2, 0.5, 0.12, 1);
+  }
+
+  function spawnEnemy(kind: EnemyKind, x: number, z: number, rift = true) {
     if (!mat) return;
     const st = enemyStats(kind);
     const rig = createShade(kind, mat);
@@ -353,173 +576,226 @@ export function mountGame(
       id: enemyId++,
       kind,
       x,
-      y: 0,
+      y: kind === "harbinger" ? 0.4 : 0,
       z,
       hp: st.hp,
       max: st.hp,
       yaw: 0,
-      attackCd: 0.6,
+      attackCd: 0.5 + Math.random() * 0.4,
       alive: true,
+      dying: 0,
       flash: 0,
       rig,
       radius: st.radius,
       speed: st.speed,
-      aggro: true,
-      phase: 0,
+      state: "chase",
+      stateT: 0,
+      kbX: 0,
+      kbZ: 0,
+      summoned: 0,
     });
     if (kind === "harbinger") bossAlive = true;
+    if (rift) spawnRift(x, z);
   }
 
   function rollDrop(x: number, z: number, kind: EnemyKind) {
     if (!mat) return;
     const roll = Math.random();
-    if (kind === "harbinger" || roll > 0.35) {
-      const g = new THREE.Group();
-      const rarity: Rarity =
-        kind === "harbinger" ? "legendary" : roll > 0.92 ? "legendary" : roll > 0.78 ? "rare" : roll > 0.5 ? "magic" : "common";
-      const gem = new THREE.Mesh(
-        new THREE.OctahedronGeometry(0.16, 0),
-        new THREE.MeshStandardMaterial({
-          color: rarityColor(rarity),
-          emissive: rarityColor(rarity),
-          emissiveIntensity: 1.8,
-          roughness: 0.3,
-        }),
-      );
-      g.add(gem);
-      const beam = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.03, 0.03, 2.4, 6),
-        new THREE.MeshBasicMaterial({ color: rarityColor(rarity), transparent: true, opacity: 0.45 }),
-      );
-      beam.position.y = 1.2;
-      g.add(beam);
-      g.position.set(x, 0.2, z);
-      scene.add(g);
-      const w: Weapon | undefined =
-        rarity === "common" && Math.random() < 0.55
-          ? undefined
-          : {
-              ...currentWeapon(),
-              name:
-                (rarity === "legendary" ? "Mythic " : rarity === "rare" ? "Rare " : rarity === "magic" ? "Tuned " : "") +
-                (Math.random() > 0.5 ? "ARX-Void" : "Spartan Edge"),
-              id: Math.random() > 0.5 ? "ar" : "shotgun",
-              rarity,
-              dmg: currentWeapon().dmg * (rarity === "legendary" ? 1.7 : rarity === "rare" ? 1.35 : 1.15),
-            };
-      drops.push({
-        mesh: g,
-        x,
-        z,
-        kind: w ? "weapon" : Math.random() > 0.45 ? "health" : "gold",
-        weapon: w,
-        amount: w ? 0 : 40 + Math.floor(Math.random() * 80),
-        rarity,
-      });
-    }
+    if (!(kind === "harbinger" || roll > 0.32)) return;
+    const g = new THREE.Group();
+    const rarity: Rarity =
+      kind === "harbinger" ? "legendary" : roll > 0.92 ? "legendary" : roll > 0.78 ? "rare" : roll > 0.5 ? "magic" : "common";
+    const gem = new THREE.Mesh(
+      new THREE.OctahedronGeometry(0.16, 0),
+      new THREE.MeshStandardMaterial({
+        color: rarityColor(rarity),
+        emissive: rarityColor(rarity),
+        emissiveIntensity: 1.8,
+        roughness: 0.3,
+        toneMapped: false,
+      }),
+    );
+    g.add(gem);
+    const beam = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.03, 0.03, 2.4, 6),
+      new THREE.MeshBasicMaterial({ color: rarityColor(rarity), transparent: true, opacity: 0.45, toneMapped: false }),
+    );
+    beam.position.y = 1.2;
+    g.add(beam);
+    g.position.set(x, 0.2, z);
+    scene.add(g);
+    const w: Weapon | undefined =
+      rarity === "common" && Math.random() < 0.5
+        ? undefined
+        : {
+            ...currentWeapon(),
+            name:
+              (rarity === "legendary" ? "Mythic " : rarity === "rare" ? "Rare " : rarity === "magic" ? "Tuned " : "") +
+              (Math.random() > 0.5 ? "ARX-Void" : "Spartan Edge"),
+            id: Math.random() > 0.5 ? "ar" : "shotgun",
+            rarity,
+            dmg: currentWeapon().dmg * (rarity === "legendary" ? 1.7 : rarity === "rare" ? 1.35 : 1.15),
+          };
+    const kindDrop: Drop["kind"] = w ? "weapon" : Math.random() > 0.55 ? (Math.random() > 0.5 ? "health" : "ammo") : "gold";
+    drops.push({
+      mesh: g,
+      x,
+      z,
+      kind: kindDrop,
+      weapon: w,
+      amount: w ? 0 : 40 + Math.floor(Math.random() * 80),
+      rarity,
+    });
   }
 
   function killEnemy(e: Enemy) {
+    if (e.dying > 0 || !e.alive) return;
     e.alive = false;
     e.hp = 0;
-    scene.remove(e.rig.group);
+    e.dying = 0.55;
     kills++;
-    xp += e.kind === "harbinger" ? 800 : e.kind === "brute" ? 120 : 40;
+    comboT = 2.4;
+    combo++;
+    const xpGain = (e.kind === "harbinger" ? 800 : e.kind === "brute" ? 120 : 40) * (1 + Math.min(combo, 8) * 0.05);
+    xp += xpGain;
     while (xp >= pLevel * 200) {
       xp -= pLevel * 200;
       pLevel++;
       maxHp += 12;
-      hp = Math.min(maxHp, hp + 20);
+      hp = Math.min(maxHp, hp + 22);
+      pushLoot(`Op ${pLevel}`, "rare");
     }
     gold += 12 + Math.floor(Math.random() * 24);
+    audio.kill();
+    freeze = Math.max(freeze, e.kind === "harbinger" ? 0.12 : 0.045);
+    trauma = Math.min(1, trauma + (e.kind === "harbinger" ? 0.55 : 0.18));
+    particles.burst(e.x, 1.1, e.z, e.kind === "harbinger" ? 48 : 22, 0x2dd4bf, 5.5, 0.7, 0.16, -2);
+    particles.burst(e.x, 1.0, e.z, 10, 0xe85d04, 3.2, 0.45, 0.1, -3);
+    pushFloat(`${combo > 1 ? combo + "x " : ""}DOWN`, e.x, 2.1, e.z, "void");
     rollDrop(e.x, e.z, e.kind);
     if (e.kind === "harbinger") {
       bossAlive = false;
       phase = "victory";
       objective = "Harbinger down — Void Gate sealed";
       hint = "Ashfall Gate is yours";
+      finishRun(true);
     }
   }
 
-  function damageEnemy(e: Enemy, dmg: number) {
+  function damageEnemy(e: Enemy, dmg: number, hx: number, hz: number) {
+    if (!e.alive) return;
     e.hp -= dmg;
-    e.flash = 0.12;
+    e.flash = 0.14;
+    e.kbX += hx * 2.8;
+    e.kbZ += hz * 2.8;
+    damageDealt += dmg;
+    hits++;
+    hitMarker = 0.14;
     audio.hit();
+    particles.spray(e.x, 1.15, e.z, hx, 0.2, hz, 6, 0x5eead4, 4, 0.22, 0.08);
+    pushFloat(`${Math.round(dmg)}`, e.x, 1.9, e.z, e.hp <= 0 ? "legendary" : "void");
     if (e.hp <= 0) killEnemy(e);
   }
 
   function hurtPlayer(dmg: number) {
     if (invuln > 0 || phase !== "playing") return;
     let rest = dmg;
+    const hadShield = shield > 0;
     if (shield > 0) {
       const s = Math.min(shield, rest);
       shield -= s;
       rest -= s;
+      if (shield <= 0 && hadShield) audio.shieldBreak();
     }
     if (rest > 0) hp -= rest;
     shieldCd = 3.2;
-    hitFlash = 0.35;
-    shake = 0.28;
+    hitFlash = 0.38;
+    trauma = Math.min(1, trauma + 0.42);
     audio.hurt();
+    rumble(90, 0.7);
+    combo = 0;
     if (hp <= 0) {
       hp = 0;
       phase = "dead";
       hint = "Deploy again";
+      document.exitPointerLock?.();
+      finishRun(false);
     }
   }
 
+  function finishRun(won: boolean) {
+    if (recorded) return;
+    recorded = true;
+    save = recordRun(save, kills, missionTime, gold, won);
+  }
+
   function aimRay() {
-    const ndc = new THREE.Vector2(0, 0);
-    const ray = new THREE.Raycaster();
-    ray.setFromCamera(ndc, camera);
-    return { origin: ray.ray.origin.clone(), dir: ray.ray.direction.clone() };
+    raycaster.setFromCamera(ndc, camera);
+    return { origin: raycaster.ray.origin, dir: raycaster.ray.direction };
   }
 
   function fireWeapon() {
     const w = currentWeapon();
-    if (reloadT > 0 || mag <= 0) {
-      if (mag <= 0 && reloadT <= 0) startReload();
+    if (reloadT > 0) return;
+    if (mag <= 0) {
+      if (emptyCd <= 0) {
+        audio.empty();
+        emptyCd = 0.18;
+      }
+      if (reloadT <= 0) startReload();
       return;
     }
     const interval = 60 / (w.rpm * (overdriveT > 0 ? 1.35 : 1));
     if (fireCd > 0) return;
     fireCd = interval;
     mag -= 1;
+    shots += w.pellets;
     audio.fire(w.id);
-    shake = Math.max(shake, w.id === "shotgun" ? 0.22 : 0.08);
-    pitch += w.id === "shotgun" ? 0.03 : 0.01;
-    muzzleLight.intensity = 6;
+    trauma = Math.min(1, trauma + (w.id === "shotgun" ? 0.22 : 0.07));
+    pitch += w.id === "shotgun" ? 0.028 : 0.01;
+    yaw += (Math.random() - 0.5) * (w.id === "shotgun" ? 0.02 : 0.006);
+    muzzleLight.intensity = 7;
     const { origin, dir } = aimRay();
-    const pellets = w.pellets;
-    for (let p = 0; p < pellets; p++) {
-      const spread = w.spread * (1 + (1 - mag / w.mag) * 0.4);
-      const d = dir.clone();
-      d.x += (Math.random() - 0.5) * spread;
-      d.y += (Math.random() - 0.5) * spread * 0.6;
-      d.z += (Math.random() - 0.5) * spread;
-      d.normalize();
-      const worldT = rayWorld(level.boxes, origin.x, origin.y, origin.z, d.x, d.y, d.z, w.range);
+    const f = forward();
+    if (muzzleFlash) {
+      muzzleFlash.position.set(px + f.x * 0.9, py + 1.38, pz + f.z * 0.9);
+      muzzleFlash.visible = true;
+      muzzleFlash.scale.setScalar(0.8 + Math.random() * 0.5);
+    }
+    particles.spray(px + f.x * 0.85, py + 1.38, pz + f.z * 0.85, f.x, 0.05, f.z, 4, 0xffc58a, 8, 0.08, 0.06);
+    const ads = 1 - adsT * 0.55;
+    for (let p = 0; p < w.pellets; p++) {
+      const spread = w.spread * (1 + (1 - mag / w.mag) * 0.4) * ads;
+      tmpV2.copy(dir);
+      tmpV2.x += (Math.random() - 0.5) * spread;
+      tmpV2.y += (Math.random() - 0.5) * spread * 0.55;
+      tmpV2.z += (Math.random() - 0.5) * spread;
+      tmpV2.normalize();
+      const worldT = rayWorld(level.boxes, origin.x, origin.y, origin.z, tmpV2.x, tmpV2.y, tmpV2.z, w.range);
       let bestT = worldT ?? w.range;
       let hit: Enemy | null = null;
       for (const e of enemies) {
         if (!e.alive) continue;
-        const toE = new THREE.Vector3(e.x - origin.x, 1.1 - origin.y + (e.kind === "harbinger" ? 1.2 : 0), e.z - origin.z);
-        const t = toE.dot(d);
+        const toE = tmpV.set(e.x - origin.x, 1.15 + e.y - origin.y + (e.kind === "harbinger" ? 1.1 : 0), e.z - origin.z);
+        const t = toE.dot(tmpV2);
         if (t < 0 || t > bestT) continue;
-        const closest = tmpV.copy(origin).addScaledVector(d, t);
+        const closest = origin.clone().addScaledVector(tmpV2, t);
         const dist = Math.hypot(closest.x - e.x, closest.z - e.z);
-        if (dist < e.radius + 0.15) {
+        if (dist < e.radius + 0.18) {
           bestT = t;
           hit = e;
         }
       }
-      if (hit) damageEnemy(hit, w.dmg * (overdriveT > 0 ? 1.25 : 1) * (0.85 + Math.random() * 0.3));
-      const end = origin.clone().addScaledVector(d, Math.min(bestT, 42));
-      const geo = tracerGeo.clone();
-      geo.setFromPoints([origin.clone().addScaledVector(d, 0.6), end]);
-      const line = new THREE.Line(geo, tracerMat.clone());
+      if (hit) damageEnemy(hit, w.dmg * (overdriveT > 0 ? 1.28 : 1) * (0.85 + Math.random() * 0.3), tmpV2.x, tmpV2.z);
+      else if (worldT !== null) {
+        const end = origin.clone().addScaledVector(tmpV2, worldT);
+        particles.burst(end.x, end.y, end.z, 5, 0xffc58a, 2.4, 0.18, 0.05, -1);
+      }
+      const end = origin.clone().addScaledVector(tmpV2, Math.min(bestT, 46));
+      const geo = new THREE.BufferGeometry().setFromPoints([origin.clone().addScaledVector(tmpV2, 0.55), end]);
+      const line = new THREE.Line(geo, tracerMat);
       scene.add(line);
-      fx.push({ mesh: line, life: 0.06 });
+      fx.push({ mesh: line, life: 0.07 });
     }
     if (mag <= 0) startReload();
   }
@@ -528,6 +804,7 @@ export function mountGame(
     const w = currentWeapon();
     if (reloadT > 0 || mag >= w.mag || w.reserve <= 0) return;
     reloadT = w.reload;
+    audio.reload();
   }
 
   function finishReload() {
@@ -540,35 +817,66 @@ export function mountGame(
   }
 
   function throwFrag() {
-    if (skillCd.frag > 0) return;
+    if (skillCd.frag > 0 || !mat) return;
     skillCd.frag = 8;
     audio.fire("frag");
     const f = forward();
-    const cx = px + f.x * 7;
-    const cz = pz + f.z * 7;
-    shake = 0.4;
+    const mesh = createGrenade(mat);
+    mesh.position.set(px + f.x * 0.5, py + 1.35, pz + f.z * 0.5);
+    scene.add(mesh);
+    projs.push({
+      kind: "frag",
+      mesh,
+      x: px + f.x * 0.5,
+      y: py + 1.35,
+      z: pz + f.z * 0.5,
+      vx: f.x * 17,
+      vy: 7.2,
+      vz: f.z * 17,
+      life: 1.15,
+      dmg: 140,
+      r: 5.4,
+    });
+  }
+
+  function explode(x: number, y: number, z: number, dmg: number, r: number) {
+    trauma = Math.min(1, trauma + 0.7);
+    freeze = Math.max(freeze, 0.07);
+    audio.explode();
+    rumble(140, 0.85);
+    particles.burst(x, y, z, 36, 0xe85d04, 7, 0.55, 0.16, -4);
+    particles.burst(x, y, z, 18, 0xffc58a, 4, 0.4, 0.1, -2);
+    scorch.stamp(x, z, r * 0.45);
     for (const e of enemies) {
       if (!e.alive) continue;
-      const d = Math.hypot(e.x - cx, e.z - cz);
-      if (d < 5.2) damageEnemy(e, 110 * (1 - d / 5.2));
+      const d = Math.hypot(e.x - x, e.z - z);
+      if (d < r) damageEnemy(e, dmg * (1 - d / r), (e.x - x) / (d || 1), (e.z - z) / (d || 1));
     }
+    if (Math.hypot(px - x, pz - z) < r * 0.55) hurtPlayer(28);
   }
 
   function cleave() {
     if (skillCd.cleave > 0) return;
     skillCd.cleave = 7;
     audio.fire("shotgun");
-    invuln = 0.25;
+    invuln = 0.28;
     const f = forward();
     dodgeT = 0.18;
     dodgeDirX = f.x;
     dodgeDirZ = f.z;
+    slashT = 0.22;
+    if (slashMesh) {
+      slashMesh.visible = true;
+      slashMesh.position.set(px + f.x * 1.1, py + 1.2, pz + f.z * 1.1);
+      slashMesh.rotation.set(0.4, yaw, 0.2);
+    }
+    particles.spray(px + f.x, py + 1.2, pz + f.z, f.x, 0.1, f.z, 14, 0xe85d04, 6, 0.28, 0.1);
     for (const e of enemies) {
       if (!e.alive) continue;
       const dx = e.x - px;
       const dz = e.z - pz;
       const dist = Math.hypot(dx, dz);
-      if (dist < 3.2 && dx * f.x + dz * f.z > 0) damageEnemy(e, 85);
+      if (dist < 3.4 && dx * f.x + dz * f.z > 0) damageEnemy(e, 90, f.x, f.z);
     }
   }
 
@@ -583,10 +891,6 @@ export function mountGame(
     playerRig.gun = g;
   }
 
-  function keySet() {
-    return qaKeys.active ? new Set(qaKeys.codes) : keys;
-  }
-
   function inputMove() {
     const k = keySet();
     let x = touch.mx;
@@ -595,12 +899,32 @@ export function mountGame(
     if (k.has("KeyS") || k.has("ArrowDown")) y -= 1;
     if (k.has("KeyA") || k.has("ArrowLeft")) x -= 1;
     if (k.has("KeyD") || k.has("ArrowRight")) x += 1;
+    const pad = pollPad();
+    x += pad.mx;
+    y += pad.my;
     const m = Math.hypot(x, y);
     if (m > 1) {
       x /= m;
       y /= m;
     }
     return { x, y };
+  }
+
+  function pollPad() {
+    const pads = navigator.getGamepads?.() ?? [];
+    const p = pads[0];
+    if (!p) return { mx: 0, my: 0, lx: 0, ly: 0, fire: false, ads: false, sprint: false };
+    const l = radialDeadzone(p.axes[0] || 0, p.axes[1] || 0);
+    const r = radialDeadzone(p.axes[2] || 0, p.axes[3] || 0);
+    return {
+      mx: l.x,
+      my: -l.y,
+      lx: r.x,
+      ly: r.y,
+      fire: (p.buttons[7]?.value ?? 0) > 0.4,
+      ads: (p.buttons[6]?.value ?? 0) > 0.4,
+      sprint: Boolean(p.buttons[10]?.pressed || p.buttons[4]?.pressed),
+    };
   }
 
   function maybeSpawn() {
@@ -615,52 +939,219 @@ export function mountGame(
   }
 
   function updateEnemies(dt: number) {
+    if (beamMesh) beamMesh.visible = false;
+    let nearby = 0;
     for (const e of enemies) {
+      if (e.dying > 0) {
+        e.dying -= dt;
+        const s = Math.max(0.05, e.dying / 0.55);
+        e.rig.group.scale.multiplyScalar(0.92);
+        e.rig.group.position.y += dt * 0.6;
+        e.rig.group.rotation.y += dt * 2;
+        if (e.dying <= 0) scene.remove(e.rig.group);
+        continue;
+      }
       if (!e.alive) continue;
+      nearby++;
       e.attackCd -= dt;
       e.flash = Math.max(0, e.flash - dt);
+      e.kbX *= Math.pow(0.08, dt);
+      e.kbZ *= Math.pow(0.08, dt);
+      e.x += e.kbX * dt;
+      e.z += e.kbZ * dt;
       const dx = px - e.x;
       const dz = pz - e.z;
       const dist = Math.hypot(dx, dz) || 0.001;
+      const nx = dx / dist;
+      const nz = dz / dist;
       e.yaw = Math.atan2(-dx, -dz);
       const st = enemyStats(e.kind);
-      const stop = e.kind === "stalker" ? 9 : e.radius + 1.15;
-      if (dist > stop) {
-        const sp = e.speed * dt;
-        e.x += (dx / dist) * sp;
-        e.z += (dz / dist) * sp;
-        const c = collidePlayer(level.boxes, e.x, 0, e.z, e.radius, 1.8);
-        e.x = c.x;
-        e.z = c.z;
+      const stop = e.kind === "stalker" ? 8.5 : e.kind === "harbinger" ? 3.4 : e.radius + 1.15;
+
+      if (e.state === "windup") {
+        e.stateT -= dt;
+        if (e.kind === "harbinger" && beamMesh) {
+          alignBeam(e.x, e.y + 2.4, e.z, px, py + 1.2, pz, 0.04);
+          beamMesh.visible = true;
+          (beamMesh.material as THREE.MeshBasicMaterial).opacity = 0.35;
+        }
+        if (e.stateT <= 0) {
+          e.state = "attack";
+          e.stateT = e.kind === "harbinger" ? 0.7 : 0.28;
+          if (e.kind === "harbinger") audio.beam();
+          if (e.kind === "brute") {
+            particles.burst(e.x, 0.2, e.z, 22, 0x2dd4bf, 5, 0.35, 0.12, 2);
+            scorch.stamp(e.x, e.z, 2.2);
+            if (dist < 3.3) hurtPlayer(st.dmg);
+            trauma = Math.min(1, trauma + 0.28);
+          } else if (e.kind !== "harbinger" && dist < e.radius + 1.15) {
+            hurtPlayer(st.dmg);
+          }
+        }
+      } else if (e.state === "attack") {
+        e.stateT -= dt;
+        if (e.kind === "harbinger" && beamMesh) {
+          alignBeam(e.x, e.y + 2.4, e.z, px, py + 1.2, pz, 0.16);
+          beamMesh.visible = true;
+          (beamMesh.material as THREE.MeshBasicMaterial).opacity = 0.9;
+          const los = rayWorld(level.boxes, e.x, e.y + 2.2, e.z, nx, 0, nz, dist);
+          if (los === null || los > dist - 0.45) {
+            const t = (px - e.x) * nx + (pz - e.z) * nz;
+            const closestX = e.x + nx * Math.max(0, t);
+            const closestZ = e.z + nz * Math.max(0, t);
+            if (Math.hypot(px - closestX, pz - closestZ) < 0.9 && t > 0) hurtPlayer(18 * dt * 2.8);
+          }
+        }
+        if (e.stateT <= 0) {
+          e.state = "chase";
+          e.attackCd = e.kind === "harbinger" ? 2.2 : e.kind === "brute" ? 1.5 : 1.05;
+        }
+      } else {
+        if (dist > stop) {
+          const sp = e.speed * dt;
+          e.x += nx * sp;
+          e.z += nz * sp;
+          const c = collidePlayer(level.boxes, e.x, 0, e.z, e.radius, 1.8);
+          e.x = c.x;
+          e.z = c.z;
+        }
+        if (e.kind === "stalker" && dist < 16 && e.attackCd <= 0) {
+          e.attackCd = 1.35;
+          const mesh = createBolt();
+          mesh.position.set(e.x, 1.5, e.z);
+          scene.add(mesh);
+          const lead = 0.12;
+          const bx = nx + velX * lead;
+          const bz = nz + velZ * lead;
+          const bm = Math.hypot(bx, bz) || 1;
+          projs.push({
+            kind: "bolt",
+            mesh,
+            x: e.x,
+            y: 1.5,
+            z: e.z,
+            vx: (bx / bm) * 22,
+            vy: 0.4,
+            vz: (bz / bm) * 22,
+            life: 1.6,
+            dmg: st.dmg,
+            r: 0.35,
+          });
+        }
+        if (e.kind === "husk" && dist < 3.6 && e.attackCd <= 0) {
+          e.state = "windup";
+          e.stateT = 0.22;
+          e.kbX += nx * 8;
+          e.kbZ += nz * 8;
+        }
+        if (e.kind === "brute" && dist < 3.0 && e.attackCd <= 0) {
+          e.state = "windup";
+          e.stateT = 0.48;
+        }
+        if (e.kind === "harbinger" && dist < 18 && e.attackCd <= 0) {
+          if (dist < 3.6) {
+            e.state = "windup";
+            e.stateT = 0.35;
+          } else {
+            e.state = "windup";
+            e.stateT = 1.05;
+          }
+        }
       }
-      if (e.kind === "stalker" && dist < 16 && e.attackCd <= 0) {
-        e.attackCd = 1.35;
-        const los = rayWorld(level.boxes, e.x, 1.2, e.z, dx / dist, 0, dz / dist, dist);
-        if (los === null || los > dist - 0.4) hurtPlayer(st.dmg);
-      }
-      if (e.kind !== "stalker" && dist < e.radius + 1.05 && e.attackCd <= 0) {
-        e.attackCd = e.kind === "harbinger" ? 1.6 : 1.1;
-        hurtPlayer(st.dmg);
-      }
+
       if (e.kind === "harbinger") {
-        e.phase += dt;
-        if (e.hp < e.max * 0.6 && e.phase > 6) {
-          e.phase = 0;
-          spawnEnemy("husk", e.x + 3, e.z);
-          spawnEnemy("husk", e.x - 3, e.z);
+        if (e.hp < e.max * 0.6 && e.summoned < 1) {
+          e.summoned = 1;
+          spawnEnemy("husk", e.x + 3.2, e.z + 1);
+          spawnEnemy("husk", e.x - 3.2, e.z + 1);
         }
-        if (e.attackCd <= 0.01 && dist < 18 && Math.random() < 0.02) {
-          const beam = dx / dist * 0 + dz / dist;
-          void beam;
-          if (dist < 14) hurtPlayer(18);
+        if (e.hp < e.max * 0.3 && e.summoned < 2) {
+          e.summoned = 2;
+          spawnEnemy("stalker", e.x + 4, e.z);
+          spawnEnemy("stalker", e.x - 4, e.z);
+          spawnEnemy("husk", e.x, e.z + 3);
         }
+        e.y = 0.45 + Math.sin(performance.now() * 0.002 + e.id) * 0.18;
+        if (e.rig.ring) e.rig.ring.rotation.z += dt * 1.4;
+        if (e.rig.core) e.rig.core.rotation.y += dt * 2.2;
       }
-      e.rig.group.position.set(e.x, 0, e.z);
-      e.rig.group.lookAt(px, 0, pz);
-      const pulse = 1 + Math.sin(performance.now() * 0.008 + e.id) * 0.15;
+
+      const bob = e.kind === "harbinger" ? 0 : Math.sin(performance.now() * 0.008 + e.id) * 0.35;
+      e.rig.leftArm.rotation.x = bob;
+      e.rig.rightArm.rotation.x = -bob;
+      e.rig.group.position.set(e.x, e.y, e.z);
+      e.rig.group.lookAt(px, e.y, pz);
+      const pulse = 1 + Math.sin(performance.now() * 0.008 + e.id) * 0.18;
       for (const g of e.rig.glow) {
         const m = g.material as THREE.MeshStandardMaterial;
-        if (m.emissiveIntensity !== undefined) m.emissiveIntensity = (e.flash > 0 ? 8 : 3.2) * pulse;
+        if (m.emissiveIntensity !== undefined) m.emissiveIntensity = (e.flash > 0 ? 9 : 3.1) * pulse;
+      }
+    }
+
+    for (let i = 0; i < enemies.length; i++) {
+      const a = enemies[i];
+      if (!a.alive) continue;
+      for (let j = i + 1; j < enemies.length; j++) {
+        const b = enemies[j];
+        if (!b.alive) continue;
+        const dx = b.x - a.x;
+        const dz = b.z - a.z;
+        const d = Math.hypot(dx, dz) || 0.001;
+        const min = a.radius + b.radius;
+        if (d < min) {
+          const push = (min - d) * 0.5;
+          a.x -= (dx / d) * push;
+          a.z -= (dz / d) * push;
+          b.x += (dx / d) * push;
+          b.z += (dz / d) * push;
+        }
+      }
+    }
+    audio.combat(nearby / 8);
+  }
+
+  function alignBeam(ax: number, ay: number, az: number, bx: number, by: number, bz: number, radius: number) {
+    if (!beamMesh) return;
+    tmpV.set(ax, ay, az);
+    tmpV2.set(bx, by, bz);
+    const len = tmpV.distanceTo(tmpV2);
+    beamMesh.position.copy(tmpV).lerp(tmpV2, 0.5);
+    beamMesh.lookAt(tmpV2);
+    beamMesh.scale.set(radius / 0.1, radius / 0.1, len);
+  }
+
+  function updateProjs(dt: number) {
+    for (let i = projs.length - 1; i >= 0; i--) {
+      const p = projs[i];
+      p.life -= dt;
+      p.vy -= (p.kind === "frag" ? 18 : 0) * dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.z += p.vz * dt;
+      p.mesh.position.set(p.x, p.y, p.z);
+      p.mesh.rotation.x += dt * 8;
+      const wall = rayWorld(level.boxes, p.x - p.vx * dt, p.y, p.z - p.vz * dt, p.vx, p.vy, p.vz, Math.hypot(p.vx, p.vy, p.vz) * dt + 0.2);
+      const hitWall = wall !== null && wall < 0.35;
+      if (p.kind === "frag" && (p.life <= 0 || p.y < 0.12 || hitWall)) {
+        explode(p.x, Math.max(0.3, p.y), p.z, p.dmg, p.r);
+        scene.remove(p.mesh);
+        projs.splice(i, 1);
+        continue;
+      }
+      if (p.kind === "bolt") {
+        particles.spawn(p.x, p.y, p.z, 0, 0, 0, 0.12, 0.07, 0x5eead4, 4, 0);
+        if (Math.hypot(p.x - px, p.z - pz) < 0.55 && Math.abs(p.y - (py + 1.1)) < 1.1) {
+          hurtPlayer(p.dmg);
+          particles.burst(p.x, p.y, p.z, 8, 0x5eead4, 3, 0.2, 0.07, 0);
+          scene.remove(p.mesh);
+          projs.splice(i, 1);
+          continue;
+        }
+        if (p.life <= 0 || hitWall) {
+          particles.burst(p.x, p.y, p.z, 6, 0x5eead4, 2, 0.15, 0.05, 0);
+          scene.remove(p.mesh);
+          projs.splice(i, 1);
+        }
       }
     }
   }
@@ -668,15 +1159,18 @@ export function mountGame(
   function updateDrops(dt: number) {
     for (let i = drops.length - 1; i >= 0; i--) {
       const d = drops[i];
-      d.mesh.rotation.y += dt * 1.6;
-      d.mesh.position.y = 0.25 + Math.sin(performance.now() * 0.004 + i) * 0.08;
-      if (Math.hypot(d.x - px, d.z - pz) < 1.3) {
+      d.mesh.rotation.y += dt * 1.8;
+      d.mesh.position.y = 0.28 + Math.sin(performance.now() * 0.004 + i) * 0.1;
+      if (Math.hypot(d.x - px, d.z - pz) < 1.35) {
         if (d.kind === "health") {
-          hp = Math.min(maxHp, hp + 45);
+          hp = Math.min(maxHp, hp + 48);
           pushLoot("Health orb", "magic");
         } else if (d.kind === "gold") {
           gold += d.amount;
           pushLoot(`${d.amount} scrap`, "common");
+        } else if (d.kind === "ammo") {
+          currentWeapon().reserve += 28;
+          pushLoot("Ammo pack", "common");
         } else if (d.weapon) {
           weapons[weaponIdx] = { ...d.weapon, mag: d.weapon.mag, reserve: d.weapon.reserve };
           mag = d.weapon.mag;
@@ -691,7 +1185,7 @@ export function mountGame(
 
   function snapshot(): HudSnapshot {
     const w = currentWeapon();
-    const boss = enemies.find((e) => e.kind === "harbinger" && e.alive);
+    const boss = enemies.find((e) => e.kind === "harbinger" && (e.alive || e.dying > 0));
     return {
       phase,
       health: hp,
@@ -717,33 +1211,192 @@ export function mountGame(
       reloading: reloadT > 0,
       overdrive: overdriveT > 0,
       sprinting: held.sprint || keySet().has("ShiftLeft") || keySet().has("ShiftRight"),
-      boss: boss ? { name: "Void Harbinger", hp: boss.hp, max: boss.max } : bossAlive ? { name: "Void Harbinger", hp: 0, max: 1 } : null,
+      ads: adsT > 0.4,
+      boss: boss ? { name: "Void Harbinger", hp: Math.max(0, boss.hp), max: boss.max } : bossAlive ? { name: "Void Harbinger", hp: 0, max: 1 } : null,
       hitFlash,
       xp,
+      xpNeed: pLevel * 200,
       level: pLevel,
+      combo,
+      missionTime,
+      hitMarker,
+      floating: floaters,
+      slots: weapons.map((wp, i) => ({ id: wp.id, name: wp.name, rarity: wp.rarity, active: i === weaponIdx })),
+      lockLost: lockLost && phase === "playing" && !isMobile,
+      compass: yaw,
+      muted: save.mute,
+      lowAmmo: mag <= Math.ceil(w.mag * 0.25),
+      wave: objective,
+      stats: { time: missionTime, kills, gold, xp, shots, hits, damageDealt },
+      best: save.runs ? { kills: save.bestKills, time: save.bestTime, gold: save.bestGold, runs: save.runs } : null,
+      sensitivity: save.sensitivity,
     };
   }
 
   function emitHud(force = false) {
     hudAcc += 1;
-    if (force || hudAcc > 3) {
+    if (force || hudAcc > 1) {
       hudAcc = 0;
       onHud(snapshot());
     }
   }
 
+  function clearCombat() {
+    for (const e of enemies) scene.remove(e.rig.group);
+    enemies.length = 0;
+    for (const d of drops) scene.remove(d.mesh);
+    drops.length = 0;
+    for (const p of projs) scene.remove(p.mesh);
+    projs.length = 0;
+    for (const r of rifts) scene.remove(r.mesh);
+    rifts.length = 0;
+    for (const f of fx) {
+      scene.remove(f.mesh);
+      f.mesh.geometry.dispose();
+    }
+    fx.length = 0;
+    particles.clear();
+    scorch.clear();
+    if (beamMesh) beamMesh.visible = false;
+    if (slashMesh) slashMesh.visible = false;
+  }
+
+  function resetRun() {
+    clearCombat();
+    yaw = 0;
+    pitch = 0.08;
+    px = level.spawn.x;
+    py = 0;
+    pz = level.spawn.z;
+    vy = 0;
+    velX = 0;
+    velZ = 0;
+    grounded = true;
+    dodgeT = 0;
+    invuln = 0;
+    hp = 200;
+    maxHp = 200;
+    shield = 110;
+    maxShield = 110;
+    shieldCd = 0;
+    gold = 0;
+    kills = 0;
+    xp = 0;
+    pLevel = 1;
+    weaponIdx = 0;
+    weapons = defaultWeapons();
+    mag = weapons[0].mag;
+    fireCd = 0;
+    reloadT = 0;
+    overdriveT = 0;
+    skillCd = { frag: 0, overdrive: 0, cleave: 0 };
+    trauma = 0;
+    hitFlash = 0;
+    combo = 0;
+    comboT = 0;
+    missionTime = 0;
+    hitMarker = 0;
+    freeze = 0;
+    adsT = 0;
+    camSnap = true;
+    shots = 0;
+    hits = 0;
+    damageDealt = 0;
+    floaters = [];
+    spawned = new Set();
+    bossAlive = false;
+    recorded = false;
+    loot = [];
+    if (playerRig) {
+      playerRig.group.visible = true;
+      playerRig.group.scale.setScalar(1);
+    }
+    swapGunMesh();
+  }
+
   function step(dt: number) {
-    if (phase !== "playing" && phase !== "title") return;
-    if (phase === "title") return;
+    const now = performance.now();
+    if (gateGroup) {
+      const pm = gateGroup.userData.portalMat as THREE.ShaderMaterial | undefined;
+      if (pm) pm.uniforms.uTime.value = now * 0.001;
+      const ring2 = gateGroup.userData.ring2 as THREE.Object3D | undefined;
+      if (ring2) ring2.rotation.z += dt * 0.8;
+      particles.mote(level.gate.x + (Math.random() - 0.5) * 3, 2 + Math.random() * 3, level.gate.z + (Math.random() - 0.5) * 2, 0x22d3ee);
+    }
+    particles.mote(px + (Math.random() - 0.5) * 18, 1 + Math.random() * 4, pz - 4 + (Math.random() - 0.5) * 18, Math.random() > 0.6 ? 0xe85d04 : 0x5eead4);
+    particles.update(dt);
+    scorch.update(dt);
+    for (let i = rifts.length - 1; i >= 0; i--) {
+      rifts[i].life -= dt;
+      rifts[i].mesh.rotation.y += dt * 4;
+      rifts[i].mesh.scale.setScalar(Math.max(0.1, rifts[i].life / 0.9));
+      if (rifts[i].life <= 0) {
+        scene.remove(rifts[i].mesh);
+        rifts.splice(i, 1);
+      }
+    }
+    for (let i = fx.length - 1; i >= 0; i--) {
+      fx[i].life -= dt;
+      if (fx[i].life <= 0) {
+        scene.remove(fx[i].mesh);
+        fx[i].mesh.geometry.dispose();
+        fx.splice(i, 1);
+      }
+    }
+    if (muzzleFlash && muzzleFlash.visible) {
+      muzzleFlash.rotateY(dt * 20);
+      if (muzzleLight.intensity < 0.4) muzzleFlash.visible = false;
+    }
+    if (slashT > 0) {
+      slashT -= dt;
+      if (slashMesh) {
+        slashMesh.rotateY(dt * 8);
+        (slashMesh.material as THREE.MeshBasicMaterial).opacity = slashT / 0.22;
+        if (slashT <= 0) slashMesh.visible = false;
+      }
+    }
+    for (const f of floaters) f.life -= dt;
+    floaters = floaters.filter((f) => f.life > 0);
+
+    if (phase === "title" || phase === "boot") {
+      if (playerRig) playerRig.group.visible = false;
+      drone.visible = false;
+      const t = now * 0.00008;
+      camera.position.set(1.8 + Math.sin(t) * 1.6, 3.15, 7.4 + Math.cos(t * 0.7) * 1.3);
+      camera.lookAt(0.2, 1.05, -18);
+      camera.fov = 54;
+      camera.updateProjectionMatrix();
+      emitHud();
+      prevKeys.clear();
+      for (const c of keySet()) prevKeys.add(c);
+      return;
+    }
+    if (phase !== "playing") {
+      emitHud();
+      prevKeys.clear();
+      for (const c of keySet()) prevKeys.add(c);
+      return;
+    }
+
+    const sim = freeze > 0 ? 0 : dt;
+    freeze = Math.max(0, freeze - dt);
+    missionTime += sim;
+    comboT = Math.max(0, comboT - dt);
+    if (comboT <= 0) combo = 0;
+    hitMarker = Math.max(0, hitMarker - dt);
+    emptyCd = Math.max(0, emptyCd - dt);
 
     const k = keySet();
+    const pad = pollPad();
     yaw -= touch.lookX;
     pitch -= touch.lookY;
     touch.lookX = 0;
     touch.lookY = 0;
-    pitch = clamp(pitch, -0.55, 0.42);
+    yaw -= pad.lx * 2.6 * dt * save.sensitivity * (1 - adsT * 0.45);
+    pitch -= pad.ly * 2.2 * dt * save.sensitivity * (1 - adsT * 0.45);
+    pitch = clamp(pitch, -1.15, 1.15);
 
-    if (k.has("Digit1") || k.has("Digit2") || k.has("Digit3")) {
+    if (justPressed("Digit1") || justPressed("Digit2") || justPressed("Digit3")) {
       const slot = k.has("Digit1") ? 1 : k.has("Digit2") ? 2 : 3;
       if (slot !== prevSlot) {
         weaponIdx = slot - 1;
@@ -751,16 +1404,18 @@ export function mountGame(
         swapGunMesh();
       }
       prevSlot = slot;
-    } else {
-      prevSlot = 0;
-    }
-    if (k.has("KeyR") || held.reload) startReload();
-    if ((k.has("KeyQ") || held.frag) && skillCd.frag <= 0) throwFrag();
-    if ((k.has("KeyE") || held.overdrive) && skillCd.overdrive <= 0) {
+    } else prevSlot = 0;
+
+    if (justPressed("KeyR")) startReload();
+    if (justPressed("KeyQ") || (held.frag && skillCd.frag <= 0)) throwFrag();
+    if ((justPressed("KeyE") || held.overdrive) && skillCd.overdrive <= 0) {
       skillCd.overdrive = 16;
       overdriveT = 6;
+      particles.burst(px, py + 1.2, pz, 16, 0xe85d04, 3, 0.4, 0.1, 1);
     }
-    if ((k.has("KeyF") || held.cleave) && skillCd.cleave <= 0) cleave();
+    if (justPressed("KeyF") || (held.cleave && skillCd.cleave <= 0)) cleave();
+    const wantAds = held.ads || k.has("ControlLeft") || pad.ads;
+    adsT = THREE.MathUtils.damp(adsT, wantAds ? 1 : 0, 12, dt);
 
     fireCd = Math.max(0, fireCd - dt);
     if (reloadT > 0) {
@@ -772,95 +1427,114 @@ export function mountGame(
     skillCd.cleave = Math.max(0, skillCd.cleave - dt);
     overdriveT = Math.max(0, overdriveT - dt);
     invuln = Math.max(0, invuln - dt);
-    shake *= Math.pow(0.04, dt);
+    trauma = Math.max(0, trauma - dt * 1.7);
     hitFlash = Math.max(0, hitFlash - dt);
     dodgeT = Math.max(0, dodgeT - dt);
     muzzleLight.intensity *= Math.pow(0.001, dt);
 
-    const mv = inputMove();
-    const sprint = held.sprint || k.has("ShiftLeft") || k.has("ShiftRight");
-    const speed = (sprint ? SPRINT : WALK) * (overdriveT > 0 ? 1.2 : 1);
-    const f = forward();
-    const r = rightV();
-    let wishX = f.x * mv.y + r.x * mv.x;
-    let wishZ = f.z * mv.y + r.z * mv.x;
-    if (k.has("Space") && dodgeT <= 0) {
-      dodgeT = 0.32;
-      invuln = 0.32;
-      const magw = Math.hypot(wishX, wishZ) || 1;
-      dodgeDirX = wishX / magw || f.x;
-      dodgeDirZ = wishZ / magw || f.z;
-    }
-    if (dodgeT > 0) {
-      wishX = dodgeDirX;
-      wishZ = dodgeDirZ;
-    }
-    const sp = dodgeT > 0 ? DODGE_SPEED : speed;
-    px += wishX * sp * dt;
-    pz += wishZ * sp * dt;
-    const col = collidePlayer(level.boxes, px, py, pz, PLAYER_R, PLAYER_H);
-    px = col.x;
-    pz = col.z;
-    const gh = groundHeight(level.boxes, px, pz, py);
-    vy -= GRAVITY * dt;
-    py += vy * dt;
-    if (py <= gh) {
-      py = gh;
-      vy = 0;
-      grounded = true;
-    } else grounded = false;
-
-    const moving = Math.hypot(wishX, wishZ) > 0.1 && grounded;
-    if (moving) {
-      footT += dt * (sprint ? 2.4 : 1.7);
-      if (footT > 1) {
-        footT = 0;
-        audio.foot();
+    if (sim > 0) {
+      const mv = inputMove();
+      const sprint = held.sprint || k.has("ShiftLeft") || k.has("ShiftRight") || pad.sprint;
+      const speed = (sprint ? SPRINT : WALK) * (overdriveT > 0 ? 1.22 : 1) * (wantAds ? 0.72 : 1);
+      const f = forward();
+      const r = rightV();
+      let wishX = f.x * mv.y + r.x * mv.x;
+      let wishZ = f.z * mv.y + r.z * mv.x;
+      const wm = Math.hypot(wishX, wishZ);
+      if (wm > 1) {
+        wishX /= wm;
+        wishZ /= wm;
       }
+      if ((justPressed("Space") || held.dodge) && dodgeT <= 0) {
+        dodgeT = 0.32;
+        invuln = 0.32;
+        audio.dodge();
+        const magw = Math.hypot(wishX, wishZ) || 1;
+        dodgeDirX = wishX / magw || f.x;
+        dodgeDirZ = wishZ / magw || f.z;
+        particles.spray(px, py + 0.4, pz, -dodgeDirX, 0.2, -dodgeDirZ, 10, 0xece8e1, 5, 0.25, 0.08);
+        held.dodge = false;
+      }
+      if (dodgeT > 0) {
+        wishX = dodgeDirX;
+        wishZ = dodgeDirZ;
+      }
+      const targetSp = dodgeT > 0 ? DODGE_SPEED : speed;
+      const accel = dodgeT > 0 ? 28 : 18;
+      velX += (wishX * targetSp - velX) * Math.min(1, accel * sim);
+      velZ += (wishZ * targetSp - velZ) * Math.min(1, accel * sim);
+      if (wm < 0.08 && dodgeT <= 0) {
+        velX *= Math.pow(0.04, sim);
+        velZ *= Math.pow(0.04, sim);
+      }
+      px += velX * sim;
+      pz += velZ * sim;
+      const col = collidePlayer(level.boxes, px, py, pz, PLAYER_R, PLAYER_H);
+      px = col.x;
+      pz = col.z;
+      const gh = groundHeight(level.boxes, px, pz, py);
+      vy -= GRAVITY * sim;
+      py += vy * sim;
+      if (py <= gh) {
+        py = gh;
+        vy = 0;
+        grounded = true;
+      } else grounded = false;
+
+      const moving = Math.hypot(velX, velZ) > 0.6 && grounded;
+      if (moving) {
+        footT += sim * (sprint ? 2.4 : 1.7);
+        if (footT > 1) {
+          footT = 0;
+          audio.foot();
+          particles.spawn(px, 0.08, pz, 0, 0.4, 0, 0.25, 0.07, 0x8a847c, 3, -1);
+        }
+      }
+
+      if (held.fire || k.has("Mouse0") || pad.fire) fireWeapon();
+
+      shieldCd -= sim;
+      if (shieldCd <= 0 && shield < maxShield) shield = Math.min(maxShield, shield + 28 * sim);
+
+      maybeSpawn();
+      updateEnemies(sim);
+      updateProjs(sim);
+      updateDrops(sim);
     }
 
-    if (held.fire || k.has("Mouse0")) fireWeapon();
-
-    shieldCd -= dt;
-    if (shieldCd <= 0 && shield < maxShield) shield = Math.min(maxShield, shield + 28 * dt);
-
-    maybeSpawn();
-    updateEnemies(dt);
-    updateDrops(dt);
-
+    const f = forward();
     if (playerRig) {
-      const t = performance.now() * 0.001;
+      const t = now * 0.001;
+      const moving = Math.hypot(velX, velZ) > 0.6 && grounded;
+      const sprint = held.sprint || k.has("ShiftLeft") || k.has("ShiftRight");
       const bob = moving ? Math.sin(t * (sprint ? 12 : 8)) : 0;
       playerRig.leftThigh.rotation.x = bob * 0.7;
       playerRig.rightThigh.rotation.x = -bob * 0.7;
       playerRig.leftArm.rotation.x = -bob * 0.25;
-      playerRig.rightArm.rotation.x = bob * 0.15 - (fireCd > 0 ? 0.12 : 0);
+      playerRig.rightArm.rotation.x = bob * 0.15 - (fireCd > 0 ? 0.18 : 0) - (reloadT > 0 ? 0.5 : 0);
       playerRig.group.position.set(px, py, pz);
       playerRig.group.rotation.y = yaw + Math.PI;
-      playerRig.torso.rotation.x = pitch * 0.25;
+      playerRig.torso.rotation.x = pitch * 0.22;
+      playerRig.head.rotation.x = pitch * 0.35;
+      if (overdriveT > 0) {
+        (playerRig.visor.material as THREE.MeshStandardMaterial).emissiveIntensity = 5;
+        overLight.intensity = 2.2;
+      } else {
+        (playerRig.visor.material as THREE.MeshStandardMaterial).emissiveIntensity = 2.6;
+        overLight.intensity = 0;
+      }
     }
-    const ang = performance.now() * 0.0018;
-    drone.position.set(px + Math.cos(ang) * 1.1, py + 1.7, pz + Math.sin(ang) * 1.1);
-    muzzleLight.position.set(px + f.x * 0.8, py + 1.4, pz + f.z * 0.8);
+    const ang = now * 0.0018;
+    drone.position.set(px + Math.cos(ang) * 1.15, py + 1.75, pz + Math.sin(ang) * 1.15);
+    drone.lookAt(px, py + 1.4, pz);
+    muzzleLight.position.set(px + f.x * 0.85, py + 1.4, pz + f.z * 0.85);
+    overLight.position.set(px, py + 1.4, pz);
 
-    if (!bossAlive && spawned.has("gate") && !enemies.some((e) => e.alive && e.kind === "harbinger") && phase === "playing") {
-      // victory handled in kill
-    }
+    placeFollowCam(dt);
 
-    const lookY = py + 1.55;
-    const dist = 5.6;
-    const behindX = Math.sin(yaw);
-    const behindZ = Math.cos(yaw);
-    const camX = px + behindX * dist * Math.cos(pitch) + r.x * 0.72;
-    const camY = lookY + Math.sin(pitch) * dist + 0.55;
-    const camZ = pz + behindZ * dist * Math.cos(pitch) + r.z * 0.62;
-    camPos.set(camX, camY, camZ);
-    camera.position.lerp(camPos, 1 - Math.pow(0.0008, dt));
-    camLook.set(px + f.x * 1.4, lookY - pitch * 0.4, pz + f.z * 1.4);
-    camera.lookAt(camLook);
-    camera.position.x += (Math.random() - 0.5) * shake;
-    camera.position.y += (Math.random() - 0.5) * shake;
-
+    prevKeys.clear();
+    for (const c of keySet()) prevKeys.add(c);
+    if (held.reload) prevKeys.add("Rel");
     emitHud();
   }
 
@@ -871,9 +1545,9 @@ export function mountGame(
   function frame(now: number) {
     if (destroyed) return;
     requestAnimationFrame(frame);
-    let dt = Math.min(0.1, (now - last) / 1000);
+    let dlt = Math.min(0.1, (now - last) / 1000);
     last = now;
-    acc += dt;
+    acc += dlt;
     while (acc >= STEP) {
       step(STEP);
       acc -= STEP;
@@ -903,25 +1577,44 @@ export function mountGame(
       document.exitPointerLock?.();
       emitHud(true);
     }
+    if (e.code === "KeyM") {
+      save.mute = !save.mute;
+      audio.setMuted(save.mute);
+      writeSave(save);
+      emitHud(true);
+    }
   };
   const onKeyUp = (e: KeyboardEvent) => keys.delete(e.code);
   const onBlur = () => keys.clear();
   const onMouse = (e: MouseEvent) => {
     if (document.pointerLockElement !== canvas) return;
-    yaw -= e.movementX * SENS;
-    pitch -= e.movementY * SENS;
+    yaw -= e.movementX * BASE_SENS * save.sensitivity * (1 - adsT * 0.45);
+    pitch -= e.movementY * BASE_SENS * save.sensitivity * (1 - adsT * 0.45);
   };
   const onDown = (e: MouseEvent) => {
     if (e.button === 0) held.fire = true;
+    if (e.button === 2) held.ads = true;
     if (phase === "playing" && document.pointerLockElement !== canvas) lockPointer();
   };
   const onUp = (e: MouseEvent) => {
     if (e.button === 0) held.fire = false;
+    if (e.button === 2) held.ads = false;
+  };
+  const onWheel = (e: WheelEvent) => {
+    if (phase !== "playing") return;
+    e.preventDefault();
+    weaponIdx = (weaponIdx + (e.deltaY > 0 ? 1 : -1) + weapons.length) % weapons.length;
+    mag = Math.min(mag, currentWeapon().mag);
+    swapGunMesh();
   };
   const onContext = (e: Event) => e.preventDefault();
   const onVis = () => {
     if (document.visibilityState === "visible") audio.resume();
     else keys.clear();
+  };
+  const onLock = () => {
+    lockLost = document.pointerLockElement !== canvas && phase === "playing";
+    emitHud(true);
   };
 
   window.addEventListener("keydown", onKeyDown);
@@ -930,27 +1623,36 @@ export function mountGame(
   window.addEventListener("mousemove", onMouse);
   canvas.addEventListener("mousedown", onDown);
   window.addEventListener("mouseup", onUp);
+  canvas.addEventListener("wheel", onWheel, { passive: false });
   canvas.addEventListener("contextmenu", onContext);
   document.addEventListener("visibilitychange", onVis);
+  document.addEventListener("pointerlockchange", onLock);
   window.addEventListener("resize", resize);
   canvas.style.touchAction = "none";
 
   const probe: ControlsProbe = {
     getYaw: () => yaw,
-    getSpeed: () => {
-      const mv = inputMove();
-      return Math.hypot(mv.x, mv.y);
-    },
+    getSpeed: () => Math.hypot(velX, velZ) || Math.hypot(inputMove().x, inputMove().y),
     setKeys: (codes: string[]) => {
       qaKeys.active = codes.length > 0;
       qaKeys.codes = codes;
       if (codes.length === 0) qaKeys.active = false;
     },
     setSteer: () => {},
-  };
-  Object.assign(probe, {
     getPos: () => ({ x: px, z: pz, y: py }),
-  });
+    getCam: () => {
+      const dx = camera.position.x - px;
+      const dy = camera.position.y - py;
+      const dz = camera.position.z - pz;
+      return {
+        x: camera.position.x,
+        y: camera.position.y,
+        z: camera.position.z,
+        fov: camera.fov,
+        dist: Math.hypot(dx, dy, dz),
+      };
+    },
+  };
   window.__controlsTest = probe;
 
   function lockPointer() {
@@ -961,6 +1663,7 @@ export function mountGame(
     }
   }
 
+  audio.setMuted(save.mute);
   emitHud(true);
 
   return {
@@ -972,22 +1675,27 @@ export function mountGame(
       window.removeEventListener("mousemove", onMouse);
       canvas.removeEventListener("mousedown", onDown);
       window.removeEventListener("mouseup", onUp);
+      canvas.removeEventListener("wheel", onWheel);
       canvas.removeEventListener("contextmenu", onContext);
       document.removeEventListener("visibilitychange", onVis);
+      document.removeEventListener("pointerlockchange", onLock);
       window.removeEventListener("resize", resize);
+      particles.dispose();
+      scorch.dispose();
       renderer.dispose();
       if (window.__controlsTest === probe) delete window.__controlsTest;
     },
     startMission() {
       audio.unlock();
       if (!worldBuilt) setupWorld();
+      resetRun();
       phase = "playing";
-      hp = maxHp;
-      shield = maxShield;
-      mag = currentWeapon().mag;
+      if (playerRig) playerRig.group.visible = true;
+      drone.visible = true;
       objective = "Advance to the Void Gate";
-      hint = isMobile ? "Left stick move · right drag look" : "WASD move · mouse aim · click fire";
+      hint = isMobile ? "Left stick move · right drag look" : "WASD · mouse aim · RMB aim · Q/E/F skills";
       lockPointer();
+      placeFollowCam(1 / 60, true);
       emitHud(true);
     },
     pause() {
@@ -1005,15 +1713,23 @@ export function mountGame(
       }
     },
     setMuted(m) {
+      save.mute = m;
       audio.setMuted(m);
+      writeSave(save);
+      emitHud(true);
+    },
+    setSensitivity(s) {
+      save.sensitivity = Math.min(2, Math.max(0.4, s));
+      writeSave(save);
+      emitHud(true);
     },
     setTouchMove(x, y) {
       touch.mx = x;
       touch.my = y;
     },
     setTouchLook(dx, dy) {
-      touch.lookX += dx * SENS * 1.15;
-      touch.lookY += dy * SENS * 1.15;
+      touch.lookX += dx * BASE_SENS * 1.15 * save.sensitivity;
+      touch.lookY += dy * BASE_SENS * 1.15 * save.sensitivity;
     },
     setAction(name, down) {
       if (name === "fire") held.fire = down;
@@ -1022,11 +1738,11 @@ export function mountGame(
       if (name === "frag") held.frag = down;
       if (name === "overdrive") held.overdrive = down;
       if (name === "cleave") held.cleave = down;
+      if (name === "ads") held.ads = down;
     },
     pulse(name) {
       if (name === "dodge") {
-        keys.add("Space");
-        setTimeout(() => keys.delete("Space"), 80);
+        held.dodge = true;
       }
       if (name === "frag") throwFrag();
       if (name === "cleave") cleave();

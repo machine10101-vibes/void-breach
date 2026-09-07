@@ -20,6 +20,39 @@ export type LootToast = {
   rarity: Rarity;
 };
 
+export type FloatNum = {
+  id: number;
+  text: string;
+  x: number;
+  y: number;
+  color: "health" | "void" | "legendary" | "fg";
+  life: number;
+};
+
+export type WeaponSlot = {
+  id: WeaponId;
+  name: string;
+  rarity: Rarity;
+  active: boolean;
+};
+
+export type RunStats = {
+  time: number;
+  kills: number;
+  gold: number;
+  xp: number;
+  shots: number;
+  hits: number;
+  damageDealt: number;
+};
+
+export type BestRun = {
+  kills: number;
+  time: number;
+  gold: number;
+  runs: number;
+};
+
 export type HudSnapshot = {
   phase: Phase;
   health: number;
@@ -41,10 +74,25 @@ export type HudSnapshot = {
   reloading: boolean;
   overdrive: boolean;
   sprinting: boolean;
+  ads: boolean;
   boss: { name: string; hp: number; max: number } | null;
   hitFlash: number;
   xp: number;
+  xpNeed: number;
   level: number;
+  combo: number;
+  missionTime: number;
+  hitMarker: number;
+  floating: FloatNum[];
+  slots: WeaponSlot[];
+  lockLost: boolean;
+  compass: number;
+  muted: boolean;
+  lowAmmo: boolean;
+  wave: string;
+  stats: RunStats;
+  best: BestRun | null;
+  sensitivity: number;
 };
 
 export type ControlsProbe = {
@@ -52,6 +100,8 @@ export type ControlsProbe = {
   getSpeed: () => number;
   setKeys: (codes: string[]) => void;
   setSteer?: (v: number) => void;
+  getPos?: () => { x: number; y: number; z: number };
+  getCam?: () => { x: number; y: number; z: number; fov: number; dist: number };
 };
 
 declare global {

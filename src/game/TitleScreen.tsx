@@ -1,31 +1,34 @@
 import { Download, Play, Smartphone } from "lucide-react";
+import type { BestRun } from "./types";
 
 type Props = {
   onDeploy: () => void;
   onInstall: () => void;
   canInstall: boolean;
   apkUrl?: string;
+  best?: BestRun | null;
 };
 
-export function TitleScreen({ onDeploy, onInstall, canInstall, apkUrl }: Props) {
+function formatTime(t: number) {
+  if (!t) return "—";
+  const m = Math.floor(t / 60);
+  const s = Math.floor(t % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+export function TitleScreen({ onDeploy, onInstall, canInstall, apkUrl, best }: Props) {
   return (
-    <div className="absolute inset-0 z-20 flex flex-col overflow-hidden bg-bg text-fg">
-      <img
-        src="/art/title.jpg"
-        alt=""
-        className="absolute inset-0 h-full w-full object-cover"
-      />
-      <div className="absolute inset-0 bg-gradient-to-r from-bg/95 via-bg/70 to-bg/25" />
-      <div className="absolute inset-0 bg-gradient-to-t from-bg via-transparent to-bg/40" />
+    <div className="absolute inset-0 z-20 flex flex-col overflow-hidden bg-transparent text-fg">
+      <div className="absolute inset-0 bg-gradient-to-r from-bg/92 via-bg/55 to-bg/10" />
+      <div className="absolute inset-0 bg-gradient-to-t from-bg via-transparent to-bg/35" />
 
       <div className="relative z-10 flex min-h-0 flex-1 flex-col justify-end px-6 pb-10 pt-16 sm:justify-center sm:px-12 sm:pb-16">
         <p className="font-mono text-xs tracking-[0.28em] text-accent uppercase">
           Vanguard Protocol · Earth 2172
         </p>
-        <h1 className="mt-3 font-display text-6xl font-extrabold leading-[0.85] tracking-tight text-fg sm:text-8xl">
-          VOID
-          <br />
-          BREACH
+        <h1 className="mt-3 font-display text-5xl font-extrabold leading-[0.88] tracking-tight text-fg sm:text-8xl">
+          <span className="block">VOID</span>
+          <span className="block">BREACH</span>
         </h1>
         <p className="mt-5 max-w-md text-sm leading-relaxed text-muted sm:text-base">
           The Shade opened a gate under New Meridian. You are Vanguard-7. Clear
@@ -34,6 +37,12 @@ export function TitleScreen({ onDeploy, onInstall, canInstall, apkUrl }: Props) 
         <p className="mt-2 font-mono text-xs uppercase tracking-[0.18em] text-faint">
           Level 01 · Ashfall Gate
         </p>
+
+        {best && best.runs > 0 ? (
+          <p className="mt-4 font-mono text-[10px] uppercase tracking-widest text-muted">
+            Best · {best.kills} kills · {best.gold} scrap · {formatTime(best.time)} · {best.runs} runs
+          </p>
+        ) : null}
 
         <div className="mt-8 flex max-w-lg flex-col gap-3 sm:flex-row sm:flex-wrap">
           <button
@@ -75,6 +84,10 @@ export function TitleScreen({ onDeploy, onInstall, canInstall, apkUrl }: Props) 
             <dd>Mouse · click / RT</dd>
           </div>
           <div>
+            <dt className="font-mono text-[10px] uppercase tracking-widest text-faint">Aim down</dt>
+            <dd>RMB / LT</dd>
+          </div>
+          <div>
             <dt className="font-mono text-[10px] uppercase tracking-widest text-faint">Dodge</dt>
             <dd>Space</dd>
           </div>
@@ -84,11 +97,7 @@ export function TitleScreen({ onDeploy, onInstall, canInstall, apkUrl }: Props) 
           </div>
           <div>
             <dt className="font-mono text-[10px] uppercase tracking-widest text-faint">Guns</dt>
-            <dd>1 AR · 2 shotgun · 3 SMG</dd>
-          </div>
-          <div>
-            <dt className="font-mono text-[10px] uppercase tracking-widest text-faint">Sprint</dt>
-            <dd>Shift</dd>
+            <dd>1–3 · scroll</dd>
           </div>
         </dl>
       </div>

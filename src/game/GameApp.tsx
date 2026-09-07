@@ -26,10 +26,25 @@ const bootHud: HudSnapshot = {
   reloading: false,
   overdrive: false,
   sprinting: false,
+  ads: false,
   boss: null,
   hitFlash: 0,
   xp: 0,
+  xpNeed: 200,
   level: 1,
+  combo: 0,
+  missionTime: 0,
+  hitMarker: 0,
+  floating: [],
+  slots: [],
+  lockLost: false,
+  compass: 0,
+  muted: false,
+  lowAmmo: false,
+  wave: "",
+  stats: { time: 0, kills: 0, gold: 0, xp: 0, shots: 0, hits: 0, damageDealt: 0 },
+  best: null,
+  sensitivity: 1,
 };
 
 export function GameApp() {
@@ -84,9 +99,14 @@ export function GameApp() {
           canInstall={Boolean(installEvt)}
           onInstall={() => void installEvt?.prompt()}
           apkUrl="https://github.com/machine10101-vibes/void-breach/releases/latest"
+          best={hud.best}
         />
       ) : (
-        <Hud hud={hud} />
+        <Hud
+          hud={hud}
+          onPause={() => handleRef.current?.pause()}
+          onMute={() => handleRef.current?.setMuted(!hud.muted)}
+        />
       )}
       <TouchControls handle={handle} visible={playing && coarse} />
       {phase === "paused" ? (
@@ -95,6 +115,13 @@ export function GameApp() {
           body="Ashfall Gate is still live. Resume to keep the breach."
           action="Resume"
           onAction={() => handleRef.current?.resume()}
+          secondary="Restart run"
+          onSecondary={() => handleRef.current?.startMission()}
+          muted={hud.muted}
+          onMute={() => handleRef.current?.setMuted(!hud.muted)}
+          sensitivity={hud.sensitivity}
+          onSensitivity={(v) => handleRef.current?.setSensitivity(v)}
+          stats={hud.stats}
         />
       ) : null}
       {phase === "dead" ? (
@@ -102,15 +129,17 @@ export function GameApp() {
           title="Down"
           body="The Shade overran the drop. Redeploy and push the gate again."
           action="Redeploy"
-          onAction={() => window.location.reload()}
+          onAction={() => handleRef.current?.startMission()}
+          stats={hud.stats}
         />
       ) : null}
       {phase === "victory" ? (
         <PauseOverlay
           title="Gate sealed"
-          body="Harbinger is ash. First breach complete — more sectors when you are ready."
+          body="Harbinger is ash. First breach complete — run it again cleaner, faster."
           action="Run it back"
-          onAction={() => window.location.reload()}
+          onAction={() => handleRef.current?.startMission()}
+          stats={hud.stats}
         />
       ) : null}
     </main>

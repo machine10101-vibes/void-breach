@@ -115,11 +115,14 @@ export function rayWorld(
   dy: number,
   dz: number,
   maxT: number,
+  filter?: (b: AABB) => boolean,
 ) {
   let best = maxT;
   let hit = false;
   for (let i = 0; i < boxes.length; i++) {
-    const t = rayAabb(ox, oy, oz, dx, dy, dz, boxes[i], best);
+    const b = boxes[i];
+    if (filter && !filter(b)) continue;
+    const t = rayAabb(ox, oy, oz, dx, dy, dz, b, best);
     if (t !== null && t < best) {
       best = t;
       hit = true;
