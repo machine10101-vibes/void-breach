@@ -30,15 +30,15 @@ export function makeMaterials(tex: {
   shade?: THREE.Texture;
 }): Materials {
   const concrete = new THREE.MeshStandardMaterial({
-    color: 0x8a847c,
+    color: 0xb8b0a4,
     map: tex.ground ?? null,
-    roughness: 0.92,
+    roughness: 0.9,
     metalness: 0.04,
   });
   const wall = new THREE.MeshStandardMaterial({
-    color: 0x9a9388,
+    color: 0xc4b9aa,
     map: tex.wall ?? null,
-    roughness: 0.88,
+    roughness: 0.86,
     metalness: 0.06,
   });
   const metal = new THREE.MeshStandardMaterial({
@@ -48,10 +48,10 @@ export function makeMaterials(tex: {
     metalness: 0.78,
   });
   const armor = new THREE.MeshStandardMaterial({
-    color: 0xf0ebe4,
-    map: tex.armor ?? null,
-    roughness: 0.36,
-    metalness: 0.62,
+    color: 0xe7ddd0,
+    roughness: 0.3,
+    metalness: 0.72,
+    envMapIntensity: 1.2,
   });
   const shade = new THREE.MeshStandardMaterial({
     color: 0x1a1c22,
@@ -64,7 +64,7 @@ export function makeMaterials(tex: {
   bindPbr(concrete, tex.ground, { repeat: 1 });
   bindPbr(wall, tex.wall, { repeat: 1 });
   bindPbr(metal, tex.metal, { metal: true, repeat: 1 });
-  bindPbr(armor, tex.armor, { metal: true, repeat: 1.4 });
+  bindPbr(armor, undefined, { metal: true, repeat: 1.4 });
   bindPbr(shade, tex.shade, { glow: true, repeat: 1.2 });
   return {
     concrete,
@@ -121,9 +121,9 @@ export function makeMaterials(tex: {
       toneMapped: false,
     }),
     asphalt: new THREE.MeshStandardMaterial({
-      color: 0x3a3732,
+      color: 0x5a564e,
       map: tex.ground ?? null,
-      roughness: 0.96,
+      roughness: 0.94,
       metalness: 0.08,
     }),
     rust: new THREE.MeshStandardMaterial({

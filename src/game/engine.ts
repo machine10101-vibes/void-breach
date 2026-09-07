@@ -265,7 +265,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   renderer.setSize(canvas.clientWidth || window.innerWidth, canvas.clientHeight || window.innerHeight, false);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.22;
+  renderer.toneMappingExposure = 1.34;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -281,8 +281,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   let nearCnc = false;
 
   const camera = new THREE.PerspectiveCamera(CAM_FOV, 1, 0.22, 280);
-  scene.add(new THREE.HemisphereLight(0xffd2a8, 0x1c1610, 0.78));
-  const sun = new THREE.DirectionalLight(0xffd0a0, 2.35);
+  scene.add(new THREE.HemisphereLight(0xffd2a8, 0x1c1610, 1.08));
+  const sun = new THREE.DirectionalLight(0xffd0a0, 2.7);
   sun.position.set(-28, 34, 18);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
@@ -299,7 +299,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   const fill = new THREE.DirectionalLight(0x6ee7e0, 0.48);
   fill.position.set(22, 16, -28);
   scene.add(fill);
-  scene.add(new THREE.AmbientLight(0x3a3228, 0.38));
+  scene.add(new THREE.AmbientLight(0x4a4036, 0.58));
   const pmrem = new THREE.PMREMGenerator(renderer);
   const envScene = new THREE.Scene();
   envScene.add(new THREE.HemisphereLight(0xffc89a, 0x1a120c, 1.35));
@@ -314,9 +314,9 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   envGround.position.y = -2.2;
   envScene.add(envGround);
   scene.environment = pmrem.fromScene(envScene, 0.06).texture;
-  scene.environmentIntensity = 0.82;
+  scene.environmentIntensity = 1.08;
   pmrem.dispose();
-  const playerKey = new THREE.PointLight(0xffc89a, 5.2, 16, 1.6);
+  const playerKey = new THREE.PointLight(0xffc89a, 6.4, 16, 1.5);
   scene.add(playerKey);
   const playerRim = new THREE.PointLight(0x5eead4, 2.4, 10, 2);
   scene.add(playerRim);
@@ -523,7 +523,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       mat.metal.needsUpdate = true;
     }
     if (textures.armor) {
-      mat.armor.map = textures.armor;
+      mat.armor.roughnessMap = textures.armor;
       mat.armor.needsUpdate = true;
     }
     if (textures.shade) {
