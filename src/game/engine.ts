@@ -302,6 +302,16 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   scene.add(playerKey);
   const playerRim = new THREE.PointLight(0x5eead4, 2.4, 10, 2);
   scene.add(playerRim);
+  const hangarKey = new THREE.DirectionalLight(0xfff1dd, 2.15);
+  hangarKey.position.set(8, 18, 12);
+  hangarKey.visible = false;
+  scene.add(hangarKey);
+  const hangarFill = new THREE.HemisphereLight(0xffe6c8, 0x243040, 1.15);
+  hangarFill.visible = false;
+  scene.add(hangarFill);
+  const hangarAmbient = new THREE.AmbientLight(0xc4d0dc, 0.7);
+  hangarAmbient.visible = false;
+  scene.add(hangarAmbient);
 
   const textures: {
     ground?: THREE.Texture;
@@ -341,6 +351,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   scene.add(overLight);
   const drone = new THREE.Group();
   let composer: EffectComposer | null = null;
+  let useComposer = false;
   let isMobile = isTouchUi();
   let worldBuilt = false;
   let prevSlot = 0;
@@ -460,6 +471,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       composer.addPass(new RenderPass(scene, camera));
       composer.addPass(new UnrealBloomPass(new THREE.Vector2(1, 1), 0.38, 0.65, 0.78));
       composer.addPass(new OutputPass());
+      useComposer = true;
     }
     resize();
   }
@@ -516,8 +528,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   }
   function placeFollowCam(dt: number, snap = false) {
     if (phase === "ship") {
-      camPos.set(px + 7.4, py + 8.6, pz + 7.4);
-      camLook.set(px, py + 1.05, pz);
+      camPos.set(px + 5.6, 5.15, pz + 6.4);
+      camLook.set(px, 1.05, pz - 0.2);
       if (snap || camSnap) {
         camera.position.copy(camPos);
         camSnap = false;
@@ -868,8 +880,12 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     if (!worldBuilt) setupWorld();
     missionGroup.visible = false;
     shipRoot.visible = true;
-    scene.fog = new THREE.FogExp2(0x08080b, 0.012);
-    scene.background = new THREE.Color(0x07080c);
+    scene.fog = null;
+    scene.background = new THREE.Color(0x151c26);
+    hangarKey.visible = true;
+    hangarFill.visible = true;
+    hangarAmbient.visible = true;
+    useComposer = false;
     px = 0;
     pz = 0;
     py = 0.12;
@@ -894,6 +910,10 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     shipRoot.visible = false;
     scene.fog = new THREE.FogExp2(0x2a1c12, 0.0085);
     scene.background = new THREE.Color(0x1a120c);
+    hangarKey.visible = false;
+    hangarFill.visible = false;
+    hangarAmbient.visible = false;
+    useComposer = Boolean(composer);
     nearCnc = false;
   }
 
@@ -1656,9 +1676,11 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
         wishX /= wm;
         wishZ /= wm;
       }
-      px = THREE.MathUtils.clamp(px + wishX * 4.6 * dt, -8.4, 8.4);
-      pz = THREE.MathUtils.clamp(pz + wishZ * 4.6 * dt, -6.8, 7.2);
+      px = THREE.MathUtils.clamp(px + wishX * 4.6 * dt, -9.6, 9.6);
+      pz = THREE.MathUtils.clamp(pz + wishZ * 4.6 * dt, -8.2, 8.4);
       py = 0.12;
+      playerKey.position.set(px + 1.1, py + 3.6, pz + 1.6);
+      playerRim.position.set(px - 1.2, py + 2.0, pz - 1.0);
       if (wm > 0.12) yaw = Math.atan2(-wishX, -wishZ);
       const cnc = { x: 5.4, z: -4.4 };
       nearCnc = Math.hypot(px - cnc.x, pz - cnc.z) < 2.35;
@@ -1864,7 +1886,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       acc -= STEP;
     }
     if (!mat) return;
-    if (composer) composer.render();
+    if (useComposer && composer) composer.render();
     else renderer.render(scene, camera);
   }
   requestAnimationFrame(frame);

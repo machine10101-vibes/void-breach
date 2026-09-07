@@ -1068,74 +1068,133 @@ export function createShipInterior(mat: Materials) {
   const root = new THREE.Group();
   root.name = "ship";
 
-  const floor = new THREE.Mesh(new THREE.BoxGeometry(22, 0.28, 18), mat.metal);
+  const hull = new THREE.MeshStandardMaterial({
+    color: 0x3a424c,
+    metalness: 0.62,
+    roughness: 0.38,
+  });
+  const deck = new THREE.MeshStandardMaterial({
+    color: 0x6a7380,
+    metalness: 0.42,
+    roughness: 0.48,
+  });
+  const plate = new THREE.MeshStandardMaterial({
+    color: 0x4c5560,
+    metalness: 0.55,
+    roughness: 0.4,
+  });
+
+  const stars = new THREE.Mesh(
+    new THREE.SphereGeometry(80, 24, 16),
+    new THREE.MeshBasicMaterial({ color: 0x141c28, side: THREE.BackSide, fog: false, depthWrite: false }),
+  );
+  root.add(stars);
+  for (let i = 0; i < 48; i++) {
+    const speck = new THREE.Mesh(
+      new THREE.SphereGeometry(0.06, 4, 4),
+      new THREE.MeshBasicMaterial({ color: 0xe8f4ff, toneMapped: false, fog: false }),
+    );
+    const a = (i / 48) * Math.PI * 2;
+    const b = ((i * 17) % 40) / 40 * Math.PI - Math.PI / 2;
+    speck.position.set(Math.cos(a) * 42 * Math.cos(b), 10 + Math.sin(b) * 22, Math.sin(a) * 42 * Math.cos(b));
+    root.add(speck);
+  }
+
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(26, 0.28, 22), deck);
   floor.position.y = -0.14;
   floor.receiveShadow = true;
   root.add(floor);
-  const run = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.04, 16), mat.ember);
-  run.position.set(0, 0.02, 0);
-  root.add(run);
-  const run2 = run.clone();
-  run2.position.x = 4.2;
-  root.add(run2);
-  const run3 = run.clone();
-  run3.position.x = -4.2;
-  root.add(run3);
-
-  const pad = new THREE.Mesh(new THREE.CylinderGeometry(2.15, 2.3, 0.22, 28), mat.armor);
-  pad.position.y = 0.12;
-  pad.receiveShadow = true;
-  root.add(pad);
-  const ring = new THREE.Mesh(
-    new THREE.TorusGeometry(2.2, 0.045, 8, 36),
+  const run = new THREE.Mesh(
+    new THREE.BoxGeometry(1.15, 0.05, 18),
     new THREE.MeshBasicMaterial({ color: 0xe85d04, toneMapped: false }),
   );
+  run.position.set(0, 0.03, 0);
+  root.add(run);
+  const run2 = run.clone();
+  run2.position.x = 5.1;
+  root.add(run2);
+  const run3 = run.clone();
+  run3.position.x = -5.1;
+  root.add(run3);
+
+  const pad = new THREE.Mesh(
+    new THREE.CylinderGeometry(2.25, 2.4, 0.24, 28),
+    new THREE.MeshStandardMaterial({
+      color: 0x5a3a24,
+      emissive: 0xe85d04,
+      emissiveIntensity: 0.85,
+      metalness: 0.28,
+      roughness: 0.46,
+    }),
+  );
+  pad.position.y = 0.14;
+  pad.receiveShadow = true;
+  root.add(pad);
+  const disc = new THREE.Mesh(
+    new THREE.CircleGeometry(1.55, 28),
+    new THREE.MeshBasicMaterial({ color: 0xff8a3a, toneMapped: false }),
+  );
+  disc.rotation.x = -Math.PI / 2;
+  disc.position.y = 0.27;
+  root.add(disc);
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(2.28, 0.05, 8, 36),
+    new THREE.MeshBasicMaterial({ color: 0xffb070, toneMapped: false }),
+  );
   ring.rotation.x = Math.PI / 2;
-  ring.position.y = 0.24;
+  ring.position.y = 0.28;
   root.add(ring);
 
-  for (const x of [-10.4, 10.4]) {
-    const wall = new THREE.Mesh(new THREE.BoxGeometry(0.35, 5.2, 18), mat.dark);
-    wall.position.set(x, 2.5, 0);
+  for (const x of [-12.4, 12.4]) {
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(0.4, 4.4, 22), hull);
+    wall.position.set(x, 2.1, 0);
     wall.castShadow = true;
     root.add(wall);
   }
-  const aft = new THREE.Mesh(new THREE.BoxGeometry(22, 5.2, 0.4), mat.dark);
-  aft.position.set(0, 2.5, -8.7);
+  const aft = new THREE.Mesh(new THREE.BoxGeometry(26, 4.4, 0.4), hull);
+  aft.position.set(0, 2.1, -10.6);
   root.add(aft);
-  const bow = new THREE.Mesh(new THREE.BoxGeometry(22, 2.2, 0.35), mat.dark);
-  bow.position.set(0, 4.1, 8.6);
+  const bow = new THREE.Mesh(new THREE.BoxGeometry(26, 1.6, 0.35), hull);
+  bow.position.set(0, 3.6, 10.5);
   root.add(bow);
 
   const glass = new THREE.Mesh(
-    new THREE.BoxGeometry(10, 2.6, 0.12),
+    new THREE.BoxGeometry(12, 2.8, 0.12),
     new THREE.MeshStandardMaterial({
-      color: 0x0b1c24,
-      emissive: 0x146c80,
-      emissiveIntensity: 0.55,
-      metalness: 0.2,
-      roughness: 0.15,
+      color: 0x123848,
+      emissive: 0x1a8aa0,
+      emissiveIntensity: 0.9,
+      metalness: 0.18,
+      roughness: 0.12,
       transparent: true,
-      opacity: 0.72,
+      opacity: 0.78,
     }),
   );
-  glass.position.set(0, 2.6, 8.55);
+  glass.position.set(0, 2.2, 10.45);
   root.add(glass);
 
-  const ceiling = new THREE.Mesh(new THREE.BoxGeometry(22, 0.2, 18), mat.dark);
-  ceiling.position.y = 5.2;
-  root.add(ceiling);
+  for (const z of [-6, 0, 6]) {
+    const beam = new THREE.Mesh(new THREE.BoxGeometry(24, 0.16, 0.28), plate);
+    beam.position.set(0, 5.6, z);
+    root.add(beam);
+    const strip = new THREE.Mesh(
+      new THREE.BoxGeometry(20, 0.06, 0.1),
+      new THREE.MeshBasicMaterial({ color: 0xffc89a, toneMapped: false }),
+    );
+    strip.position.set(0, 5.48, z);
+    root.add(strip);
+  }
 
   const cnc = new THREE.Group();
   cnc.position.set(5.4, 0, -4.4);
   cnc.name = "cnc";
-  box(mat.dark, 2.6, 0.28, 2.1, 0, 0.2, 0, cnc);
+  box(hull, 2.6, 0.28, 2.1, 0, 0.2, 0, cnc);
   box(mat.metal, 2.2, 0.08, 1.6, 0, 0.38, 0, cnc);
   box(mat.ember, 1.4, 0.03, 1.0, 0, 0.44, 0, cnc);
-  box(mat.dark, 0.16, 2.2, 0.16, -1.15, 1.4, -0.85, cnc);
-  box(mat.dark, 0.16, 2.2, 0.16, 1.15, 1.4, -0.85, cnc);
-  box(mat.dark, 0.16, 2.2, 0.16, -1.15, 1.4, 0.85, cnc);
-  box(mat.dark, 0.16, 2.2, 0.16, 1.15, 1.4, 0.85, cnc);
+  box(hull, 0.16, 2.2, 0.16, -1.15, 1.4, -0.85, cnc);
+  box(hull, 0.16, 2.2, 0.16, 1.15, 1.4, -0.85, cnc);
+  box(hull, 0.16, 2.2, 0.16, -1.15, 1.4, 0.85, cnc);
+  box(hull, 0.16, 2.2, 0.16, 1.15, 1.4, 0.85, cnc);
   box(mat.metal, 2.5, 0.12, 0.16, 0, 2.5, 0, cnc);
   box(mat.voidCore, 0.18, 0.18, 1.8, 0, 2.35, 0, cnc);
   const head = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.34, 0.28), mat.ember);
@@ -1143,19 +1202,19 @@ export function createShipInterior(mat: Materials) {
   cnc.add(head);
   const hologram = new THREE.Mesh(
     new THREE.OctahedronGeometry(0.22, 0),
-    new THREE.MeshBasicMaterial({ color: 0x5eead4, transparent: true, opacity: 0.7, toneMapped: false }),
+    new THREE.MeshBasicMaterial({ color: 0x5eead4, transparent: true, opacity: 0.82, toneMapped: false }),
   );
   hologram.position.set(0, 0.72, 0);
   hologram.name = "cncHolo";
   cnc.add(hologram);
-  const lamp = new THREE.PointLight(0x5eead4, 2.4, 8, 1.6);
+  const lamp = new THREE.PointLight(0x5eead4, 3.2, 10, 1.4);
   lamp.position.set(0, 1.8, 0);
   cnc.add(lamp);
   root.add(cnc);
 
   const rack = new THREE.Group();
   rack.position.set(-6.4, 0, -3.2);
-  box(mat.dark, 2.4, 2.6, 0.4, 0, 1.4, 0, rack);
+  box(hull, 2.4, 2.6, 0.4, 0, 1.4, 0, rack);
   for (let i = 0; i < 4; i++) box(mat.metal, 0.12, 1.4, 0.08, -0.8 + i * 0.5, 1.3, 0.16, rack);
   root.add(rack);
 
@@ -1166,12 +1225,15 @@ export function createShipInterior(mat: Materials) {
   crateB.position.set(-4.2, 0, 4.4);
   root.add(crateB);
 
-  const fill = new THREE.PointLight(0xffc089, 3.4, 16, 1.4);
-  fill.position.set(0, 3.4, 1);
+  const fill = new THREE.PointLight(0xffd4b0, 12, 28, 1);
+  fill.position.set(0, 4.2, 1.2);
   root.add(fill);
-  const rim = new THREE.PointLight(0xe85d04, 2.2, 12, 1.6);
-  rim.position.set(-3, 2.4, 4);
+  const rim = new THREE.PointLight(0xe85d04, 7, 18, 1.1);
+  rim.position.set(-3.2, 2.8, 4);
   root.add(rim);
+  const cncFill = new THREE.PointLight(0x5eead4, 5.5, 14, 1.2);
+  cncFill.position.set(5.4, 2.8, -4.4);
+  root.add(cncFill);
 
   root.userData.cnc = { x: 5.4, z: -4.4 };
   root.userData.holo = hologram;
