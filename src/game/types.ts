@@ -93,6 +93,8 @@ export type HudSnapshot = {
   stats: RunStats;
   best: BestRun | null;
   sensitivity: number;
+  invertLookX: boolean;
+  invertLookY: boolean;
 };
 
 export type ControlsProbe = {

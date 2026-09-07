@@ -6,6 +6,8 @@ export type SaveData = {
   runs: number;
   mute: boolean;
   sensitivity: number;
+  invertLookX: boolean;
+  invertLookY: boolean;
 };
 
 const KEY = "void-breach-v1";
@@ -18,6 +20,8 @@ const defaults: SaveData = {
   runs: 0,
   mute: false,
   sensitivity: 1,
+  invertLookX: false,
+  invertLookY: false,
 };
 
 export function loadSave(): SaveData {
@@ -30,6 +34,8 @@ export function loadSave(): SaveData {
       ...parsed,
       version: 1,
       sensitivity: Math.min(2, Math.max(0.4, Number(parsed.sensitivity) || 1)),
+      invertLookX: Boolean(parsed.invertLookX),
+      invertLookY: Boolean(parsed.invertLookY),
     };
   } catch {
     return { ...defaults };

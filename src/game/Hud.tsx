@@ -1,4 +1,5 @@
-import { Pause, Volume2, VolumeX } from "lucide-react";
+import type { ReactNode } from "react";
+import { Pause, Settings, Volume2, VolumeX } from "lucide-react";
 import type { HudSnapshot, Rarity } from "./types";
 
 function Bar({
@@ -40,14 +41,41 @@ function formatTime(t: number) {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+function IconBtn({
+  label,
+  onClick,
+  children,
+  compact,
+}: {
+  label: string;
+  onClick?: () => void;
+  children: ReactNode;
+  compact?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`pointer-events-auto flex items-center justify-center rounded-md border border-border bg-surface/80 text-fg ${
+        compact ? "h-9 w-9" : "h-11 w-11"
+      }`}
+      aria-label={label}
+    >
+      {children}
+    </button>
+  );
+}
+
 export function Hud({
   hud,
   onPause,
+  onSettings,
   onMute,
   onReload,
 }: {
   hud: HudSnapshot;
   onPause?: () => void;
+  onSettings?: () => void;
   onMute?: () => void;
   onReload?: () => void;
 }) {
@@ -60,26 +88,26 @@ export function Hud({
         <div className="absolute inset-0 bg-health/30" style={{ opacity: Math.min(0.5, hud.hitFlash) }} />
       ) : null}
 
-      <div className="absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-2 px-3 pt-[max(0.4rem,env(safe-area-inset-top))] sm:hidden">
+      <div className="absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-2 px-3 pt-[max(0.4rem,env(safe-area-inset-top))] desk:hidden">
         <div className="min-w-0 flex-1">
           <p className="truncate font-mono text-[10px] uppercase tracking-[0.22em] text-accent">{hud.objective}</p>
           {hud.boss ? (
-            <div className="mt-1 max-w-[11rem]">
+            <div className="mt-1 max-w-[11rem] short:max-w-[9rem]">
               <Bar value={hud.boss.hp} max={hud.boss.max} color="bg-void" height="h-1.5" />
             </div>
           ) : null}
         </div>
-        <button
-          type="button"
-          onClick={onPause}
-          className="pointer-events-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-surface/70 text-fg"
-          aria-label="Pause"
-        >
-          <Pause className="size-3.5" />
-        </button>
+        <div className="flex shrink-0 gap-1.5">
+          <IconBtn label="Settings" onClick={onSettings} compact>
+            <Settings className="size-3.5" />
+          </IconBtn>
+          <IconBtn label="Pause" onClick={onPause} compact>
+            <Pause className="size-3.5" />
+          </IconBtn>
+        </div>
       </div>
 
-      <div className="absolute left-0 right-0 top-0 hidden flex-col items-center gap-2 px-4 pt-4 sm:flex">
+      <div className="absolute left-0 right-0 top-0 hidden flex-col items-center gap-2 px-4 pt-4 desk:flex">
         <div className="relative h-5 w-64 overflow-hidden">
           <div
             className="absolute top-0 flex h-5 items-center gap-6 font-mono text-[10px] uppercase tracking-[0.3em] text-faint"
@@ -107,7 +135,7 @@ export function Hud({
         ) : null}
       </div>
 
-      <div className="absolute left-4 top-16 hidden w-44 flex-col gap-1 sm:flex">
+      <div className="absolute left-4 top-16 hidden w-44 flex-col gap-1 desk:flex">
         {(hud.loot ?? []).map((l) => (
           <p key={l.id} className={`font-display text-lg leading-tight ${rarityClass[l.rarity] ?? "text-fg"}`}>
             {l.name}
@@ -115,32 +143,25 @@ export function Hud({
         ))}
       </div>
 
-      <div className="pointer-events-auto absolute right-4 top-4 hidden items-center gap-2 sm:flex">
+      <div className="pointer-events-auto absolute right-4 top-4 hidden items-center gap-2 desk:flex">
         <div className="text-right font-mono text-[10px] uppercase tracking-widest text-muted">
           <p>Op {hud.level}</p>
           <p className="text-fg">{hud.gold} scrap</p>
           <p>{hud.kills} kills</p>
           <p>{formatTime(hud.missionTime)}</p>
         </div>
-        <button
-          type="button"
-          onClick={onMute}
-          className="flex h-11 w-11 items-center justify-center rounded-md border border-border bg-surface/80 text-fg"
-          aria-label={hud.muted ? "Unmute" : "Mute"}
-        >
+        <IconBtn label={hud.muted ? "Unmute" : "Mute"} onClick={onMute}>
           {hud.muted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
-        </button>
-        <button
-          type="button"
-          onClick={onPause}
-          className="flex h-11 w-11 items-center justify-center rounded-md border border-border bg-surface/80 text-fg"
-          aria-label="Pause"
-        >
+        </IconBtn>
+        <IconBtn label="Settings" onClick={onSettings}>
+          <Settings className="size-4" />
+        </IconBtn>
+        <IconBtn label="Pause" onClick={onPause}>
           <Pause className="size-4" />
-        </button>
+        </IconBtn>
       </div>
 
-      <div className="absolute bottom-[max(6.4rem,calc(env(safe-area-inset-bottom)+5.6rem))] left-[max(0.65rem,env(safe-area-inset-left))] w-[min(10.5rem,40vw)] sm:hidden">
+      <div className="absolute bottom-[max(6.4rem,calc(env(safe-area-inset-bottom)+5.6rem))] left-[max(0.65rem,env(safe-area-inset-left))] w-[min(10.5rem,40vw)] desk:hidden short:bottom-auto short:left-[max(0.55rem,env(safe-area-inset-left))] short:top-[2.55rem] short:w-[min(8.75rem,26vw)]">
         <div className="mb-0.5 flex items-baseline justify-between gap-2">
           <span className="font-display text-lg font-semibold tabular-nums leading-none">{Math.ceil(hud.health)}</span>
           <button
@@ -163,7 +184,7 @@ export function Hud({
         </div>
       </div>
 
-      <div className="absolute bottom-8 left-6 hidden w-[22rem] flex-col gap-3 sm:flex">
+      <div className="absolute bottom-8 left-6 hidden w-[22rem] flex-col gap-3 desk:flex">
         <div>
           <div className="mb-1 flex items-end justify-between">
             <span className="font-display text-3xl font-semibold leading-none tabular-nums">
@@ -211,7 +232,7 @@ export function Hud({
         </div>
       </div>
 
-      <div className="absolute bottom-28 left-1/2 hidden -translate-x-1/2 gap-2 sm:flex">
+      <div className="absolute bottom-28 left-1/2 hidden -translate-x-1/2 gap-2 desk:flex">
         {(hud.skills ?? []).map((s) => {
           const pct = s.ready ? 100 : ((s.max - s.cd) / s.max) * 100;
           return (
@@ -254,14 +275,14 @@ export function Hud({
       ))}
 
       {hud.lockLost ? (
-        <div className="pointer-events-none absolute inset-0 hidden items-center justify-center sm:flex">
+        <div className="pointer-events-none absolute inset-0 hidden items-center justify-center desk:flex">
           <p className="rounded-md border border-border bg-surface/90 px-5 py-3 font-display text-xl font-semibold">
             Move the cursor to aim
           </p>
         </div>
       ) : null}
 
-      <p className="absolute bottom-4 left-1/2 hidden -translate-x-1/2 font-mono text-[10px] uppercase tracking-[0.2em] text-faint sm:block">
+      <p className="absolute bottom-4 left-1/2 hidden -translate-x-1/2 font-mono text-[10px] uppercase tracking-[0.2em] text-faint desk:block">
         {hud.hint}
       </p>
     </div>
@@ -278,8 +299,7 @@ export function PauseOverlay({
   stats,
   muted,
   onMute,
-  sensitivity,
-  onSensitivity,
+  onSettings,
 }: {
   title: string;
   body: string;
@@ -290,17 +310,16 @@ export function PauseOverlay({
   stats?: { time: number; kills: number; gold: number; shots: number; hits: number };
   muted?: boolean;
   onMute?: () => void;
-  sensitivity?: number;
-  onSensitivity?: (v: number) => void;
+  onSettings?: () => void;
 }) {
   const acc = stats && stats.shots > 0 ? Math.round((stats.hits / stats.shots) * 100) : 0;
   return (
-    <div className="absolute inset-0 z-30 flex items-center justify-center bg-bg/80 px-4 py-[max(1rem,env(safe-area-inset-top))]">
-      <div className="max-h-[min(36rem,88dvh)] w-full max-w-sm overflow-y-auto rounded-xl border border-border bg-surface p-5 sm:p-8">
-        <h2 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">{title}</h2>
-        <p className="mt-2 text-sm leading-relaxed text-muted sm:mt-3">{body}</p>
+    <div className="absolute inset-0 z-30 flex items-center justify-center bg-bg/80 px-4 py-[max(0.6rem,env(safe-area-inset-top))]">
+      <div className="max-h-[min(36rem,88dvh)] w-full max-w-sm overflow-y-auto rounded-xl border border-border bg-surface p-5 short:max-h-[92dvh] short:max-w-2xl short:p-4 desk:p-8">
+        <h2 className="font-display text-3xl font-semibold tracking-tight desk:text-4xl">{title}</h2>
+        <p className="mt-2 text-sm leading-relaxed text-muted desk:mt-3">{body}</p>
         {stats ? (
-          <dl className="mt-5 grid grid-cols-2 gap-3 font-mono text-xs uppercase tracking-widest text-muted">
+          <dl className="mt-4 grid grid-cols-2 gap-3 font-mono text-xs uppercase tracking-widest text-muted short:grid-cols-4 desk:mt-5">
             <div>
               <dt className="text-faint">Time</dt>
               <dd className="text-fg">{formatTime(stats.time)}</dd>
@@ -319,21 +338,7 @@ export function PauseOverlay({
             </div>
           </dl>
         ) : null}
-        {typeof sensitivity === "number" && onSensitivity ? (
-          <label className="mt-5 block">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-faint">Look sensitivity</span>
-            <input
-              type="range"
-              min={0.4}
-              max={2}
-              step={0.05}
-              value={sensitivity}
-              onChange={(e) => onSensitivity(Number(e.target.value))}
-              className="mt-2 w-full accent-accent"
-            />
-          </label>
-        ) : null}
-        <div className="mt-6 flex flex-col gap-2.5 sm:mt-8 sm:gap-3">
+        <div className="mt-5 flex flex-col gap-2.5 short:mt-4 desk:mt-8 desk:gap-3">
           <button
             type="button"
             onClick={onAction}
@@ -348,6 +353,16 @@ export function PauseOverlay({
               className="flex h-11 w-full items-center justify-center rounded-lg border border-border bg-elevated font-display text-lg font-semibold text-fg"
             >
               {secondary}
+            </button>
+          ) : null}
+          {onSettings ? (
+            <button
+              type="button"
+              onClick={onSettings}
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-border font-display text-lg font-semibold text-fg"
+            >
+              <Settings className="size-4" />
+              Settings
             </button>
           ) : null}
           {onMute ? (

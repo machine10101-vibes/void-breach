@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { GameHandle } from "./engine";
 import { Hud, PauseOverlay } from "./Hud";
+import { SettingsSheet } from "./SettingsSheet";
 import { TitleScreen } from "./TitleScreen";
 import { TouchControls } from "./TouchControls";
 import type { HudSnapshot, Phase } from "./types";
@@ -45,6 +46,8 @@ const bootHud: HudSnapshot = {
   stats: { time: 0, kills: 0, gold: 0, xp: 0, shots: 0, hits: 0, damageDealt: 0 },
   best: null,
   sensitivity: 1,
+  invertLookX: false,
+  invertLookY: false,
 };
 
 function useTouchUi() {
@@ -67,6 +70,7 @@ export function GameApp() {
   const [hud, setHud] = useState<HudSnapshot>(bootHud);
   const [handle, setHandle] = useState<GameHandle | null>(null);
   const [installEvt, setInstallEvt] = useState<{ prompt: () => Promise<void> } | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const touchUi = useTouchUi();
 
   useEffect(() => {
@@ -104,12 +108,18 @@ export function GameApp() {
   const phase: Phase = hud.phase;
   const playing = phase === "playing";
 
+  const openSettings = (pauseFirst: boolean) => {
+    if (pauseFirst && phase === "playing") handleRef.current?.pause();
+    setSettingsOpen(true);
+  };
+
   return (
     <main className="relative h-dvh w-full overflow-hidden bg-bg">
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full touch-none" />
       {phase === "title" || phase === "boot" ? (
         <TitleScreen
           onDeploy={() => handleRef.current?.startMission()}
+          onSettings={() => openSettings(false)}
           canInstall={Boolean(installEvt)}
           onInstall={() => void installEvt?.prompt()}
           apkUrl="https://github.com/machine10101-vibes/void-breach/releases/latest"
@@ -119,12 +129,13 @@ export function GameApp() {
         <Hud
           hud={hud}
           onPause={() => handleRef.current?.pause()}
+          onSettings={() => openSettings(true)}
           onMute={() => handleRef.current?.setMuted(!hud.muted)}
           onReload={() => handleRef.current?.pulse("reload")}
         />
       )}
-      <TouchControls handle={handle} visible={playing && touchUi} />
-      {phase === "paused" ? (
+      <TouchControls handle={handle} visible={playing && touchUi && !settingsOpen} />
+      {phase === "paused" && !settingsOpen ? (
         <PauseOverlay
           title="Hold"
           body="Ashfall Gate is still live. Resume to keep the breach."
@@ -134,8 +145,7 @@ export function GameApp() {
           onSecondary={() => handleRef.current?.startMission()}
           muted={hud.muted}
           onMute={() => handleRef.current?.setMuted(!hud.muted)}
-          sensitivity={hud.sensitivity}
-          onSensitivity={(v) => handleRef.current?.setSensitivity(v)}
+          onSettings={() => setSettingsOpen(true)}
           stats={hud.stats}
         />
       ) : null}
@@ -145,6 +155,7 @@ export function GameApp() {
           body="The Shade overran the drop. Redeploy and push the gate again."
           action="Redeploy"
           onAction={() => handleRef.current?.startMission()}
+          onSettings={() => setSettingsOpen(true)}
           stats={hud.stats}
         />
       ) : null}
@@ -154,9 +165,22 @@ export function GameApp() {
           body="Harbinger is ash. First breach complete — run it again cleaner, faster."
           action="Run it back"
           onAction={() => handleRef.current?.startMission()}
+          onSettings={() => setSettingsOpen(true)}
           stats={hud.stats}
         />
       ) : null}
+      <SettingsSheet
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        muted={hud.muted}
+        onMute={() => handleRef.current?.setMuted(!hud.muted)}
+        sensitivity={hud.sensitivity}
+        onSensitivity={(v) => handleRef.current?.setSensitivity(v)}
+        invertLookX={hud.invertLookX}
+        invertLookY={hud.invertLookY}
+        onInvertLookX={(v) => handleRef.current?.setInvertLookX(v)}
+        onInvertLookY={(v) => handleRef.current?.setInvertLookY(v)}
+      />
     </main>
   );
 }
