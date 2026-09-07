@@ -265,7 +265,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   renderer.setSize(canvas.clientWidth || window.innerWidth, canvas.clientHeight || window.innerHeight, false);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.34;
+  renderer.toneMappingExposure = 1.4;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
 
@@ -281,8 +281,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   let nearCnc = false;
 
   const camera = new THREE.PerspectiveCamera(CAM_FOV, 1, 0.22, 280);
-  scene.add(new THREE.HemisphereLight(0xffd2a8, 0x1c1610, 1.08));
-  const sun = new THREE.DirectionalLight(0xffd0a0, 2.7);
+  scene.add(new THREE.HemisphereLight(0xffd8b4, 0x241810, 1.22));
+  const sun = new THREE.DirectionalLight(0xffd4a8, 2.85);
   sun.position.set(-28, 34, 18);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
@@ -296,10 +296,13 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   sun.shadow.normalBias = 0.04;
   scene.add(sun);
   scene.add(sun.target);
-  const fill = new THREE.DirectionalLight(0x6ee7e0, 0.48);
+  const fill = new THREE.DirectionalLight(0x7aeee6, 0.55);
   fill.position.set(22, 16, -28);
   scene.add(fill);
-  scene.add(new THREE.AmbientLight(0x4a4036, 0.58));
+  const bounce = new THREE.DirectionalLight(0xc4a078, 0.38);
+  bounce.position.set(4, 2, 10);
+  scene.add(bounce);
+  scene.add(new THREE.AmbientLight(0x564840, 0.64));
   const pmrem = new THREE.PMREMGenerator(renderer);
   const envScene = new THREE.Scene();
   envScene.add(new THREE.HemisphereLight(0xffc89a, 0x1a120c, 1.35));
@@ -316,9 +319,9 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   scene.environment = pmrem.fromScene(envScene, 0.02).texture;
   scene.environmentIntensity = 1.08;
   pmrem.dispose();
-  const playerKey = new THREE.PointLight(0xffc89a, 6.4, 16, 1.5);
+  const playerKey = new THREE.PointLight(0xffd0a8, 7.2, 18, 1.45);
   scene.add(playerKey);
-  const playerRim = new THREE.PointLight(0x5eead4, 2.4, 10, 2);
+  const playerRim = new THREE.PointLight(0x5eead4, 2.8, 11, 1.9);
   scene.add(playerRim);
   const hangarKey = new THREE.DirectionalLight(0xfff1dd, 2.15);
   hangarKey.position.set(8, 18, 12);
@@ -520,7 +523,9 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     }
     if (textures.metal) {
       mat.metal.map = textures.metal;
+      mat.rust.map = textures.metal;
       mat.metal.needsUpdate = true;
+      mat.rust.needsUpdate = true;
     }
     if (textures.armor) {
       mat.armor.roughnessMap = textures.armor;
@@ -1637,6 +1642,9 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       particles.mote(level.gate.x + (Math.random() - 0.5) * 3, 2 + Math.random() * 3, level.gate.z + (Math.random() - 0.5) * 2, 0x22d3ee);
     }
     particles.mote(px + (Math.random() - 0.5) * 18, 1 + Math.random() * 4, pz - 4 + (Math.random() - 0.5) * 18, Math.random() > 0.6 ? 0xe85d04 : 0x5eead4);
+    if (Math.random() > 0.35) {
+      particles.mote(px + (Math.random() - 0.5) * 10, 0.4 + Math.random() * 2.2, pz + (Math.random() - 0.5) * 10, 0xb8a898);
+    }
     particles.update(dt);
     scorch.update(dt);
     for (let i = rifts.length - 1; i >= 0; i--) {

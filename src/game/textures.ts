@@ -118,12 +118,13 @@ export function makeEmissiveCrackMap(size = 256) {
 export function bindPbr(
   mat: THREE.MeshStandardMaterial,
   map: THREE.Texture | undefined,
-  opts?: { repeat?: number; metal?: boolean; glow?: boolean },
+  opts?: { repeat?: number; metal?: boolean; glow?: boolean; bump?: number },
 ) {
   const size = 256;
   const height = makeSeamlessNoise(size, opts?.metal ? 14 : 7, opts?.metal ? 2.2 : 1.4);
+  const bump = opts?.bump ?? (opts?.metal ? 0.72 : 0.95);
   mat.normalMap = makeNormalFromHeight(height, size, opts?.metal ? 2.1 : 3.6);
-  mat.normalScale = new THREE.Vector2(opts?.metal ? 0.72 : 0.95, opts?.metal ? 0.72 : 0.95);
+  mat.normalScale = new THREE.Vector2(bump, bump);
   mat.roughnessMap = makeRoughnessMap(size, opts?.metal ? 0.32 : 0.74, 0.28);
   mat.envMapIntensity = opts?.metal ? 1.15 : 0.72;
   if (map) {
