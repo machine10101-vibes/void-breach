@@ -105,7 +105,7 @@ export function TouchControls({ handle, visible }: Props) {
   return (
     <div className="pointer-events-none absolute inset-0 z-20">
       <div
-        className="pointer-events-auto absolute top-12 right-0 bottom-36 left-[30%]"
+        className="pointer-events-auto absolute top-14 right-0 bottom-40 left-[32%]"
         onPointerDown={onLookDown}
         onPointerMove={onPtrMove}
         onPointerUp={endMove}

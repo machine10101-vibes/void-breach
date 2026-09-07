@@ -60,7 +60,7 @@ export function Hud({
         <div className="absolute inset-0 bg-health/30" style={{ opacity: Math.min(0.5, hud.hitFlash) }} />
       ) : null}
 
-      <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 px-3 pt-[max(0.4rem,env(safe-area-inset-top))] sm:hidden">
+      <div className="absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-2 px-3 pt-[max(0.4rem,env(safe-area-inset-top))] sm:hidden">
         <div className="min-w-0 flex-1">
           <p className="truncate font-mono text-[10px] uppercase tracking-[0.22em] text-accent">{hud.objective}</p>
           {hud.boss ? (
