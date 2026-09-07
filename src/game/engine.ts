@@ -547,11 +547,11 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   function placeFollowCam(dt: number, snap = false) {
     if (phase === "ship") {
       camPos.set(
-        THREE.MathUtils.clamp(px + 4.8, -8.0, 8.0),
-        3.72,
-        THREE.MathUtils.clamp(pz + 5.5, -6.6, 7.4),
+        THREE.MathUtils.clamp(px + 3.9, -8.0, 8.0),
+        3.95,
+        THREE.MathUtils.clamp(pz + 5.6, -6.6, 7.4),
       );
-      camLook.set(px + 0.5, 1.02, pz - 1.35);
+      camLook.set(px + 1.1, 1.25, pz - 2.1);
       if (snap || camSnap) {
         camera.position.copy(camPos);
         camSnap = false;

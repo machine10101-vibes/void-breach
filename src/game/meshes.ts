@@ -1115,6 +1115,43 @@ function deckMark(text: string, color: string, w = 512, h = 128) {
   return t;
 }
 
+function vistaTex() {
+  const c = document.createElement("canvas");
+  c.width = 768;
+  c.height = 384;
+  const g = c.getContext("2d")!;
+  g.fillStyle = "#070b12";
+  g.fillRect(0, 0, 768, 384);
+  const planet = g.createRadialGradient(250, 400, 20, 250, 430, 210);
+  planet.addColorStop(0, "#8ec8e8");
+  planet.addColorStop(0.28, "#3a7fa0");
+  planet.addColorStop(0.55, "#24506a");
+  planet.addColorStop(0.78, "#122030");
+  planet.addColorStop(1, "#070b12");
+  g.fillStyle = planet;
+  g.beginPath();
+  g.arc(250, 430, 210, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = "#2f6a48";
+  g.globalAlpha = 0.45;
+  g.beginPath();
+  g.ellipse(210, 390, 70, 28, -0.4, 0, Math.PI * 2);
+  g.fill();
+  g.beginPath();
+  g.ellipse(300, 410, 40, 16, 0.3, 0, Math.PI * 2);
+  g.fill();
+  g.globalAlpha = 1;
+  for (let i = 0; i < 110; i++) {
+    const a = 0.35 + Math.random() * 0.65;
+    g.fillStyle = `rgba(236,244,255,${a})`;
+    g.fillRect(Math.random() * 768, Math.random() * 250, Math.random() > 0.86 ? 2 : 1, 1);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.needsUpdate = true;
+  return t;
+}
+
 function hazardTex() {
   const c = document.createElement("canvas");
   c.width = 128;
@@ -1365,32 +1402,41 @@ export function createShipInterior(mat: Materials) {
     root.add(rail);
   }
 
-  const aft = new THREE.Mesh(new THREE.BoxGeometry(22.8, wallH, 0.42), hull);
-  aft.position.set(0, wallH * 0.5, -9.95);
-  aft.castShadow = true;
-  root.add(aft);
   const bow = new THREE.Mesh(new THREE.BoxGeometry(22.8, wallH, 0.42), hull);
   bow.position.set(0, wallH * 0.5, 9.95);
   bow.castShadow = true;
   root.add(bow);
 
+  box(hull, 22.8, 1.15, 0.42, 0, 0.55, -9.95, root);
+  box(hull, 22.8, 1.05, 0.42, 0, 5.55, -9.95, root);
+  box(hull, 2.4, 4.4, 0.42, -10.2, 3.1, -9.95, root);
+  box(hull, 2.4, 4.4, 0.42, 10.2, 3.1, -9.95, root);
+  box(plate, 18.6, 0.2, 0.28, 0, 3.55, -9.78, root);
+  box(plate, 0.2, 3.6, 0.28, -3.45, 3.55, -9.78, root);
+  box(plate, 0.2, 3.6, 0.28, 3.45, 3.55, -9.78, root);
+  const paneGlass = glass.clone();
+  paneGlass.opacity = 0.28;
+  paneGlass.emissiveIntensity = 0.1;
   for (const [x, y] of [
-    [-5.2, 2.55],
-    [-1.75, 2.55],
-    [1.75, 2.55],
-    [5.2, 2.55],
-    [-5.2, 4.55],
-    [-1.75, 4.55],
-    [1.75, 4.55],
-    [5.2, 4.55],
+    [-5.15, 2.35],
+    [0, 2.35],
+    [5.15, 2.35],
+    [-5.15, 4.65],
+    [0, 4.65],
+    [5.15, 4.65],
   ] as const) {
-    box(plate, 2.9, 1.7, 0.16, x, y, -9.72, root);
-    const pane = new THREE.Mesh(new THREE.BoxGeometry(2.55, 1.35, 0.08), glass);
-    pane.position.set(x, y, -9.58);
+    const pane = new THREE.Mesh(new THREE.BoxGeometry(2.85, 1.58, 0.05), paneGlass);
+    pane.position.set(x, y, -9.72);
     root.add(pane);
   }
-  box(hazard, 8.4, 0.16, 0.12, 0, 1.35, -9.7, root);
-  mark(deckMark("AFT VIEW  ·  EARTH 2172", "#7ec8d4", 768, 96), 0, -8.7, 3.6);
+  box(hazard, 10.2, 0.16, 0.12, 0, 1.28, -9.7, root);
+  const vista = new THREE.Mesh(
+    new THREE.PlaneGeometry(22, 6.4),
+    new THREE.MeshBasicMaterial({ map: vistaTex(), fog: false }),
+  );
+  vista.position.set(0, 3.4, -12.4);
+  root.add(vista);
+  mark(deckMark("AFT VIEW  ·  EARTH 2172", "#7ec8d4", 768, 96), 0, -8.55, 3.6);
 
   const lock = new THREE.Group();
   lock.position.set(0, 0, 9.55);
@@ -1424,6 +1470,9 @@ export function createShipInterior(mat: Materials) {
   cyl(mat.metal, 0.05, 0.05, 18.2, -3.45, 5.66, 0, root, Math.PI / 2, 0, 8);
   box(mat.metal, 20.4, 0.16, 0.4, 0, 5.55, 0, root);
   box(mat.ember, 0.55, 0.28, 0.7, 0, 5.35, 0, root);
+  box(plate, 8.4, 0.35, 0.55, 1.2, 4.85, 1.6, root);
+  box(mat.dark, 7.6, 0.12, 0.22, 1.2, 4.58, 1.6, root);
+  for (let i = 0; i < 5; i++) box(mat.metal, 0.18, 0.18, 0.7, -2.2 + i * 1.7, 4.85, 1.85, root);
 
   const cnc = new THREE.Group();
   cnc.position.set(5.4, 0, -4.4);
@@ -1496,6 +1545,22 @@ export function createShipInterior(mat: Materials) {
     hose.rotation.x = Math.PI / 2;
     hose.position.set(2.15 + i * 0.12, 0.08, 1.8);
     root.add(hose);
+  }
+
+  box(plate, 2.2, 1.1, 0.16, -8.4, 2.4, -6.4, root, 0, 0.4, 0);
+  box(mat.neon, 1.4, 0.55, 0.05, -8.35, 2.5, -6.28, root, 0, 0.4, 0);
+  box(mat.ember, 0.1, 0.1, 0.06, -8.9, 2.05, -6.2, root);
+  for (let i = 0; i < 4; i++) {
+    cyl(mat.dark, 0.06, 0.06, 4.2, -3 + i * 2.1, 1.15, -9.35, root, Math.PI / 2, 0, 8);
+  }
+  for (let i = 0; i < 6; i++) {
+    box(plate, 0.55, 0.7, 0.12, -9.7, 1.6 + (i % 3) * 0.85, -1.2 + Math.floor(i / 3) * 2.2, root);
+    box(grate, 0.4, 0.45, 0.04, -9.62, 1.6 + (i % 3) * 0.85, -1.2 + Math.floor(i / 3) * 2.2, root);
+  }
+  box(mat.metal, 0.22, 0.22, 7.2, -9.55, 4.35, -2.4, root);
+  box(mat.dark, 0.14, 0.14, 6.4, -9.35, 3.85, -1.8, root);
+  for (let i = 0; i < 5; i++) {
+    sph(mat.metal, 0.05, -9.45, 2.2 + i * 0.45, -4.6, root, 6);
   }
 
   const fill = new THREE.PointLight(0xffe0c0, 10, 24, 1);
