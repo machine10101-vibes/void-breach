@@ -85,6 +85,7 @@ export function Hud({
 }) {
   if (hud.phase === "title" || hud.phase === "boot") return null;
   const heading = ((-hud.compass * 180) / Math.PI + 36000) % 360;
+  const onShip = hud.phase === "ship";
 
   return (
     <div className="pointer-events-none absolute inset-0 z-10 text-fg">
@@ -121,7 +122,12 @@ export function Hud({
         </div>
       </div>
 
-      <div className="absolute left-0 right-0 top-0 hidden flex-col items-center gap-2 px-4 pt-4 desk:flex">
+      {onShip ? (
+        <p className="absolute left-4 top-4 hidden font-mono text-[10px] uppercase tracking-[0.28em] text-accent desk:block">
+          {hud.objective}
+        </p>
+      ) : null}
+      <div className={`absolute left-0 right-0 top-0 hidden flex-col items-center gap-2 px-4 pt-4 desk:flex ${onShip ? "!hidden" : ""}`}>
         <div className="relative h-5 w-64 overflow-hidden">
           <div
             className="absolute top-0 flex h-5 items-center gap-6 font-mono text-[10px] uppercase tracking-[0.3em] text-faint"
@@ -149,7 +155,7 @@ export function Hud({
         ) : null}
       </div>
 
-      <div className="absolute left-4 top-16 hidden w-44 flex-col gap-1 desk:flex">
+      <div className={`absolute left-4 top-16 hidden w-44 flex-col gap-1 desk:flex ${onShip ? "!hidden" : ""}`}>
         {(hud.loot ?? []).map((l) => (
           <p key={l.id} className={`font-display text-lg leading-tight ${rarityClass[l.rarity] ?? "text-fg"}`}>
             {l.name}
@@ -159,10 +165,19 @@ export function Hud({
 
       <div className="pointer-events-auto absolute right-4 top-4 hidden items-center gap-2 desk:flex">
         <div className="text-right font-mono text-[10px] uppercase tracking-widest text-muted">
-          <p>Op {hud.level}</p>
-          <p className="text-fg">{hud.gold} scrap</p>
-          <p>{hud.kills} kills</p>
-          <p>{formatTime(hud.missionTime)}</p>
+          {onShip ? (
+            <>
+              <p className="text-fg">{hud.scrapBank} banked</p>
+              <p>Hull deck</p>
+            </>
+          ) : (
+            <>
+              <p>Op {hud.level}</p>
+              <p className="text-fg">{hud.gold} scrap</p>
+              <p>{hud.kills} kills</p>
+              <p>{formatTime(hud.missionTime)}</p>
+            </>
+          )}
         </div>
         <IconBtn label={hud.muted ? "Unmute" : "Mute"} onClick={onMute}>
           {hud.muted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
@@ -187,7 +202,7 @@ export function Hud({
 
       <div
         className={`absolute left-[max(0.55rem,env(safe-area-inset-left))] w-[min(9.5rem,38vw)] desk:hidden short:w-[min(8.75rem,26vw)] ${
-          hud.boss ? "top-[3.8rem]" : "top-[2.55rem]"
+          onShip ? "hidden" : hud.boss ? "top-[3.8rem]" : "top-[2.55rem]"
         }`}
       >
         <div className="mb-0.5 flex items-baseline justify-between gap-2">
@@ -212,7 +227,7 @@ export function Hud({
         </div>
       </div>
 
-      <div className="absolute bottom-8 left-6 hidden w-[22rem] flex-col gap-3 desk:flex">
+      <div className={`absolute bottom-8 left-6 hidden w-[22rem] flex-col gap-3 desk:flex ${onShip ? "!hidden" : ""}`}>
         <div>
           <div className="mb-1 flex items-end justify-between">
             <span className="font-display text-3xl font-semibold leading-none tabular-nums">
@@ -260,7 +275,7 @@ export function Hud({
         </div>
       </div>
 
-      <div className="absolute bottom-28 left-1/2 hidden -translate-x-1/2 gap-2 desk:flex">
+      <div className={`absolute bottom-28 left-1/2 hidden -translate-x-1/2 gap-2 desk:flex ${onShip ? "!hidden" : ""}`}>
         {(hud.skills ?? []).map((s) => {
           const pct = s.ready ? 100 : ((s.max - s.cd) / s.max) * 100;
           return (
