@@ -897,20 +897,32 @@ export function dressWorld(scene: THREE.Object3D, mat: Materials) {
   scene.add(road);
 
   for (const x of [-2.92, 2.92]) {
-    const curb = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.16, 132), mat.concrete);
-    curb.position.set(x, 0.08, -48);
+    const curb = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.1, 132), mat.concrete);
+    curb.position.set(x, 0.06, -48);
     curb.castShadow = true;
     curb.receiveShadow = true;
     scene.add(curb);
   }
+  const walkMat = new THREE.MeshStandardMaterial({
+    color: 0x8a8074,
+    roughness: 0.92,
+    metalness: 0.06,
+  });
+  bindPbr(walkMat, undefined, { bump: 1.2 });
+  const ashMat = new THREE.MeshStandardMaterial({
+    color: 0x4a3c30,
+    roughness: 0.96,
+    metalness: 0.04,
+  });
+  bindPbr(ashMat, undefined, { bump: 1.45 });
   for (const x of [-4.35, 4.35]) {
-    const walk = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.06, 132), mat.wall);
+    const walk = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.06, 132), walkMat);
     walk.position.set(x, 0.03, -48);
     walk.receiveShadow = true;
     scene.add(walk);
   }
   for (const x of [-6.4, 6.4]) {
-    const dirt = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.04, 132), mat.rust);
+    const dirt = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.04, 132), ashMat);
     dirt.position.set(x, 0.02, -48);
     dirt.receiveShadow = true;
     scene.add(dirt);
@@ -946,8 +958,9 @@ export function dressWorld(scene: THREE.Object3D, mat: Materials) {
   }
   scene.add(stains);
 
-  const winGeo = new THREE.PlaneGeometry(0.78, 1.12);
-  const frameGeo = new THREE.BoxGeometry(0.92, 1.28, 0.06);
+  const winGeo = new THREE.PlaneGeometry(0.7, 1.02);
+  const frameGeo = new THREE.BoxGeometry(1.02, 1.38, 0.14);
+  const recessGeo = new THREE.BoxGeometry(0.86, 1.18, 0.08);
   const winMatA = new THREE.MeshStandardMaterial({
     color: 0x1a0c04,
     emissive: 0xe85d04,
@@ -982,6 +995,7 @@ export function dressWorld(scene: THREE.Object3D, mat: Materials) {
     }
   }
   const frames = new THREE.InstancedMesh(frameGeo, mat.dark, spots.length);
+  const recesses = new THREE.InstancedMesh(recessGeo, mat.asphalt, spots.length);
   const meshA = new THREE.InstancedMesh(winGeo, winMatA, spots.length);
   const meshB = new THREE.InstancedMesh(winGeo, winMatB, spots.length);
   let ia = 0;
@@ -991,8 +1005,12 @@ export function dressWorld(scene: THREE.Object3D, mat: Materials) {
     dummy.rotation.set(0, s.ry, 0);
     dummy.updateMatrix();
     frames.setMatrixAt(i, dummy.matrix);
-    const inset = s.x < 0 ? 0.04 : -0.04;
-    dummy.position.set(s.x + inset, s.y, s.z);
+    const into = s.x < 0 ? -0.02 : 0.02;
+    dummy.position.set(s.x + into, s.y, s.z);
+    dummy.updateMatrix();
+    recesses.setMatrixAt(i, dummy.matrix);
+    const glass = s.x < 0 ? 0.06 : -0.06;
+    dummy.position.set(s.x + glass, s.y, s.z);
     dummy.updateMatrix();
     if (i % 5 === 0) {
       meshB.setMatrixAt(ib++, dummy.matrix);
@@ -1003,6 +1021,7 @@ export function dressWorld(scene: THREE.Object3D, mat: Materials) {
   meshA.count = ia;
   meshB.count = ib;
   scene.add(frames);
+  scene.add(recesses);
   scene.add(meshA);
   scene.add(meshB);
 
