@@ -72,13 +72,19 @@ export function makeMaterials(tex: {
     metal,
     armor,
     shade,
-    dark: new THREE.MeshStandardMaterial({ color: 0x12141a, roughness: 0.5, metalness: 0.48 }),
+    dark: new THREE.MeshStandardMaterial({
+      color: 0x1a1d24,
+      roughness: 0.42,
+      metalness: 0.58,
+      envMapIntensity: 0.95,
+    }),
     visor: new THREE.MeshStandardMaterial({
-      color: 0x3a1a08,
-      emissive: 0xe85d04,
-      emissiveIntensity: 3.4,
-      roughness: 0.12,
-      metalness: 0.08,
+      color: 0x2a1006,
+      emissive: 0xff7a1a,
+      emissiveIntensity: 4.2,
+      roughness: 0.08,
+      metalness: 0.18,
+      envMapIntensity: 1.4,
       toneMapped: false,
     }),
     shadeGlow: new THREE.MeshStandardMaterial({
@@ -99,11 +105,12 @@ export function makeMaterials(tex: {
     }),
     rubber: new THREE.MeshStandardMaterial({ color: 0x141416, roughness: 0.96, metalness: 0.02 }),
     glass: new THREE.MeshStandardMaterial({
-      color: 0x88ccee,
-      roughness: 0.06,
-      metalness: 0.08,
+      color: 0x6aa8c4,
+      roughness: 0.04,
+      metalness: 0.12,
       transparent: true,
-      opacity: 0.28,
+      opacity: 0.34,
+      envMapIntensity: 1.6,
     }),
     voidCore: new THREE.MeshStandardMaterial({
       color: 0x02040a,
@@ -215,7 +222,7 @@ function cap(
   rx = 0,
   ry = 0,
 ) {
-  const m = new THREE.Mesh(new THREE.CapsuleGeometry(r, len, 5, 10), mat);
+  const m = new THREE.Mesh(new THREE.CapsuleGeometry(r, len, 6, 12), mat);
   m.position.set(x, y, z);
   m.rotation.x = rx;
   m.rotation.y = ry;
@@ -223,6 +230,18 @@ function cap(
   m.receiveShadow = true;
   parent.add(m);
   return m;
+}
+
+function barrel(
+  mat: THREE.Material,
+  r: number,
+  len: number,
+  x: number,
+  y: number,
+  z: number,
+  parent: THREE.Object3D,
+) {
+  return cyl(mat, r, r * 0.92, len, x, y, z, parent, Math.PI / 2, 0, 12);
 }
 
 function sph(
@@ -255,98 +274,119 @@ export function createExoSuit(mat: Materials): PlayerRig {
   const metal = mat.metal;
 
   const loc = new THREE.Mesh(
-    new THREE.RingGeometry(0.42, 0.52, 28),
+    new THREE.RingGeometry(0.4, 0.54, 32),
     new THREE.MeshBasicMaterial({
       color: 0xe85d04,
       transparent: true,
-      opacity: 0.55,
+      opacity: 0.5,
       side: THREE.DoubleSide,
       depthWrite: false,
       toneMapped: false,
     }),
   );
   loc.rotation.x = -Math.PI / 2;
-  loc.position.y = 0.04;
+  loc.position.y = 0.03;
   group.add(loc);
+  const locInner = new THREE.Mesh(
+    new THREE.RingGeometry(0.18, 0.24, 24),
+    new THREE.MeshBasicMaterial({
+      color: 0x5eead4,
+      transparent: true,
+      opacity: 0.35,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      toneMapped: false,
+    }),
+  );
+  locInner.rotation.x = -Math.PI / 2;
+  locInner.position.y = 0.035;
+  group.add(locInner);
 
-  box(armor, 0.5, 0.18, 0.32, 0, 0.94, 0.02, group);
-  box(dark, 0.22, 0.1, 0.16, 0, 0.94, 0.16, group);
+  box(armor, 0.54, 0.2, 0.34, 0, 0.96, 0.02, group);
+  box(dark, 0.24, 0.1, 0.18, 0, 0.96, 0.18, group);
+  box(metal, 0.16, 0.08, 0.2, 0.2, 0.9, 0.12, group);
+  box(metal, 0.16, 0.08, 0.2, -0.2, 0.9, 0.12, group);
 
   const torso = new THREE.Group();
   torso.position.set(0, 1.2, 0);
   group.add(torso);
-  cap(dark, 0.16, 0.28, 0, 0.08, -0.02, torso);
-  box(armor, 0.58, 0.42, 0.36, 0, 0.14, 0.02, torso);
-  box(armor, 0.62, 0.16, 0.4, 0, 0.34, 0, torso);
-  box(metal, 0.42, 0.2, 0.12, 0, 0.18, 0.2, torso);
-  box(mat.ember, 0.12, 0.05, 0.04, 0, 0.26, 0.26, torso);
-  box(dark, 0.2, 0.07, 0.05, 0, 0.08, 0.22, torso);
-  box(armor, 0.2, 0.18, 0.1, 0.2, 0.2, 0.2, torso);
-  box(armor, 0.2, 0.18, 0.1, -0.2, 0.2, 0.2, torso);
-  box(armor, 0.36, 0.46, 0.22, 0, 0.1, -0.2, torso);
-  cyl(dark, 0.022, 0.022, 0.34, 0.17, 0.02, -0.16, torso, 0.75);
-  cyl(dark, 0.022, 0.022, 0.34, -0.17, 0.02, -0.16, torso, 0.75);
-  box(mat.warning, 0.08, 0.03, 0.18, 0.18, 0.36, 0.08, torso);
-  box(mat.warning, 0.08, 0.03, 0.18, -0.18, 0.36, 0.08, torso);
+  cap(dark, 0.15, 0.26, 0, 0.06, -0.02, torso);
+  box(armor, 0.62, 0.46, 0.4, 0, 0.16, 0.03, torso);
+  box(armor, 0.68, 0.18, 0.44, 0, 0.38, 0.01, torso);
+  box(metal, 0.48, 0.22, 0.14, 0, 0.18, 0.22, torso);
+  box(mat.ember, 0.14, 0.06, 0.05, 0, 0.28, 0.28, torso);
+  box(dark, 0.22, 0.08, 0.06, 0, 0.08, 0.24, torso);
+  box(armor, 0.22, 0.2, 0.12, 0.22, 0.22, 0.22, torso);
+  box(armor, 0.22, 0.2, 0.12, -0.22, 0.22, 0.22, torso);
+  box(armor, 0.4, 0.5, 0.24, 0, 0.12, -0.2, torso);
+  cyl(dark, 0.02, 0.02, 0.36, 0.18, 0.02, -0.18, torso, 0.75);
+  cyl(dark, 0.02, 0.02, 0.36, -0.18, 0.02, -0.18, torso, 0.75);
+  box(mat.warning, 0.09, 0.03, 0.2, 0.2, 0.4, 0.1, torso);
+  box(mat.warning, 0.09, 0.03, 0.2, -0.2, 0.4, 0.1, torso);
+  box(metal, 0.08, 0.28, 0.08, 0.3, 0.14, -0.08, torso);
+  box(metal, 0.08, 0.28, 0.08, -0.3, 0.14, -0.08, torso);
 
   const backpack = new THREE.Group();
-  backpack.position.set(0, 1.34, -0.3);
+  backpack.position.set(0, 1.36, -0.32);
   group.add(backpack);
-  box(dark, 0.36, 0.42, 0.18, 0, 0, 0, backpack);
-  cyl(metal, 0.075, 0.075, 0.36, 0.12, 0.02, -0.02, backpack);
-  cyl(metal, 0.075, 0.075, 0.36, -0.12, 0.02, -0.02, backpack);
-  cyl(mat.ember, 0.035, 0.035, 0.1, 0, -0.18, 0.02, backpack);
-  cyl(dark, 0.014, 0.014, 0.46, 0.1, 0.36, -0.02, backpack, 0.42);
-  box(armor, 0.14, 0.1, 0.1, 0, 0.2, 0.08, backpack);
+  box(dark, 0.4, 0.46, 0.2, 0, 0, 0, backpack);
+  cyl(metal, 0.08, 0.08, 0.4, 0.13, 0.02, -0.02, backpack);
+  cyl(metal, 0.08, 0.08, 0.4, -0.13, 0.02, -0.02, backpack);
+  cyl(mat.ember, 0.038, 0.03, 0.12, 0, -0.2, 0.02, backpack);
+  cyl(dark, 0.014, 0.014, 0.5, 0.1, 0.38, -0.02, backpack, 0.42);
+  box(armor, 0.16, 0.12, 0.12, 0, 0.2, 0.1, backpack);
+  box(mat.neon, 0.04, 0.18, 0.03, 0.18, 0.08, 0.1, backpack);
 
   const head = new THREE.Group();
   head.position.set(0, 1.66, 0.04);
   group.add(head);
-  sph(armor, 0.17, 0, 0.1, 0, head, 12);
-  box(armor, 0.3, 0.16, 0.28, 0, 0.06, 0.02, head);
-  box(dark, 0.32, 0.06, 0.3, 0, 0.2, 0, head);
-  const visor = box(mat.visor, 0.22, 0.055, 0.06, 0, 0.1, 0.16, head);
-  box(metal, 0.26, 0.03, 0.04, 0, 0.14, 0.17, head);
-  box(metal, 0.26, 0.03, 0.04, 0, 0.06, 0.17, head);
-  box(metal, 0.07, 0.055, 0.1, 0.14, 0.16, 0.06, head);
-  cyl(dark, 0.012, 0.012, 0.2, 0.11, 0.28, -0.04, head, 0.28);
-  sph(mat.ember, 0.02, 0.15, 0.16, 0.1, head, 6);
+  sph(armor, 0.19, 0, 0.12, 0, head, 14);
+  box(armor, 0.32, 0.18, 0.3, 0, 0.08, 0.04, head);
+  box(dark, 0.34, 0.07, 0.32, 0, 0.22, 0.01, head);
+  box(armor, 0.3, 0.08, 0.18, 0, 0.2, -0.1, head);
+  const visor = box(mat.visor, 0.24, 0.048, 0.055, 0, 0.11, 0.18, head);
+  box(metal, 0.28, 0.025, 0.04, 0, 0.15, 0.19, head);
+  box(metal, 0.28, 0.025, 0.04, 0, 0.07, 0.19, head);
+  box(metal, 0.08, 0.06, 0.12, 0.15, 0.17, 0.06, head);
+  cyl(dark, 0.012, 0.012, 0.22, 0.12, 0.3, -0.04, head, 0.28);
+  sph(mat.ember, 0.018, 0.16, 0.17, 0.1, head, 8);
+  box(dark, 0.08, 0.1, 0.08, 0, 0.08, -0.16, head);
 
   const mkArm = (side: number) => {
     const root = new THREE.Group();
-    root.position.set(0.42 * side, 1.46, 0);
-    root.rotation.z = 0.16 * side;
+    root.position.set(0.44 * side, 1.48, 0);
+    root.rotation.z = 0.14 * side;
     group.add(root);
-    box(armor, 0.26, 0.18, 0.3, 0.04 * side, 0.05, 0, root);
-    sph(armor, 0.1, 0.05 * side, 0.02, 0, root, 8);
-    cap(dark, 0.07, 0.22, 0.07 * side, -0.22, 0, root);
-    cap(armor, 0.065, 0.2, 0.07 * side, -0.5, 0.04, root);
-    box(metal, 0.13, 0.11, 0.2, 0.07 * side, -0.68, 0.1, root);
-    box(mat.ember, 0.035, 0.035, 0.04, 0.07 * side, -0.62, 0.2, root);
+    box(armor, 0.28, 0.2, 0.32, 0.05 * side, 0.05, 0, root);
+    sph(armor, 0.11, 0.05 * side, 0.02, 0, root, 10);
+    cap(dark, 0.075, 0.24, 0.07 * side, -0.24, 0.02, root);
+    cap(armor, 0.07, 0.22, 0.07 * side, -0.52, 0.05, root);
+    box(metal, 0.15, 0.12, 0.22, 0.07 * side, -0.7, 0.1, root);
+    box(mat.ember, 0.04, 0.035, 0.04, 0.07 * side, -0.64, 0.22, root);
     return root;
   };
   const leftArm = mkArm(-1);
   const rightArm = mkArm(1);
-  rightArm.rotation.x = -0.72;
-  rightArm.rotation.y = -0.12;
-  leftArm.rotation.x = -0.55;
-  leftArm.rotation.z = 0.28;
+  rightArm.rotation.x = -0.88;
+  rightArm.rotation.y = -0.06;
+  leftArm.rotation.x = -0.7;
+  leftArm.rotation.z = 0.32;
 
   const gunGrip = new THREE.Group();
-  gunGrip.position.set(0.08, -0.66, 0.16);
-  gunGrip.rotation.set(-0.22, 0.08, 0.18);
+  gunGrip.position.set(0.05, -0.68, 0.14);
+  gunGrip.rotation.set(0.86, 0.04, -0.02);
   rightArm.add(gunGrip);
 
   const mkLeg = (side: number) => {
     const thigh = new THREE.Group();
-    thigh.position.set(0.16 * side, 0.9, 0);
+    thigh.position.set(0.17 * side, 0.9, 0);
     group.add(thigh);
-    cap(armor, 0.1, 0.26, 0, -0.16, 0, thigh);
-    box(metal, 0.18, 0.1, 0.16, 0, -0.2, 0.08, thigh);
-    cap(dark, 0.075, 0.24, 0, -0.5, 0.01, thigh);
-    box(armor, 0.16, 0.1, 0.14, 0, -0.42, 0.07, thigh);
-    box(mat.rubber, 0.2, 0.1, 0.34, 0, -0.72, 0.06, thigh);
-    box(armor, 0.14, 0.06, 0.1, 0, -0.64, 0.14, thigh);
+    cap(armor, 0.11, 0.28, 0, -0.16, 0.02, thigh);
+    box(metal, 0.2, 0.11, 0.18, 0, -0.2, 0.1, thigh);
+    cap(dark, 0.08, 0.26, 0, -0.52, 0.02, thigh);
+    box(armor, 0.18, 0.12, 0.16, 0, -0.44, 0.09, thigh);
+    box(mat.rubber, 0.22, 0.1, 0.36, 0, -0.74, 0.07, thigh);
+    box(armor, 0.16, 0.06, 0.12, 0, -0.66, 0.16, thigh);
     return thigh;
   };
 
@@ -374,49 +414,48 @@ export function createExoSuit(mat: Materials): PlayerRig {
 }
 
 export function mountGunInRightHand(gun: THREE.Object3D) {
-  gun.position.set(0.02, -0.04, 0.22);
-  gun.rotation.set(-0.08, 0.16, 0.04);
+  gun.position.set(0.01, 0.01, 0.26);
+  gun.rotation.set(0.04, 0.02, 0.01);
 }
 
 export function createRifle(mat: Materials) {
   const g = new THREE.Group();
-  box(mat.dark, 0.08, 0.1, 0.82, 0, 0, 0.02, g);
-  box(mat.metal, 0.07, 0.07, 0.34, 0, 0.02, 0.42, g);
-  box(mat.dark, 0.055, 0.2, 0.13, 0, -0.13, -0.12, g);
-  box(mat.metal, 0.045, 0.045, 0.22, 0, -0.12, 0.16, g);
-  box(mat.ember, 0.035, 0.035, 0.12, 0, 0.08, 0.12, g);
-  box(mat.dark, 0.045, 0.07, 0.18, 0, 0.09, -0.16, g);
-  box(mat.metal, 0.05, 0.16, 0.32, 0, -0.08, 0.56, g);
-  box(mat.armor, 0.18, 0.055, 0.42, 0, -0.14, 0.22, g);
-  for (let i = 0; i < 8; i++) {
-    box(mat.metal, 0.16, 0.03, 0.035, 0, -0.2, 0.08 + i * 0.05, g, 0, 0, 0.15);
-  }
-  box(mat.ember, 0.03, 0.03, 0.08, 0, -0.2, 0.46, g);
-  box(mat.neon, 0.018, 0.018, 0.3, 0.04, 0.045, 0.08, g);
-  sph(mat.ember, 0.02, 0, 0.09, 0.28, g, 6);
+  box(mat.dark, 0.07, 0.09, 0.42, 0, 0.01, -0.02, g);
+  barrel(mat.metal, 0.022, 0.46, 0, 0.025, 0.38, g);
+  barrel(mat.dark, 0.028, 0.1, 0, 0.025, 0.62, g);
+  box(mat.dark, 0.05, 0.18, 0.11, 0, -0.12, -0.1, g);
+  box(mat.metal, 0.04, 0.04, 0.2, 0, -0.12, 0.12, g);
+  box(mat.ember, 0.03, 0.03, 0.1, 0, 0.075, 0.08, g);
+  box(mat.dark, 0.045, 0.07, 0.2, 0, 0.08, -0.18, g);
+  box(mat.metal, 0.05, 0.14, 0.18, 0, -0.06, 0.22, g);
+  box(mat.armor, 0.16, 0.045, 0.36, 0, -0.08, 0.16, g);
+  box(mat.neon, 0.014, 0.014, 0.26, 0.032, 0.05, 0.06, g);
+  sph(mat.ember, 0.016, 0, 0.08, 0.24, g, 8);
+  box(mat.dark, 0.08, 0.04, 0.12, 0, 0.07, -0.02, g);
   return g;
 }
 
 export function createShotgun(mat: Materials) {
   const g = new THREE.Group();
-  box(mat.dark, 0.12, 0.13, 0.64, 0, 0, 0, g);
-  box(mat.metal, 0.05, 0.05, 0.48, 0.048, 0.028, 0.14, g);
-  box(mat.metal, 0.05, 0.05, 0.48, -0.048, 0.028, 0.14, g);
-  box(mat.dark, 0.075, 0.2, 0.15, 0, -0.13, -0.18, g);
-  box(mat.ember, 0.04, 0.04, 0.09, 0, 0.1, 0.06, g);
-  box(mat.rust, 0.13, 0.08, 0.18, 0, -0.04, -0.3, g);
-  box(mat.armor, 0.14, 0.05, 0.2, 0, 0.08, -0.08, g);
+  box(mat.dark, 0.1, 0.11, 0.36, 0, 0.01, -0.04, g);
+  barrel(mat.metal, 0.02, 0.42, 0.03, 0.03, 0.28, g);
+  barrel(mat.metal, 0.02, 0.42, -0.03, 0.03, 0.28, g);
+  box(mat.dark, 0.07, 0.18, 0.12, 0, -0.12, -0.14, g);
+  box(mat.ember, 0.035, 0.035, 0.08, 0, 0.09, 0.04, g);
+  box(mat.rust, 0.12, 0.08, 0.16, 0, -0.02, -0.26, g);
+  box(mat.armor, 0.13, 0.045, 0.18, 0, 0.07, -0.06, g);
   return g;
 }
 
 export function createSmg(mat: Materials) {
   const g = new THREE.Group();
-  box(mat.dark, 0.07, 0.09, 0.48, 0, 0, 0, g);
-  box(mat.metal, 0.055, 0.055, 0.2, 0, 0.015, 0.28, g);
-  box(mat.dark, 0.048, 0.2, 0.09, 0, -0.12, -0.04, g);
-  box(mat.neon, 0.02, 0.02, 0.18, 0, 0.06, 0.04, g);
-  box(mat.dark, 0.04, 0.05, 0.14, 0, 0.06, -0.16, g);
-  box(mat.ember, 0.025, 0.025, 0.06, 0, 0.07, 0.16, g);
+  box(mat.dark, 0.065, 0.08, 0.28, 0, 0.01, 0, g);
+  barrel(mat.metal, 0.018, 0.22, 0, 0.02, 0.24, g);
+  box(mat.dark, 0.045, 0.18, 0.08, 0, -0.11, -0.02, g);
+  box(mat.neon, 0.016, 0.016, 0.16, 0, 0.055, 0.04, g);
+  box(mat.dark, 0.038, 0.045, 0.12, 0, 0.055, -0.14, g);
+  box(mat.ember, 0.022, 0.022, 0.05, 0, 0.065, 0.14, g);
+  box(mat.metal, 0.05, 0.12, 0.08, 0, -0.08, 0.08, g);
   return g;
 }
 
@@ -441,30 +480,32 @@ function createHusk(mat: Materials): EnemyRig {
   const group = new THREE.Group();
   const glow: THREE.Mesh[] = [];
   const gMat = cloneGlow(mat.shadeGlow);
-  cap(mat.shade, 0.14, 0.42, 0, 1.18, 0.02, group);
-  box(mat.shade, 0.3, 0.5, 0.24, 0, 1.22, 0.04, group, 0.28);
-  sph(mat.shade, 0.16, 0, 1.58, 0.06, group, 10);
-  const eye = box(gMat, 0.16, 0.04, 0.05, 0, 1.58, 0.2, group);
+  cap(mat.shade, 0.15, 0.44, 0, 1.16, 0.03, group);
+  box(mat.shade, 0.32, 0.52, 0.26, 0, 1.2, 0.05, group, 0.32);
+  sph(mat.shade, 0.17, 0, 1.6, 0.08, group, 12);
+  box(mat.shade, 0.2, 0.14, 0.16, 0, 1.62, 0.1, group, 0.2);
+  const eye = box(gMat, 0.18, 0.035, 0.05, 0, 1.6, 0.22, group);
   glow.push(eye);
-  const crack = box(gMat, 0.025, 0.46, 0.02, 0.07, 1.2, 0.16, group);
+  const crack = box(gMat, 0.022, 0.5, 0.02, 0.08, 1.18, 0.17, group);
   glow.push(crack);
-  const rib = box(gMat, 0.18, 0.02, 0.02, 0, 1.08, 0.14, group);
+  const rib = box(gMat, 0.2, 0.018, 0.02, 0, 1.06, 0.16, group);
   glow.push(rib);
   const mkArm = (side: number, extra = 0) => {
     const root = new THREE.Group();
-    root.position.set(0.26 * side, 1.36, 0.04);
-    root.rotation.z = 0.48 * side;
+    root.position.set(0.27 * side, 1.36, 0.04);
+    root.rotation.z = 0.5 * side;
     group.add(root);
-    cap(mat.shade, 0.045, 0.62 + extra, 0.04 * side, -0.36, 0.06, root);
-    const claw = box(gMat, 0.035, 0.035, 0.24, 0.04 * side, -0.78, 0.16, root);
+    cap(mat.shade, 0.048, 0.64 + extra, 0.04 * side, -0.36, 0.06, root);
+    const claw = box(gMat, 0.032, 0.032, 0.26, 0.04 * side, -0.8, 0.17, root);
     glow.push(claw);
-    box(mat.shade, 0.03, 0.03, 0.14, 0.02 * side, -0.82, 0.22, root, 0.4);
+    box(mat.shade, 0.028, 0.028, 0.16, 0.02 * side, -0.84, 0.24, root, 0.4);
+    box(gMat, 0.02, 0.02, 0.12, 0.06 * side, -0.86, 0.2, root, -0.3);
     return root;
   };
-  cap(mat.shade, 0.055, 0.48, -0.09, 0.48, 0, group);
-  cap(mat.shade, 0.055, 0.48, 0.09, 0.48, 0, group);
-  box(mat.shade, 0.12, 0.06, 0.26, -0.09, 0.08, 0.04, group);
-  box(mat.shade, 0.12, 0.06, 0.26, 0.09, 0.08, 0.04, group);
+  cap(mat.shade, 0.058, 0.5, -0.1, 0.48, 0.02, group);
+  cap(mat.shade, 0.058, 0.5, 0.1, 0.48, 0.02, group);
+  box(mat.shade, 0.13, 0.06, 0.28, -0.1, 0.08, 0.05, group);
+  box(mat.shade, 0.13, 0.06, 0.28, 0.1, 0.08, 0.05, group);
   return { group, kind: "husk", leftArm: mkArm(-1, 0.1), rightArm: mkArm(1), glow };
 }
 
@@ -582,25 +623,30 @@ function createHarbinger(mat: Materials): EnemyRig {
 
 export function createCar(mat: Materials) {
   const g = new THREE.Group();
-  box(mat.rust, 2.4, 0.5, 1.12, 0, 0.48, 0, g);
-  box(mat.dark, 1.2, 0.42, 1.0, -0.1, 0.88, 0, g);
-  box(mat.glass, 0.7, 0.26, 0.94, 0.2, 0.9, 0, g);
-  box(mat.warning, 0.08, 0.06, 1.08, 1.16, 0.5, 0, g);
-  box(mat.metal, 0.16, 0.08, 0.9, -1.1, 0.52, 0, g);
-  box(mat.rust, 0.5, 0.12, 0.4, 0.7, 0.72, 0.4, g, 0.4, 0.2, 0.15);
+  box(mat.rust, 2.55, 0.42, 1.16, 0, 0.46, 0, g);
+  box(mat.dark, 1.35, 0.46, 1.06, -0.12, 0.9, 0, g);
+  box(mat.glass, 0.72, 0.28, 1.0, 0.22, 0.94, 0, g);
+  box(mat.warning, 0.07, 0.06, 1.1, 1.22, 0.48, 0, g);
+  box(mat.metal, 0.18, 0.08, 0.92, -1.18, 0.5, 0, g);
+  box(mat.rust, 0.55, 0.12, 0.42, 0.74, 0.7, 0.42, g, 0.45, 0.18, 0.12);
+  box(mat.dark, 0.9, 0.08, 1.08, 0.5, 0.7, 0, g);
   const wheel = (x: number, z: number, missing = false) => {
     if (missing) return;
-    const m = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.18, 12), mat.rubber);
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.2, 14), mat.rubber);
     m.rotation.z = Math.PI / 2;
-    m.position.set(x, 0.28, z);
+    m.position.set(x, 0.3, z);
     m.castShadow = true;
     g.add(m);
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.22, 8), mat.metal);
+    hub.rotation.z = Math.PI / 2;
+    hub.position.set(x, 0.3, z);
+    g.add(hub);
   };
-  wheel(-0.72, 0.56);
-  wheel(0.72, 0.56);
-  wheel(-0.72, -0.56);
-  wheel(0.72, -0.56, true);
-  g.rotation.z = 0.06;
+  wheel(-0.78, 0.58);
+  wheel(0.78, 0.58);
+  wheel(-0.78, -0.58);
+  wheel(0.78, -0.58, true);
+  g.rotation.z = 0.05;
   g.rotation.y = 0.04;
   return g;
 }
@@ -617,7 +663,7 @@ export function createLamp(mat: Materials) {
     new THREE.MeshBasicMaterial({
       color: 0xe85d04,
       transparent: true,
-      opacity: 0.045,
+      opacity: 0.07,
       side: THREE.DoubleSide,
       depthWrite: false,
       toneMapped: false,
@@ -679,10 +725,11 @@ export function createBarricade(mat: Materials) {
 
 export function createWreck(mat: Materials) {
   const g = new THREE.Group();
-  box(mat.metal, 3.4, 0.7, 1.6, 0, 0.7, 0, g);
-  box(mat.dark, 1.6, 0.9, 1.4, -0.4, 1.3, 0, g);
-  box(mat.ember, 0.3, 0.2, 0.3, 1.2, 0.9, 0.4, g);
-  box(mat.rust, 1.1, 0.2, 2.2, 0.6, 0.2, 0.8, g, 0.4, 0.2, 0.1);
+  box(mat.metal, 3.5, 0.72, 1.7, 0, 0.7, 0, g);
+  box(mat.dark, 1.7, 0.95, 1.45, -0.4, 1.32, 0, g);
+  box(mat.ember, 0.32, 0.22, 0.32, 1.24, 0.92, 0.42, g);
+  box(mat.rust, 1.15, 0.2, 2.3, 0.62, 0.2, 0.82, g, 0.4, 0.2, 0.1);
+  box(mat.metal, 0.8, 0.16, 0.7, 1.1, 1.05, -0.2, g);
   const light = new THREE.PointLight(0xe85d04, 1.4, 8, 2);
   light.position.set(1.2, 1.1, 0.4);
   g.add(light);
@@ -712,10 +759,22 @@ export function addWorldFromBoxes(scene: THREE.Object3D, boxes: AABB[], mat: Mat
             ? mat.rust
             : mat.wall;
     const m = new THREE.Mesh(geo, use);
-    m.position.set((b.minx + b.maxx) / 2, (b.miny + b.maxy) / 2, (b.minz + b.maxz) / 2);
+    const cx = (b.minx + b.maxx) / 2;
+    const cy = (b.miny + b.maxy) / 2;
+    const cz = (b.minz + b.maxz) / 2;
+    m.position.set(cx, cy, cz);
     m.castShadow = true;
     m.receiveShadow = true;
     scene.add(m);
+    if (!b.cover && h > 2.3 && w > 1.2 && d > 1.2) {
+      const ledge = new THREE.Mesh(new THREE.BoxGeometry(w + 0.12, 0.12, d + 0.12), mat.metal);
+      ledge.position.set(cx, b.maxy - 0.06, cz);
+      ledge.castShadow = true;
+      scene.add(ledge);
+      const belt = new THREE.Mesh(new THREE.BoxGeometry(w + 0.06, 0.08, d + 0.06), mat.rust);
+      belt.position.set(cx, b.miny + h * 0.45, cz);
+      scene.add(belt);
+    }
   }
 }
 
@@ -823,7 +882,7 @@ export function dressWorld(scene: THREE.Object3D, mat: Materials) {
     [-26, 16, 8, 14, 10],
     [27, 14, 7, 16, 9],
   ];
-  for (const [x, z, w, h, d] of sil) {
+  sil.forEach(([x, z, w, h, d], i) => {
     const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat.dark);
     b.position.set(x, h * 0.45, z);
     b.castShadow = true;
@@ -832,7 +891,19 @@ export function dressWorld(scene: THREE.Object3D, mat: Materials) {
     const crown = new THREE.Mesh(new THREE.BoxGeometry(w * 0.35, h * 0.28, d * 0.35), mat.rust);
     crown.position.set(x + (w > 7 ? 1.2 : -0.8), h * 0.72, z);
     skyline.add(crown);
-  }
+    const glowWin = new THREE.Mesh(
+      new THREE.PlaneGeometry(w * 0.18, h * 0.12),
+      new THREE.MeshStandardMaterial({
+        color: 0x1a0c04,
+        emissive: i % 2 ? 0xe85d04 : 0x22d3ee,
+        emissiveIntensity: 1.8,
+        toneMapped: false,
+      }),
+    );
+    glowWin.position.set(x + (x > 0 ? -w * 0.48 : w * 0.48), h * 0.38, z);
+    glowWin.rotation.y = x > 0 ? -Math.PI / 2 : Math.PI / 2;
+    skyline.add(glowWin);
+  });
   scene.add(skyline);
 }
 
@@ -1070,18 +1141,21 @@ export function createShipInterior(mat: Materials) {
 
   const hull = new THREE.MeshStandardMaterial({
     color: 0x3a424c,
-    metalness: 0.62,
-    roughness: 0.38,
+    metalness: 0.68,
+    roughness: 0.34,
+    envMapIntensity: 1.05,
   });
   const deck = new THREE.MeshStandardMaterial({
     color: 0x6a7380,
-    metalness: 0.42,
-    roughness: 0.48,
+    metalness: 0.48,
+    roughness: 0.42,
+    envMapIntensity: 0.9,
   });
   const plate = new THREE.MeshStandardMaterial({
     color: 0x4c5560,
-    metalness: 0.55,
-    roughness: 0.4,
+    metalness: 0.62,
+    roughness: 0.36,
+    envMapIntensity: 1,
   });
 
   const stars = new THREE.Mesh(

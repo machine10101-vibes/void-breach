@@ -265,9 +265,9 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   renderer.setSize(canvas.clientWidth || window.innerWidth, canvas.clientHeight || window.innerHeight, false);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.38;
+  renderer.toneMappingExposure = 1.22;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFShadowMap;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x1a120c);
@@ -281,23 +281,41 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   let nearCnc = false;
 
   const camera = new THREE.PerspectiveCamera(CAM_FOV, 1, 0.22, 280);
-  scene.add(new THREE.HemisphereLight(0xffd2a8, 0x1c1610, 0.92));
-  const sun = new THREE.DirectionalLight(0xffd0a0, 2.55);
+  scene.add(new THREE.HemisphereLight(0xffd2a8, 0x1c1610, 0.78));
+  const sun = new THREE.DirectionalLight(0xffd0a0, 2.35);
   sun.position.set(-28, 34, 18);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
   sun.shadow.camera.near = 2;
-  sun.shadow.camera.far = 120;
-  sun.shadow.camera.left = -40;
-  sun.shadow.camera.right = 40;
-  sun.shadow.camera.top = 40;
-  sun.shadow.camera.bottom = -40;
-  sun.shadow.bias = -0.0004;
+  sun.shadow.camera.far = 90;
+  sun.shadow.camera.left = -22;
+  sun.shadow.camera.right = 22;
+  sun.shadow.camera.top = 22;
+  sun.shadow.camera.bottom = -22;
+  sun.shadow.bias = -0.00028;
+  sun.shadow.normalBias = 0.04;
   scene.add(sun);
-  const fill = new THREE.DirectionalLight(0x6ee7e0, 0.62);
+  scene.add(sun.target);
+  const fill = new THREE.DirectionalLight(0x6ee7e0, 0.48);
   fill.position.set(22, 16, -28);
   scene.add(fill);
-  scene.add(new THREE.AmbientLight(0x3a3228, 0.55));
+  scene.add(new THREE.AmbientLight(0x3a3228, 0.38));
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const envScene = new THREE.Scene();
+  envScene.add(new THREE.HemisphereLight(0xffc89a, 0x1a120c, 1.35));
+  const envWarm = new THREE.Mesh(new THREE.SphereGeometry(2.2, 8, 8), new THREE.MeshBasicMaterial({ color: 0xe85d04 }));
+  envWarm.position.set(-7, 5, 4);
+  envScene.add(envWarm);
+  const envCool = new THREE.Mesh(new THREE.SphereGeometry(1.8, 8, 8), new THREE.MeshBasicMaterial({ color: 0x22d3ee }));
+  envCool.position.set(6, 2.4, -5);
+  envScene.add(envCool);
+  const envGround = new THREE.Mesh(new THREE.CircleGeometry(14, 16), new THREE.MeshBasicMaterial({ color: 0x2a1c12 }));
+  envGround.rotation.x = -Math.PI / 2;
+  envGround.position.y = -2.2;
+  envScene.add(envGround);
+  scene.environment = pmrem.fromScene(envScene, 0.06).texture;
+  scene.environmentIntensity = 0.82;
+  pmrem.dispose();
   const playerKey = new THREE.PointLight(0xffc89a, 5.2, 16, 1.6);
   scene.add(playerKey);
   const playerRim = new THREE.PointLight(0x5eead4, 2.4, 10, 2);
@@ -330,7 +348,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
           t.colorSpace = THREE.SRGBColorSpace;
           t.wrapS = t.wrapT = THREE.RepeatWrapping;
           t.repeat.set(repeat, repeat);
-          t.anisotropy = 8;
+          t.anisotropy = 16;
           resolve(t);
         },
         undefined,
@@ -469,7 +487,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     if (!isMobile) {
       composer = new EffectComposer(renderer);
       composer.addPass(new RenderPass(scene, camera));
-      composer.addPass(new UnrealBloomPass(new THREE.Vector2(1, 1), 0.38, 0.65, 0.78));
+      composer.addPass(new UnrealBloomPass(new THREE.Vector2(1, 1), 0.28, 0.52, 0.84));
       composer.addPass(new OutputPass());
       useComposer = true;
     }
@@ -1681,6 +1699,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       py = 0.12;
       playerKey.position.set(px + 1.1, py + 3.6, pz + 1.6);
       playerRim.position.set(px - 1.2, py + 2.0, pz - 1.0);
+      sun.position.set(px + 8, py + 16, pz + 10);
+      sun.target.position.set(px, py, pz);
       if (wm > 0.12) yaw = Math.atan2(-wishX, -wishZ);
       const cnc = { x: 5.4, z: -4.4 };
       nearCnc = Math.hypot(px - cnc.x, pz - cnc.z) < 2.35;
@@ -1694,10 +1714,10 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
         const bob = moving ? Math.sin(now * 0.01) : 0;
         playerRig.leftThigh.rotation.x = bob * 0.55;
         playerRig.rightThigh.rotation.x = -bob * 0.55;
-        playerRig.leftArm.rotation.x = -0.55 - bob * 0.12;
-        playerRig.leftArm.rotation.z = 0.28;
-        playerRig.rightArm.rotation.x = -0.72 + bob * 0.08;
-        playerRig.rightArm.rotation.y = -0.12;
+        playerRig.leftArm.rotation.x = -0.7 - bob * 0.1;
+        playerRig.leftArm.rotation.z = 0.32;
+        playerRig.rightArm.rotation.x = -0.88 + bob * 0.06;
+        playerRig.rightArm.rotation.y = -0.06;
         playerRig.group.position.set(px, py, pz);
         playerRig.group.rotation.y = yaw + Math.PI;
       }
@@ -1839,10 +1859,10 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       const bob = moving ? Math.sin(t * (sprint ? 12 : 8)) : 0;
       playerRig.leftThigh.rotation.x = bob * 0.7;
       playerRig.rightThigh.rotation.x = -bob * 0.7;
-      playerRig.leftArm.rotation.x = -0.55 - bob * 0.12;
-      playerRig.leftArm.rotation.z = 0.28;
-      playerRig.rightArm.rotation.x = -0.72 + bob * 0.08 - (fireCd > 0 ? 0.16 : 0) - (reloadT > 0 ? 0.35 : 0);
-      playerRig.rightArm.rotation.y = -0.12;
+      playerRig.leftArm.rotation.x = -0.7 - bob * 0.1;
+      playerRig.leftArm.rotation.z = 0.32;
+      playerRig.rightArm.rotation.x = -0.88 + bob * 0.06 - (fireCd > 0 ? 0.12 : 0) - (reloadT > 0 ? 0.28 : 0);
+      playerRig.rightArm.rotation.y = -0.06;
       playerRig.group.position.set(px, py, pz);
       playerRig.group.rotation.y = yaw + Math.PI;
       playerRig.torso.rotation.x = pitch * 0.22;
@@ -1862,6 +1882,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     overLight.position.set(px, py + 1.4, pz);
     playerKey.position.set(px + 1.2, py + 4.2, pz + 1.8);
     playerRim.position.set(px - 1.4, py + 2.2, pz - 1.2);
+    sun.position.set(px - 22, py + 30, pz + 14);
+    sun.target.position.set(px, py, pz);
 
     placeFollowCam(dt);
 

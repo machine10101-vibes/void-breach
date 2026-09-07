@@ -122,9 +122,10 @@ export function bindPbr(
 ) {
   const size = 256;
   const height = makeSeamlessNoise(size, opts?.metal ? 14 : 7, opts?.metal ? 2.2 : 1.4);
-  mat.normalMap = makeNormalFromHeight(height, size, opts?.metal ? 1.6 : 3.1);
-  mat.normalScale = new THREE.Vector2(0.55, 0.55);
-  mat.roughnessMap = makeRoughnessMap(size, opts?.metal ? 0.38 : 0.78, 0.22);
+  mat.normalMap = makeNormalFromHeight(height, size, opts?.metal ? 2.1 : 3.6);
+  mat.normalScale = new THREE.Vector2(opts?.metal ? 0.72 : 0.95, opts?.metal ? 0.72 : 0.95);
+  mat.roughnessMap = makeRoughnessMap(size, opts?.metal ? 0.32 : 0.74, 0.28);
+  mat.envMapIntensity = opts?.metal ? 1.15 : 0.72;
   if (map) {
     mat.map = map;
     map.wrapS = map.wrapT = THREE.RepeatWrapping;
