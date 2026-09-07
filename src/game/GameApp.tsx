@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { GameHandle } from "./engine";
 import { Hud, PauseOverlay } from "./Hud";
+import { isTouchUi, TOUCH_UI_QUERY } from "./layout";
 import { SettingsSheet } from "./SettingsSheet";
 import { TitleScreen } from "./TitleScreen";
 import { TouchControls } from "./TouchControls";
@@ -51,15 +52,17 @@ const bootHud: HudSnapshot = {
 };
 
 function useTouchUi() {
-  const [on, setOn] = useState(() =>
-    typeof window !== "undefined" ? window.matchMedia("(pointer: coarse), (max-width: 819px)").matches : false,
-  );
+  const [on, setOn] = useState(() => isTouchUi());
   useEffect(() => {
-    const mq = window.matchMedia("(pointer: coarse), (max-width: 819px)");
-    const apply = () => setOn(mq.matches);
+    const mq = window.matchMedia(TOUCH_UI_QUERY);
+    const apply = () => setOn(isTouchUi());
     apply();
     mq.addEventListener("change", apply);
-    return () => mq.removeEventListener("change", apply);
+    window.addEventListener("resize", apply);
+    return () => {
+      mq.removeEventListener("change", apply);
+      window.removeEventListener("resize", apply);
+    };
   }, []);
   return on;
 }

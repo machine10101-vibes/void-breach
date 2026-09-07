@@ -34,6 +34,7 @@ import {
   type PlayerRig,
 } from "./meshes";
 import { ParticleField, ScorchPool } from "./particles";
+import { isTouchUi } from "./layout";
 import { loadSave, recordRun, writeSave, type SaveData } from "./save";
 import type {
   ControlsProbe,
@@ -314,7 +315,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   scene.add(overLight);
   const drone = new THREE.Group();
   let composer: EffectComposer | null = null;
-  const isMobile = window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 820;
+  let isMobile = isTouchUi();
   let worldBuilt = false;
   let prevSlot = 0;
   let camSnap = true;
@@ -1640,6 +1641,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   requestAnimationFrame(frame);
 
   function resize() {
+    isMobile = isTouchUi();
     const w = canvas.clientWidth || window.innerWidth;
     const h = canvas.clientHeight || window.innerHeight;
     camera.aspect = w / Math.max(1, h);
