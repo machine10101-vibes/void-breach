@@ -546,8 +546,12 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   }
   function placeFollowCam(dt: number, snap = false) {
     if (phase === "ship") {
-      camPos.set(px + 4.4, 5.05, pz + 7.1);
-      camLook.set(px + 1.4, 0.95, pz - 1.6);
+      camPos.set(
+        THREE.MathUtils.clamp(px + 3.9, -8.0, 8.0),
+        3.95,
+        THREE.MathUtils.clamp(pz + 5.6, -6.6, 7.4),
+      );
+      camLook.set(px + 1.1, 1.25, pz - 2.1);
       if (snap || camSnap) {
         camera.position.copy(camPos);
         camSnap = false;
@@ -555,7 +559,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
         camera.position.lerp(camPos, 1 - Math.exp(-8 * dt));
       }
       camera.lookAt(camLook);
-      camera.fov = 42;
+      camera.fov = 50;
       camera.updateProjectionMatrix();
       return;
     }
@@ -1694,8 +1698,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
         wishX /= wm;
         wishZ /= wm;
       }
-      px = THREE.MathUtils.clamp(px + wishX * 4.6 * dt, -9.6, 9.6);
-      pz = THREE.MathUtils.clamp(pz + wishZ * 4.6 * dt, -8.2, 8.4);
+      px = THREE.MathUtils.clamp(px + wishX * 4.6 * dt, -8.2, 8.2);
+      pz = THREE.MathUtils.clamp(pz + wishZ * 4.6 * dt, -7.2, 7.4);
       py = 0.12;
       playerKey.position.set(px + 1.1, py + 3.6, pz + 1.6);
       playerRim.position.set(px - 1.2, py + 2.0, pz - 1.0);
