@@ -8,6 +8,7 @@ import { collidePlayer, groundHeight, rayWorld, clamp } from "./collision";
 import { buildLevel } from "./level";
 import {
   addWorldFromBoxes,
+  applyArmorKits,
   createAimReticle,
   createBarrel,
   createBeam,
@@ -21,6 +22,7 @@ import {
   createRifle,
   createRubble,
   createShade,
+  createShipInterior,
   createShotgun,
   createSlash,
   createSmg,
@@ -29,12 +31,22 @@ import {
   createWreck,
   dressWorld,
   makeMaterials,
+  mountGunInRightHand,
   type EnemyRig,
   type Materials,
   type PlayerRig,
 } from "./meshes";
 import { ParticleField, ScorchPool } from "./particles";
 import { assetUrl } from "@/lib/asset-url";
+import {
+  armorBonuses,
+  INVENTORY_CAP,
+  instantiateRecipe,
+  itemToWeapon,
+  RECIPES,
+  rollLootArmor,
+  rollLootWeapon,
+} from "./items";
 import { isTouchUi } from "./layout";
 import { loadSave, recordRun, writeSave, type SaveData } from "./save";
 import type {
@@ -42,6 +54,7 @@ import type {
   EnemyKind,
   FloatNum,
   HudSnapshot,
+  InvItem,
   Phase,
   Rarity,
   WeaponId,
@@ -106,8 +119,9 @@ type Drop = {
   mesh: THREE.Group;
   x: number;
   z: number;
-  kind: "gold" | "health" | "weapon" | "ammo";
+  kind: "gold" | "health" | "weapon" | "ammo" | "armor";
   weapon?: Weapon;
+  item?: InvItem;
   amount: number;
   rarity: Rarity;
 };
@@ -164,6 +178,10 @@ export type GameHandle = {
   setTouchLook: (dx: number, dy: number) => void;
   setAction: (name: string, down: boolean) => void;
   pulse: (name: string) => void;
+  enterShip: () => void;
+  recallToShip: () => void;
+  equipItem: (uid: string) => void;
+  craftRecipe: (id: string) => void;
 };
 
 export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => void): GameHandle {
@@ -254,6 +272,13 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x1a120c);
   scene.fog = new THREE.FogExp2(0x2a1c12, 0.0085);
+  const missionGroup = new THREE.Group();
+  missionGroup.name = "mission";
+  scene.add(missionGroup);
+  const shipRoot = new THREE.Group();
+  shipRoot.visible = false;
+  scene.add(shipRoot);
+  let nearCnc = false;
 
   const camera = new THREE.PerspectiveCamera(CAM_FOV, 1, 0.22, 280);
   scene.add(new THREE.HemisphereLight(0xffd2a8, 0x1c1610, 0.92));
@@ -358,7 +383,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     const ground = new THREE.Mesh(groundGeo, mat.concrete);
     ground.receiveShadow = true;
     ground.position.set(0, 0, -48);
-    scene.add(ground);
+    missionGroup.add(ground);
     if (textures.ground) {
       const g = textures.ground.clone();
       g.repeat.set(28, 32);
@@ -366,43 +391,44 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       mat.concrete.map = g;
       mat.concrete.needsUpdate = true;
     }
-    addWorldFromBoxes(scene, level.boxes, mat);
-    dressWorld(scene, mat);
+    addWorldFromBoxes(missionGroup, level.boxes, mat);
+    dressWorld(missionGroup, mat);
     for (const [x, z] of level.lamps) {
       const lamp = createLamp(mat);
       lamp.position.set(x, 0, z);
-      scene.add(lamp);
+      missionGroup.add(lamp);
     }
     for (const [x, z] of level.rubble) {
       const r = createRubble(mat);
       r.position.set(x, 0, z);
-      scene.add(r);
+      missionGroup.add(r);
     }
     for (const [x, z, rot] of level.cars) {
       const c = createCar(mat);
       c.position.set(x, 0, z);
       c.rotation.y = rot;
-      scene.add(c);
+      missionGroup.add(c);
     }
     for (const [x, z] of level.barrels) {
       const b = createBarrel(mat);
       b.position.set(x, 0, z);
-      scene.add(b);
+      missionGroup.add(b);
     }
     for (const [x, z] of level.crates) {
       const c = createCrate(mat);
       c.position.set(x, 0, z);
-      scene.add(c);
+      missionGroup.add(c);
     }
     const wreck = createWreck(mat);
     wreck.position.set(level.wreck.x, 0, level.wreck.z);
-    scene.add(wreck);
+    missionGroup.add(wreck);
     gateGroup = createVoidGate(mat);
     gateGroup.position.set(level.gate.x, 2.4, level.gate.z);
-    scene.add(gateGroup);
+    missionGroup.add(gateGroup);
     const riftLight = new THREE.PointLight(0x22d3ee, 7.5, 32, 1.5);
     riftLight.position.set(level.gate.x, 3.2, level.gate.z);
-    scene.add(riftLight);
+    missionGroup.add(riftLight);
+    shipRoot.add(createShipInterior(mat));
 
     if (textures.sky) {
       const sky = new THREE.Mesh(
@@ -410,7 +436,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
         new THREE.MeshBasicMaterial({ map: textures.sky, side: THREE.BackSide, fog: false, depthWrite: false }),
       );
       sky.position.set(0, 20, -20);
-      scene.add(sky);
+      missionGroup.add(sky);
     }
 
     playerRig = createExoSuit(mat);
@@ -481,7 +507,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       );
       sky.position.set(0, 20, -20);
       sky.userData.sky = true;
-      scene.add(sky);
+      missionGroup.add(sky);
     }
   });
 
@@ -489,6 +515,20 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     return { x: -Math.sin(yaw), z: -Math.cos(yaw) };
   }
   function placeFollowCam(dt: number, snap = false) {
+    if (phase === "ship") {
+      camPos.set(px + 7.4, py + 8.6, pz + 7.4);
+      camLook.set(px, py + 1.05, pz);
+      if (snap || camSnap) {
+        camera.position.copy(camPos);
+        camSnap = false;
+      } else {
+        camera.position.lerp(camPos, 1 - Math.exp(-8 * dt));
+      }
+      camera.lookAt(camLook);
+      camera.fov = 42;
+      camera.updateProjectionMatrix();
+      return;
+    }
     const f = forward();
     const boom = THREE.MathUtils.lerp(CAM_DIST, CAM_DIST_ADS, adsT);
     const height = THREE.MathUtils.lerp(CAM_HEIGHT, CAM_HEIGHT_ADS, adsT);
@@ -540,8 +580,61 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       camera.updateProjectionMatrix();
     }
   }
+  function persistLoadout() {
+    writeSave(save);
+  }
+
+  function syncWeaponsFromSave() {
+    const list = save.inventory.filter((i) => i.kind === "weapon");
+    if (!list.length) {
+      const fresh = itemToWeapon({
+        uid: "fallback",
+        kind: "weapon",
+        name: "Vanguard ARX",
+        rarity: "common",
+        weaponId: "ar",
+        dmg: 21,
+        pellets: 1,
+        rpm: 580,
+        mag: 32,
+        reserve: 160,
+        spread: 0.016,
+        range: 82,
+        reload: 1.4,
+      });
+      weapons = [fresh];
+      weaponIdx = 0;
+      return;
+    }
+    weapons = list.map(itemToWeapon);
+    let idx = list.findIndex((i) => i.uid === save.equippedWeapon);
+    if (idx < 0) idx = 0;
+    weaponIdx = idx;
+    save.equippedWeapon = list[idx].uid;
+  }
+
+  function applyLoadoutVisuals() {
+    syncWeaponsFromSave();
+    const b = armorBonuses(save.inventory, save.equippedArmor);
+    maxHp = 200 + b.hp;
+    maxShield = 110 + b.shield;
+    hp = Math.min(hp, maxHp);
+    shield = Math.min(shield, maxShield);
+    mag = Math.min(mag, currentWeapon().mag);
+    swapGunMesh();
+    if (playerRig && mat) applyArmorKits(playerRig, mat, save.inventory, save.equippedArmor);
+  }
+
+  function addToInventory(item: InvItem) {
+    if (save.inventory.length >= INVENTORY_CAP) {
+      save.inventory.shift();
+    }
+    save.inventory.push(item);
+    persistLoadout();
+  }
+
   function currentWeapon() {
-    return weapons[weaponIdx];
+    return weapons[weaponIdx] ?? weapons[0];
   }
   function keySet() {
     return qaKeys.active ? new Set(qaKeys.codes) : keys;
@@ -647,26 +740,29 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     g.add(beam);
     g.position.set(x, 0.2, z);
     scene.add(g);
-    const w: Weapon | undefined =
-      rarity === "common" && Math.random() < 0.5
+    const gearRoll = Math.random();
+    const item =
+      rarity === "common" && gearRoll < 0.42
         ? undefined
-        : {
-            ...currentWeapon(),
-            name:
-              (rarity === "legendary" ? "Mythic " : rarity === "rare" ? "Rare " : rarity === "magic" ? "Tuned " : "") +
-              (Math.random() > 0.5 ? "ARX-Void" : "Spartan Edge"),
-            id: Math.random() > 0.5 ? "ar" : "shotgun",
-            rarity,
-            dmg: currentWeapon().dmg * (rarity === "legendary" ? 1.7 : rarity === "rare" ? 1.35 : 1.15),
-          };
-    const kindDrop: Drop["kind"] = w ? "weapon" : Math.random() > 0.55 ? (Math.random() > 0.5 ? "health" : "ammo") : "gold";
+        : gearRoll > 0.55
+          ? rollLootArmor(rarity)
+          : rollLootWeapon(rarity);
+    const kindDrop: Drop["kind"] = item
+      ? item.kind === "armor"
+        ? "armor"
+        : "weapon"
+      : Math.random() > 0.55
+        ? Math.random() > 0.5
+          ? "health"
+          : "ammo"
+        : "gold";
     drops.push({
       mesh: g,
       x,
       z,
       kind: kindDrop,
-      weapon: w,
-      amount: w ? 0 : 40 + Math.floor(Math.random() * 80),
+      item,
+      amount: item ? 0 : 40 + Math.floor(Math.random() * 80),
       rarity,
     });
   }
@@ -748,7 +844,87 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   function finishRun(won: boolean) {
     if (recorded) return;
     recorded = true;
+    bankScrap(won ? 1 : 0.45);
     save = recordRun(save, kills, missionTime, gold, won);
+  }
+
+  function bankScrap(factor: number) {
+    save.scrapBank += Math.floor(gold * factor);
+    persistLoadout();
+  }
+
+  function selectWeaponSlot(idx: number) {
+    const list = save.inventory.filter((i) => i.kind === "weapon");
+    if (!list[idx]) return;
+    save.equippedWeapon = list[idx].uid;
+    persistLoadout();
+    syncWeaponsFromSave();
+    mag = Math.min(mag, currentWeapon().mag);
+    swapGunMesh();
+    emitHud(true);
+  }
+
+  function showShip() {
+    if (!worldBuilt) setupWorld();
+    missionGroup.visible = false;
+    shipRoot.visible = true;
+    scene.fog = new THREE.FogExp2(0x08080b, 0.012);
+    scene.background = new THREE.Color(0x07080c);
+    px = 0;
+    pz = 0;
+    py = 0.12;
+    velX = 0;
+    velZ = 0;
+    yaw = 0;
+    nearCnc = false;
+    phase = "ship";
+    objective = "Chimera hull — ready deck";
+    hint = "Walk to the CNC printer · I inventory · Deploy from the pad";
+    if (playerRig) playerRig.group.visible = true;
+    drone.visible = false;
+    if (aimReticle) aimReticle.visible = false;
+    applyLoadoutVisuals();
+    camSnap = true;
+    placeFollowCam(1 / 60, true);
+    emitHud(true);
+  }
+
+  function showMission() {
+    missionGroup.visible = true;
+    shipRoot.visible = false;
+    scene.fog = new THREE.FogExp2(0x2a1c12, 0.0085);
+    scene.background = new THREE.Color(0x1a120c);
+    nearCnc = false;
+  }
+
+  function equipItem(uid: string) {
+    const it = save.inventory.find((i) => i.uid === uid);
+    if (!it) return;
+    if (it.kind === "weapon") {
+      save.equippedWeapon = it.uid;
+      persistLoadout();
+      applyLoadoutVisuals();
+      mag = currentWeapon().mag;
+    } else if (it.slot) {
+      save.equippedArmor[it.slot] = it.uid;
+      persistLoadout();
+      applyLoadoutVisuals();
+      hp = maxHp;
+      shield = maxShield;
+    }
+    emitHud(true);
+  }
+
+  function craftRecipe(id: string) {
+    const recipe = RECIPES.find((r) => r.id === id);
+    if (!recipe || save.scrapBank < recipe.cost) return;
+    if (save.inventory.length >= INVENTORY_CAP) return;
+    save.scrapBank -= recipe.cost;
+    const made = instantiateRecipe(recipe);
+    save.inventory.push(made);
+    persistLoadout();
+    pushLoot(`Printed ${made.name}`, made.rarity);
+    emitHud(true);
   }
 
   function aimRay() {
@@ -867,7 +1043,10 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
           hit = e;
         }
       }
-      if (hit) damageEnemy(hit, w.dmg * (overdriveT > 0 ? 1.28 : 1) * (0.85 + Math.random() * 0.3), tmpV2.x, tmpV2.z);
+      if (hit) {
+        const kit = 1 + armorBonuses(save.inventory, save.equippedArmor).dmg / 100;
+        damageEnemy(hit, w.dmg * kit * (overdriveT > 0 ? 1.28 : 1) * (0.85 + Math.random() * 0.3), tmpV2.x, tmpV2.z);
+      }
       else if (worldT !== null) {
         const end = origin.clone().addScaledVector(tmpV2, worldT);
         particles.burst(end.x, end.y, end.z, 5, 0xffc58a, 2.4, 0.18, 0.05, -1);
@@ -963,12 +1142,11 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
 
   function swapGunMesh() {
     if (!playerRig || !mat) return;
-    playerRig.rightArm.remove(playerRig.gun);
+    playerRig.gunGrip.remove(playerRig.gun);
     const id = currentWeapon().id;
     const g = id === "shotgun" ? createShotgun(mat) : id === "smg" ? createSmg(mat) : createRifle(mat);
-    g.position.set(0.22, -0.52, 0.28);
-    g.rotation.set(-0.12, 0.12, 0.08);
-    playerRig.rightArm.add(g);
+    mountGunInRightHand(g);
+    playerRig.gunGrip.add(g);
     playerRig.gun = g;
   }
 
@@ -1252,11 +1430,15 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
         } else if (d.kind === "ammo") {
           currentWeapon().reserve += 28;
           pushLoot("Ammo pack", "common");
-        } else if (d.weapon) {
-          weapons[weaponIdx] = { ...d.weapon, mag: d.weapon.mag, reserve: d.weapon.reserve };
-          mag = d.weapon.mag;
-          pushLoot(d.weapon.name, d.weapon.rarity);
-          swapGunMesh();
+        } else if (d.item) {
+          addToInventory(d.item);
+          pushLoot(d.item.name, d.item.rarity);
+          if (d.item.kind === "weapon" && !save.equippedWeapon) {
+            save.equippedWeapon = d.item.uid;
+            persistLoadout();
+            applyLoadoutVisuals();
+            mag = currentWeapon().mag;
+          }
         }
         scene.remove(d.mesh);
         drops.splice(i, 1);
@@ -1313,6 +1495,11 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       sensitivity: save.sensitivity,
       invertLookX: save.invertLookX,
       invertLookY: save.invertLookY,
+      scrapBank: save.scrapBank,
+      inventory: save.inventory,
+      equippedWeapon: save.equippedWeapon,
+      equippedArmor: save.equippedArmor,
+      nearCnc,
     };
   }
 
@@ -1366,9 +1553,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     kills = 0;
     xp = 0;
     pLevel = 1;
-    weaponIdx = 0;
-    weapons = defaultWeapons();
-    mag = weapons[0].mag;
+    syncWeaponsFromSave();
+    mag = currentWeapon().mag;
     fireCd = 0;
     reloadT = 0;
     overdriveT = 0;
@@ -1394,7 +1580,9 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       playerRig.group.visible = true;
       playerRig.group.scale.setScalar(1);
     }
-    swapGunMesh();
+    applyLoadoutVisuals();
+    hp = maxHp;
+    shield = maxShield;
   }
 
   function step(dt: number) {
@@ -1455,6 +1643,48 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       for (const c of keySet()) prevKeys.add(c);
       return;
     }
+    if (phase === "ship") {
+      if (aimReticle) aimReticle.visible = false;
+      drone.visible = false;
+      if (playerRig) playerRig.group.visible = true;
+      const mv = inputMove();
+      const basis = camBasis();
+      let wishX = basis.f.x * mv.y + basis.r.x * mv.x;
+      let wishZ = basis.f.z * mv.y + basis.r.z * mv.x;
+      const wm = Math.hypot(wishX, wishZ);
+      if (wm > 1) {
+        wishX /= wm;
+        wishZ /= wm;
+      }
+      px = THREE.MathUtils.clamp(px + wishX * 4.6 * dt, -8.4, 8.4);
+      pz = THREE.MathUtils.clamp(pz + wishZ * 4.6 * dt, -6.8, 7.2);
+      py = 0.12;
+      if (wm > 0.12) yaw = Math.atan2(-wishX, -wishZ);
+      const cnc = { x: 5.4, z: -4.4 };
+      nearCnc = Math.hypot(px - cnc.x, pz - cnc.z) < 2.35;
+      if (justPressed("KeyE") && nearCnc) {
+        /* UI listens to nearCnc + I / CNC button */
+      }
+      const hol = shipRoot.getObjectByName("cncHolo");
+      if (hol) hol.rotation.y += dt * 1.6;
+      if (playerRig) {
+        const moving = wm > 0.12;
+        const bob = moving ? Math.sin(now * 0.01) : 0;
+        playerRig.leftThigh.rotation.x = bob * 0.55;
+        playerRig.rightThigh.rotation.x = -bob * 0.55;
+        playerRig.leftArm.rotation.x = -0.55 - bob * 0.12;
+        playerRig.leftArm.rotation.z = 0.28;
+        playerRig.rightArm.rotation.x = -0.72 + bob * 0.08;
+        playerRig.rightArm.rotation.y = -0.12;
+        playerRig.group.position.set(px, py, pz);
+        playerRig.group.rotation.y = yaw + Math.PI;
+      }
+      placeFollowCam(dt);
+      emitHud();
+      prevKeys.clear();
+      for (const c of keySet()) prevKeys.add(c);
+      return;
+    }
     if (phase !== "playing") {
       if (aimReticle) aimReticle.visible = false;
       emitHud();
@@ -1480,11 +1710,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
 
     if (justPressed("Digit1") || justPressed("Digit2") || justPressed("Digit3")) {
       const slot = k.has("Digit1") ? 1 : k.has("Digit2") ? 2 : 3;
-      if (slot !== prevSlot) {
-        weaponIdx = slot - 1;
-        mag = Math.min(mag, currentWeapon().mag);
-        swapGunMesh();
-      }
+      if (slot !== prevSlot) selectWeaponSlot(slot - 1);
       prevSlot = slot;
     } else prevSlot = 0;
 
@@ -1591,8 +1817,10 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       const bob = moving ? Math.sin(t * (sprint ? 12 : 8)) : 0;
       playerRig.leftThigh.rotation.x = bob * 0.7;
       playerRig.rightThigh.rotation.x = -bob * 0.7;
-      playerRig.leftArm.rotation.x = -bob * 0.25;
-      playerRig.rightArm.rotation.x = bob * 0.15 - (fireCd > 0 ? 0.18 : 0) - (reloadT > 0 ? 0.5 : 0);
+      playerRig.leftArm.rotation.x = -0.55 - bob * 0.12;
+      playerRig.leftArm.rotation.z = 0.28;
+      playerRig.rightArm.rotation.x = -0.72 + bob * 0.08 - (fireCd > 0 ? 0.16 : 0) - (reloadT > 0 ? 0.35 : 0);
+      playerRig.rightArm.rotation.y = -0.12;
       playerRig.group.position.set(px, py, pz);
       playerRig.group.rotation.y = yaw + Math.PI;
       playerRig.torso.rotation.x = pitch * 0.22;
@@ -1765,6 +1993,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     startMission() {
       audio.unlock();
       if (!worldBuilt) setupWorld();
+      showMission();
       resetRun();
       phase = "playing";
       if (playerRig) playerRig.group.visible = true;
@@ -1778,6 +2007,19 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       placeFollowCam(1 / 60, true);
       emitHud(true);
     },
+    enterShip() {
+      audio.unlock();
+      showShip();
+    },
+    recallToShip() {
+      if (phase === "playing" || phase === "paused" || phase === "dead" || phase === "victory") {
+        if (phase === "playing" || phase === "paused") bankScrap(1);
+        gold = 0;
+        showShip();
+      }
+    },
+    equipItem,
+    craftRecipe,
     pause() {
       if (phase === "playing") {
         phase = "paused";
@@ -1847,18 +2089,9 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
         overdriveT = 6;
       }
       if (name === "reload") startReload();
-      if (name === "w1") {
-        weaponIdx = 0;
-        swapGunMesh();
-      }
-      if (name === "w2") {
-        weaponIdx = 1;
-        swapGunMesh();
-      }
-      if (name === "w3") {
-        weaponIdx = 2;
-        swapGunMesh();
-      }
+      if (name === "w1") selectWeaponSlot(0);
+      if (name === "w2") selectWeaponSlot(1);
+      if (name === "w3") selectWeaponSlot(2);
     },
   };
 }

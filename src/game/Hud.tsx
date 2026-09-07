@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Pause, Settings, Volume2, VolumeX } from "lucide-react";
+import { Backpack, Pause, Settings, Ship, Volume2, VolumeX } from "lucide-react";
 import type { HudSnapshot, Rarity } from "./types";
 
 function Bar({
@@ -72,12 +72,16 @@ export function Hud({
   onSettings,
   onMute,
   onReload,
+  onInventory,
+  onShip,
 }: {
   hud: HudSnapshot;
   onPause?: () => void;
   onSettings?: () => void;
   onMute?: () => void;
   onReload?: () => void;
+  onInventory?: () => void;
+  onShip?: () => void;
 }) {
   if (hud.phase === "title" || hud.phase === "boot") return null;
   const heading = ((-hud.compass * 180) / Math.PI + 36000) % 360;
@@ -98,12 +102,22 @@ export function Hud({
           ) : null}
         </div>
         <div className="flex shrink-0 gap-1.5">
+          <IconBtn label="Inventory" onClick={onInventory} compact>
+            <Backpack className="size-3.5" />
+          </IconBtn>
+          {hud.phase === "playing" ? (
+            <IconBtn label="Recall to ship" onClick={onShip} compact>
+              <Ship className="size-3.5" />
+            </IconBtn>
+          ) : null}
           <IconBtn label="Settings" onClick={onSettings} compact>
             <Settings className="size-3.5" />
           </IconBtn>
-          <IconBtn label="Pause" onClick={onPause} compact>
-            <Pause className="size-3.5" />
-          </IconBtn>
+          {hud.phase !== "ship" ? (
+            <IconBtn label="Pause" onClick={onPause} compact>
+              <Pause className="size-3.5" />
+            </IconBtn>
+          ) : null}
         </div>
       </div>
 
@@ -153,12 +167,22 @@ export function Hud({
         <IconBtn label={hud.muted ? "Unmute" : "Mute"} onClick={onMute}>
           {hud.muted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
         </IconBtn>
+        <IconBtn label="Inventory" onClick={onInventory}>
+          <Backpack className="size-4" />
+        </IconBtn>
+        {hud.phase === "playing" ? (
+          <IconBtn label="Recall to ship" onClick={onShip}>
+            <Ship className="size-4" />
+          </IconBtn>
+        ) : null}
         <IconBtn label="Settings" onClick={onSettings}>
           <Settings className="size-4" />
         </IconBtn>
-        <IconBtn label="Pause" onClick={onPause}>
-          <Pause className="size-4" />
-        </IconBtn>
+        {hud.phase !== "ship" ? (
+          <IconBtn label="Pause" onClick={onPause}>
+            <Pause className="size-4" />
+          </IconBtn>
+        ) : null}
       </div>
 
       <div
@@ -286,6 +310,14 @@ export function Hud({
         </div>
       ) : null}
 
+      {hud.phase === "ship" ? (
+        <div className="pointer-events-auto absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-30 flex w-[min(28rem,92vw)] -translate-x-1/2 flex-col items-center gap-2">
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-faint">
+            Bank {hud.scrapBank} scrap · {hud.nearCnc ? "CNC in range" : "Step onto the printer pad"}
+          </p>
+        </div>
+      ) : null}
+
       <p className="absolute bottom-4 left-1/2 hidden -translate-x-1/2 font-mono text-[10px] uppercase tracking-[0.2em] text-faint desk:block">
         {hud.hint}
       </p>
@@ -304,6 +336,7 @@ export function PauseOverlay({
   muted,
   onMute,
   onSettings,
+  onRecall,
 }: {
   title: string;
   body: string;
@@ -315,6 +348,7 @@ export function PauseOverlay({
   muted?: boolean;
   onMute?: () => void;
   onSettings?: () => void;
+  onRecall?: () => void;
 }) {
   const acc = stats && stats.shots > 0 ? Math.round((stats.hits / stats.shots) * 100) : 0;
   return (
@@ -357,6 +391,15 @@ export function PauseOverlay({
               className="flex h-11 w-full items-center justify-center rounded-lg border border-border bg-elevated font-display text-lg font-semibold text-fg"
             >
               {secondary}
+            </button>
+          ) : null}
+          {onRecall ? (
+            <button
+              type="button"
+              onClick={onRecall}
+              className="flex h-11 w-full items-center justify-center rounded-lg border border-border font-display text-lg font-semibold text-fg"
+            >
+              Recall to ship
             </button>
           ) : null}
           {onSettings ? (

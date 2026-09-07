@@ -1,7 +1,38 @@
 export type WeaponId = "ar" | "shotgun" | "smg";
 export type EnemyKind = "husk" | "stalker" | "brute" | "harbinger";
 export type Rarity = "common" | "magic" | "rare" | "legendary";
-export type Phase = "boot" | "title" | "playing" | "paused" | "dead" | "victory";
+export type Phase = "boot" | "title" | "playing" | "paused" | "dead" | "victory" | "ship";
+export type ArmorSlot = "helm" | "chest" | "arms" | "legs";
+export type ItemKind = "weapon" | "armor";
+
+export type InvItem = {
+  uid: string;
+  kind: ItemKind;
+  name: string;
+  rarity: Rarity;
+  weaponId?: WeaponId;
+  slot?: ArmorSlot;
+  dmg?: number;
+  pellets?: number;
+  rpm?: number;
+  mag?: number;
+  reserve?: number;
+  spread?: number;
+  range?: number;
+  reload?: number;
+  hpBonus?: number;
+  shieldBonus?: number;
+  dmgBonus?: number;
+};
+
+export type Recipe = {
+  id: string;
+  name: string;
+  cost: number;
+  output: Omit<InvItem, "uid">;
+};
+
+export type EquippedArmor = Record<ArmorSlot, string | null>;
 
 export type SkillId = "frag" | "overdrive" | "cleave";
 
@@ -95,6 +126,11 @@ export type HudSnapshot = {
   sensitivity: number;
   invertLookX: boolean;
   invertLookY: boolean;
+  scrapBank: number;
+  inventory: InvItem[];
+  equippedWeapon: string | null;
+  equippedArmor: EquippedArmor;
+  nearCnc: boolean;
 };
 
 export type ControlsProbe = {
