@@ -8,6 +8,7 @@ import { collidePlayer, groundHeight, rayWorld, clamp } from "./collision";
 import { buildLevel } from "./level";
 import {
   addWorldFromBoxes,
+  createAimReticle,
   createBarrel,
   createBeam,
   createBolt,
@@ -51,16 +52,15 @@ const WALK = 5.6;
 const SPRINT = 8.8;
 const DODGE_SPEED = 14.5;
 const BASE_SENS = 0.00215;
-const CAM_DIST = 7.6;
-const CAM_DIST_ADS = 5.4;
-const CAM_HEIGHT = 2.12;
-const CAM_LOOK_Y = 1.46;
-const CAM_LOOK_AHEAD = 4.4;
-const CAM_SHOULDER = 1.18;
-const CAM_SHOULDER_ADS = 0.58;
-const CAM_MIN_BOOM = 4.8;
-const CAM_FOV = 68;
-const CAM_FOV_ADS = 52;
+const CAM_DIST = 12.4;
+const CAM_DIST_ADS = 9.2;
+const CAM_HEIGHT = 12.6;
+const CAM_HEIGHT_ADS = 9.4;
+const CAM_LOOK_Y = 0.62;
+const CAM_LOOK_AHEAD = 2.4;
+const CAM_MIN_BOOM = 7.2;
+const CAM_FOV = 46;
+const CAM_FOV_ADS = 38;
 
 type Weapon = {
   id: WeaponId;
@@ -249,7 +249,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x1a120c);
-  scene.fog = new THREE.FogExp2(0x1a120c, 0.019);
+  scene.fog = new THREE.FogExp2(0x1a120c, 0.013);
 
   const camera = new THREE.PerspectiveCamera(CAM_FOV, 1, 0.22, 280);
   scene.add(new THREE.HemisphereLight(0xc4a070, 0x1a140f, 0.5));
@@ -270,7 +270,14 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   scene.add(fill);
   scene.add(new THREE.AmbientLight(0x2a241c, 0.32));
 
-  const textures: { ground?: THREE.Texture; wall?: THREE.Texture; metal?: THREE.Texture; sky?: THREE.Texture } = {};
+  const textures: {
+    ground?: THREE.Texture;
+    wall?: THREE.Texture;
+    metal?: THREE.Texture;
+    sky?: THREE.Texture;
+    armor?: THREE.Texture;
+    shade?: THREE.Texture;
+  } = {};
   const loader = new THREE.TextureLoader();
   const loadTex = (url: string, repeat: number) =>
     new Promise<THREE.Texture>((resolve, reject) => {
@@ -310,7 +317,12 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   const tmpV = new THREE.Vector3();
   const tmpV2 = new THREE.Vector3();
   const raycaster = new THREE.Raycaster();
-  const ndc = new THREE.Vector2(0, 0);
+  const ndc = new THREE.Vector2(0.15, -0.1);
+  const aimPoint = new THREE.Vector3(0, 0, -8);
+  const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  let mouseAim = true;
+  let touchAimYaw = 0;
+  let aimReticle: THREE.Group | null = null;
   const particles = new ParticleField();
   const scorch = new ScorchPool(scene);
   scene.add(particles.object);
@@ -404,6 +416,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     scene.add(beamMesh);
     slashMesh = createSlash();
     scene.add(slashMesh);
+    aimReticle = createAimReticle();
+    scene.add(aimReticle);
 
     if (!isMobile) {
       composer = new EffectComposer(renderer);
@@ -420,6 +434,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     loadTex("/art/ground.jpg", 18).then((t) => (textures.ground = t)),
     loadTex("/art/wall.jpg", 4).then((t) => (textures.wall = t)),
     loadTex("/art/metal.jpg", 3).then((t) => (textures.metal = t)),
+    loadTex("/art/armor.png", 1.6).then((t) => (textures.armor = t)),
+    loadTex("/art/shade.png", 1.4).then((t) => (textures.shade = t)),
     loadTex("/art/sky.jpg", 1).then((t) => {
       t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
       textures.sky = t;
@@ -440,6 +456,14 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       mat.metal.map = textures.metal;
       mat.metal.needsUpdate = true;
     }
+    if (textures.armor) {
+      mat.armor.map = textures.armor;
+      mat.armor.needsUpdate = true;
+    }
+    if (textures.shade) {
+      mat.shade.map = textures.shade;
+      mat.shade.needsUpdate = true;
+    }
     if (textures.sky && !scene.children.some((c) => c.userData.sky)) {
       const sky = new THREE.Mesh(
         new THREE.SphereGeometry(170, 24, 16),
@@ -454,51 +478,40 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   function forward() {
     return { x: -Math.sin(yaw), z: -Math.cos(yaw) };
   }
-  function rightV() {
-    return { x: Math.cos(yaw), z: -Math.sin(yaw) };
-  }
   function placeFollowCam(dt: number, snap = false) {
     const f = forward();
-    const r = rightV();
-    const lookY = py + CAM_LOOK_Y;
     const boom = THREE.MathUtils.lerp(CAM_DIST, CAM_DIST_ADS, adsT);
-    const sh = THREE.MathUtils.lerp(CAM_SHOULDER, CAM_SHOULDER_ADS, adsT);
-    const pitchBoom = pitch * 0.36;
-    const horiz = boom * Math.cos(pitchBoom);
-    let camX = px - f.x * horiz + r.x * sh;
-    let camY = py + CAM_HEIGHT + boom * Math.sin(pitchBoom);
-    let camZ = pz - f.z * horiz + r.z * sh;
-    if (camY < py + 1.25) camY = py + 1.25;
+    const height = THREE.MathUtils.lerp(CAM_HEIGHT, CAM_HEIGHT_ADS, adsT);
+    let camX = px - f.x * boom * 0.22;
+    let camY = py + height;
+    let camZ = pz + boom * 0.78 - f.z * boom * 0.16;
+    if (camY < py + 4.2) camY = py + 4.2;
     const rdx = camX - px;
-    const rdy = camY - (py + 1.62);
+    const rdy = camY - (py + 1.2);
     const rdz = camZ - pz;
     const rlen = Math.hypot(rdx, rdy, rdz) || 1;
     const occl = rayWorld(
       level.boxes,
-      px + r.x * 0.2,
-      py + 1.62,
-      pz + r.z * 0.2,
+      px,
+      py + 1.4,
+      pz,
       rdx / rlen,
       rdy / rlen,
       rdz / rlen,
       rlen,
-      (b) => b.maxy > 1.5,
+      (b) => b.maxy > 2.4 && !b.cover,
     );
-    if (occl !== null && occl < rlen - 0.4) {
-      const pull = Math.max(CAM_MIN_BOOM, occl - 0.55);
+    if (occl !== null && occl < rlen - 0.6) {
+      const pull = Math.max(CAM_MIN_BOOM, occl - 0.7);
       camX = px + (rdx / rlen) * pull;
-      camY = py + 1.62 + (rdy / rlen) * pull;
+      camY = py + 1.2 + (rdy / rlen) * pull;
       camZ = pz + (rdz / rlen) * pull;
-      if (camY < py + 1.4) camY = py + 1.4;
+      if (camY < py + 5.5) camY = py + 5.5;
     }
-    if (playerRig) playerRig.group.visible = Math.hypot(camX - px, camZ - pz) > 2.4;
+    if (playerRig) playerRig.group.visible = true;
     camPos.set(camX, camY, camZ);
-    const ahead = THREE.MathUtils.lerp(CAM_LOOK_AHEAD, 3.6, adsT);
-    camLook.set(
-      px + f.x * ahead + r.x * sh * 0.92,
-      lookY - pitch * 2.4,
-      pz + f.z * ahead + r.z * sh * 0.92,
-    );
+    const ahead = THREE.MathUtils.lerp(CAM_LOOK_AHEAD, 1.6, adsT);
+    camLook.set(px + f.x * ahead, py + CAM_LOOK_Y, pz + f.z * ahead);
     if (snap || camSnap) {
       camera.position.copy(camPos);
       camSnap = false;
@@ -718,7 +731,6 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       hp = 0;
       phase = "dead";
       hint = "Deploy again";
-      document.exitPointerLock?.();
       finishRun(false);
     }
   }
@@ -730,8 +742,56 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   }
 
   function aimRay() {
-    raycaster.setFromCamera(ndc, camera);
-    return { origin: raycaster.ray.origin, dir: raycaster.ray.direction };
+    const dx = aimPoint.x - px;
+    const dz = aimPoint.z - pz;
+    const dy = 0.12;
+    const len = Math.hypot(dx, dy, dz) || 1;
+    tmpV.set(px + (dx / len) * 0.55, py + 1.32, pz + (dz / len) * 0.55);
+    tmpV2.set(dx / len, dy / len, dz / len);
+    return { origin: tmpV.clone(), dir: tmpV2.clone() };
+  }
+
+  function camBasis() {
+    camera.getWorldDirection(tmpV);
+    let fx = tmpV.x;
+    let fz = tmpV.z;
+    const m = Math.hypot(fx, fz) || 1;
+    fx /= m;
+    fz /= m;
+    return { f: { x: fx, z: fz }, r: { x: -fz, z: fx } };
+  }
+
+  function updateAim() {
+    const pad = pollPad();
+    const stick = Math.hypot(pad.lx, pad.ly);
+    if (stick > 0.22) {
+      mouseAim = false;
+      const b = camBasis();
+      const reach = 11;
+      aimPoint.x = px + (b.f.x * -pad.ly + b.r.x * pad.lx) * reach;
+      aimPoint.z = pz + (b.f.z * -pad.ly + b.r.z * pad.lx) * reach;
+    } else if (isMobile) {
+      aimPoint.x = px - Math.sin(touchAimYaw) * 9;
+      aimPoint.z = pz - Math.cos(touchAimYaw) * 9;
+    } else if (mouseAim) {
+      raycaster.setFromCamera(ndc, camera);
+      if (raycaster.ray.intersectPlane(groundPlane, tmpV)) {
+        aimPoint.copy(tmpV);
+      }
+    }
+    const adx = aimPoint.x - px;
+    const adz = aimPoint.z - pz;
+    const ad = Math.hypot(adx, adz);
+    if (ad < 1.5) {
+      aimPoint.x = px + (adx / (ad || 1)) * 1.5;
+      aimPoint.z = pz + (adz / (ad || 1)) * 1.5;
+    }
+    yaw = Math.atan2(-(aimPoint.x - px), -(aimPoint.z - pz));
+    if (aimReticle) {
+      aimReticle.visible = phase === "playing";
+      aimReticle.position.set(aimPoint.x, 0.07, aimPoint.z);
+      aimReticle.rotation.y += 0.02;
+    }
   }
 
   function fireWeapon() {
@@ -1361,10 +1421,11 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     if (phase === "title" || phase === "boot") {
       if (playerRig) playerRig.group.visible = false;
       drone.visible = false;
+      if (aimReticle) aimReticle.visible = false;
       const t = now * 0.00008;
-      camera.position.set(1.8 + Math.sin(t) * 1.6, 3.15, 7.4 + Math.cos(t * 0.7) * 1.3);
-      camera.lookAt(0.2, 1.05, -18);
-      camera.fov = 54;
+      camera.position.set(2.4 + Math.sin(t) * 2.2, 9.4, 14.5 + Math.cos(t * 0.7) * 1.6);
+      camera.lookAt(0.2, 0.4, -16);
+      camera.fov = 42;
       camera.updateProjectionMatrix();
       emitHud();
       prevKeys.clear();
@@ -1372,6 +1433,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       return;
     }
     if (phase !== "playing") {
+      if (aimReticle) aimReticle.visible = false;
       emitHud();
       prevKeys.clear();
       for (const c of keySet()) prevKeys.add(c);
@@ -1388,13 +1450,13 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
 
     const k = keySet();
     const pad = pollPad();
-    yaw -= touch.lookX;
-    pitch -= touch.lookY;
-    touch.lookX = 0;
-    touch.lookY = 0;
-    yaw -= pad.lx * 2.6 * dt * save.sensitivity * (1 - adsT * 0.45);
-    pitch -= pad.ly * 2.2 * dt * save.sensitivity * (1 - adsT * 0.45);
-    pitch = clamp(pitch, -1.15, 1.15);
+    if (Math.abs(touch.lookX) + Math.abs(touch.lookY) > 0) {
+      touchAimYaw -= touch.lookX;
+      touch.lookX = 0;
+      touch.lookY = 0;
+    }
+    pitch = 0.08;
+    updateAim();
 
     if (justPressed("Digit1") || justPressed("Digit2") || justPressed("Digit3")) {
       const slot = k.has("Digit1") ? 1 : k.has("Digit2") ? 2 : 3;
@@ -1436,10 +1498,9 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       const mv = inputMove();
       const sprint = held.sprint || k.has("ShiftLeft") || k.has("ShiftRight") || pad.sprint;
       const speed = (sprint ? SPRINT : WALK) * (overdriveT > 0 ? 1.22 : 1) * (wantAds ? 0.72 : 1);
-      const f = forward();
-      const r = rightV();
-      let wishX = f.x * mv.y + r.x * mv.x;
-      let wishZ = f.z * mv.y + r.z * mv.x;
+      const basis = camBasis();
+      let wishX = basis.f.x * mv.y + basis.r.x * mv.x;
+      let wishZ = basis.f.z * mv.y + basis.r.z * mv.x;
       const wm = Math.hypot(wishX, wishZ);
       if (wm > 1) {
         wishX /= wm;
@@ -1450,8 +1511,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
         invuln = 0.32;
         audio.dodge();
         const magw = Math.hypot(wishX, wishZ) || 1;
-        dodgeDirX = wishX / magw || f.x;
-        dodgeDirZ = wishZ / magw || f.z;
+        dodgeDirX = wishX / magw || basis.f.x;
+        dodgeDirZ = wishZ / magw || basis.f.z;
         particles.spray(px, py + 0.4, pz, -dodgeDirX, 0.2, -dodgeDirZ, 10, 0xece8e1, 5, 0.25, 0.08);
         held.dodge = false;
       }
@@ -1574,7 +1635,6 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     }
     if (e.code === "Escape" && phase === "playing") {
       phase = "paused";
-      document.exitPointerLock?.();
       emitHud(true);
     }
     if (e.code === "KeyM") {
@@ -1587,14 +1647,16 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   const onKeyUp = (e: KeyboardEvent) => keys.delete(e.code);
   const onBlur = () => keys.clear();
   const onMouse = (e: MouseEvent) => {
-    if (document.pointerLockElement !== canvas) return;
-    yaw -= e.movementX * BASE_SENS * save.sensitivity * (1 - adsT * 0.45);
-    pitch -= e.movementY * BASE_SENS * save.sensitivity * (1 - adsT * 0.45);
+    const rect = canvas.getBoundingClientRect();
+    const w = rect.width || 1;
+    const h = rect.height || 1;
+    ndc.x = ((e.clientX - rect.left) / w) * 2 - 1;
+    ndc.y = -((e.clientY - rect.top) / h) * 2 + 1;
+    mouseAim = true;
   };
   const onDown = (e: MouseEvent) => {
     if (e.button === 0) held.fire = true;
     if (e.button === 2) held.ads = true;
-    if (phase === "playing" && document.pointerLockElement !== canvas) lockPointer();
   };
   const onUp = (e: MouseEvent) => {
     if (e.button === 0) held.fire = false;
@@ -1613,8 +1675,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     else keys.clear();
   };
   const onLock = () => {
-    lockLost = document.pointerLockElement !== canvas && phase === "playing";
-    emitHud(true);
+    lockLost = false;
   };
 
   window.addEventListener("keydown", onKeyDown);
@@ -1629,6 +1690,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   document.addEventListener("pointerlockchange", onLock);
   window.addEventListener("resize", resize);
   canvas.style.touchAction = "none";
+  canvas.style.cursor = "crosshair";
 
   const probe: ControlsProbe = {
     getYaw: () => yaw,
@@ -1654,14 +1716,6 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     },
   };
   window.__controlsTest = probe;
-
-  function lockPointer() {
-    if (isMobile) return;
-    const p = canvas.requestPointerLock?.({ unadjustedMovement: true } as PointerLockOptions);
-    if (p && typeof (p as Promise<void>).catch === "function") {
-      (p as Promise<void>).catch(() => canvas.requestPointerLock());
-    }
-  }
 
   audio.setMuted(save.mute);
   emitHud(true);
@@ -1693,22 +1747,21 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       if (playerRig) playerRig.group.visible = true;
       drone.visible = true;
       objective = "Advance to the Void Gate";
-      hint = isMobile ? "Left stick move · right drag look" : "WASD · mouse aim · RMB aim · Q/E/F skills";
-      lockPointer();
+      hint = isMobile ? "Left stick move · right drag aim" : "WASD move · mouse aim · click fire · Q/E/F skills";
+      aimPoint.set(px, 0, pz - 8);
+      touchAimYaw = 0;
       placeFollowCam(1 / 60, true);
       emitHud(true);
     },
     pause() {
       if (phase === "playing") {
         phase = "paused";
-        document.exitPointerLock?.();
         emitHud(true);
       }
     },
     resume() {
       if (phase === "paused") {
         phase = "playing";
-        lockPointer();
         emitHud(true);
       }
     },
@@ -1728,6 +1781,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       touch.my = y;
     },
     setTouchLook(dx, dy) {
+      touchAimYaw -= dx * BASE_SENS * 1.15 * save.sensitivity;
       touch.lookX += dx * BASE_SENS * 1.15 * save.sensitivity;
       touch.lookY += dy * BASE_SENS * 1.15 * save.sensitivity;
     },

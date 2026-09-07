@@ -185,23 +185,12 @@ export function Hud({
         })}
       </div>
 
-      <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-        <div className={`relative ${hud.ads ? "h-4 w-4" : "h-5 w-5"}`}>
-          <span
-            className={`absolute left-1/2 top-0 h-2 w-px -translate-x-1/2 ${hud.hitMarker > 0 ? "bg-void" : "bg-fg/80"}`}
-          />
-          <span
-            className={`absolute bottom-0 left-1/2 h-2 w-px -translate-x-1/2 ${hud.hitMarker > 0 ? "bg-void" : "bg-fg/80"}`}
-          />
-          <span
-            className={`absolute left-0 top-1/2 h-px w-2 -translate-y-1/2 ${hud.hitMarker > 0 ? "bg-void" : "bg-fg/80"}`}
-          />
-          <span
-            className={`absolute right-0 top-1/2 h-px w-2 -translate-y-1/2 ${hud.hitMarker > 0 ? "bg-void" : "bg-fg/80"}`}
-          />
-        </div>
+      <div className="pointer-events-none absolute left-1/2 top-[38%] -translate-x-1/2">
+        {hud.hitMarker > 0 ? (
+          <p className="font-display text-sm font-semibold text-void">HIT</p>
+        ) : null}
         {hud.combo > 1 ? (
-          <p className="mt-6 text-center font-display text-2xl font-semibold text-accent">{hud.combo}x</p>
+          <p className="mt-2 text-center font-display text-2xl font-semibold text-accent">{hud.combo}x</p>
         ) : null}
       </div>
 
@@ -223,7 +212,7 @@ export function Hud({
       {hud.lockLost ? (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <p className="rounded-md border border-border bg-surface/90 px-5 py-3 font-display text-xl font-semibold">
-            Click to recapture aim
+            Move the cursor to aim
           </p>
         </div>
       ) : null}

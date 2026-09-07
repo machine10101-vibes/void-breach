@@ -19,20 +19,24 @@ function formatTime(t: number) {
 export function TitleScreen({ onDeploy, onInstall, canInstall, apkUrl, best }: Props) {
   return (
     <div className="absolute inset-0 z-20 flex flex-col overflow-hidden bg-transparent text-fg">
-      <div className="absolute inset-0 bg-gradient-to-r from-bg/92 via-bg/55 to-bg/10" />
-      <div className="absolute inset-0 bg-gradient-to-t from-bg via-transparent to-bg/35" />
+      <div
+        className="absolute inset-0 bg-cover bg-center opacity-55"
+        style={{ backgroundImage: "url(/art/title.jpg)" }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-r from-bg via-bg/80 to-bg/25" />
+      <div className="absolute inset-0 bg-gradient-to-t from-bg via-transparent to-bg/40" />
 
       <div className="relative z-10 flex min-h-0 flex-1 flex-col justify-end px-6 pb-10 pt-16 sm:justify-center sm:px-12 sm:pb-16">
         <p className="font-mono text-xs tracking-[0.28em] text-accent uppercase">
-          Vanguard Protocol · Earth 2172
+          Chimera Protocol · Earth 2172
         </p>
         <h1 className="mt-3 font-display text-5xl font-extrabold leading-[0.88] tracking-tight text-fg sm:text-8xl">
           <span className="block">VOID</span>
           <span className="block">BREACH</span>
         </h1>
         <p className="mt-5 max-w-md text-sm leading-relaxed text-muted sm:text-base">
-          The Shade opened a gate under New Meridian. You are Vanguard-7. Clear
-          Ashfall Gate, loot what the dead dropped, and kill the Harbinger.
+          Top-down survival shooter. Suit up, hold the ash streets, vacuum loot
+          off the Shade, and burn the Harbinger at Ashfall Gate.
         </p>
         <p className="mt-2 font-mono text-xs uppercase tracking-[0.18em] text-faint">
           Level 01 · Ashfall Gate
@@ -81,10 +85,10 @@ export function TitleScreen({ onDeploy, onInstall, canInstall, apkUrl, best }: P
           </div>
           <div>
             <dt className="font-mono text-[10px] uppercase tracking-widest text-faint">Aim / fire</dt>
-            <dd>Mouse · click / RT</dd>
+            <dd>Mouse cursor · click / RT</dd>
           </div>
           <div>
-            <dt className="font-mono text-[10px] uppercase tracking-widest text-faint">Aim down</dt>
+            <dt className="font-mono text-[10px] uppercase tracking-widest text-faint">Zoom</dt>
             <dd>RMB / LT</dd>
           </div>
           <div>

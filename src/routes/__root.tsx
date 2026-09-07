@@ -15,7 +15,7 @@ export const Route = createRootRoute({
       {
         name: "description",
         content:
-          "Void Breach — a third-person looter-shooter. Suit up, breach Ashfall Gate, and kill the Harbinger.",
+          "Void Breach — a top-down survival looter-shooter. Suit up, breach Ashfall Gate, and kill the Harbinger.",
       },
     ],
     links: [
