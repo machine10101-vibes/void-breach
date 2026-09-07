@@ -4,6 +4,7 @@ import type { BestRun } from "./types";
 
 type Props = {
   onDeploy: () => void;
+  onBoardShip: () => void;
   onSettings: () => void;
   onInstall: () => void;
   canInstall: boolean;
@@ -18,7 +19,7 @@ function formatTime(t: number) {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-export function TitleScreen({ onDeploy, onSettings, onInstall, canInstall, apkUrl, best }: Props) {
+export function TitleScreen({ onDeploy, onBoardShip, onSettings, onInstall, canInstall, apkUrl, best }: Props) {
   return (
     <div className="absolute inset-0 z-20 flex flex-col overflow-hidden bg-transparent text-fg">
       <div
@@ -87,6 +88,13 @@ export function TitleScreen({ onDeploy, onSettings, onInstall, canInstall, apkUr
           >
             <Play className="size-4" strokeWidth={2.2} />
             Deploy
+          </button>
+          <button
+            type="button"
+            onClick={onBoardShip}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-border bg-surface px-6 font-display text-lg font-semibold text-fg transition-opacity duration-150 hover:opacity-90 desk:h-12"
+          >
+            Board ship
           </button>
           <button
             type="button"

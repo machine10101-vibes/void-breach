@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { bindPbr } from "./textures";
-import type { AABB, EnemyKind } from "./types";
+import type { AABB, ArmorSlot, EnemyKind, InvItem, Rarity } from "./types";
 
 export type Materials = {
   concrete: THREE.MeshStandardMaterial;
@@ -150,11 +150,13 @@ export type PlayerRig = {
   rightThigh: THREE.Object3D;
   leftArm: THREE.Object3D;
   rightArm: THREE.Object3D;
+  gunGrip: THREE.Object3D;
   gun: THREE.Object3D;
   visor: THREE.Mesh;
   torso: THREE.Object3D;
   head: THREE.Object3D;
   backpack: THREE.Object3D;
+  kits: THREE.Group;
 };
 
 function box(
@@ -325,6 +327,15 @@ export function createExoSuit(mat: Materials): PlayerRig {
   };
   const leftArm = mkArm(-1);
   const rightArm = mkArm(1);
+  rightArm.rotation.x = -0.72;
+  rightArm.rotation.y = -0.12;
+  leftArm.rotation.x = -0.55;
+  leftArm.rotation.z = 0.28;
+
+  const gunGrip = new THREE.Group();
+  gunGrip.position.set(0.08, -0.66, 0.16);
+  gunGrip.rotation.set(-0.22, 0.08, 0.18);
+  rightArm.add(gunGrip);
 
   const mkLeg = (side: number) => {
     const thigh = new THREE.Group();
@@ -340,9 +351,11 @@ export function createExoSuit(mat: Materials): PlayerRig {
   };
 
   const gun = createRifle(mat);
-  gun.position.set(0.2, -0.54, 0.3);
-  gun.rotation.set(-0.14, 0.1, 0.06);
-  rightArm.add(gun);
+  mountGunInRightHand(gun);
+  gunGrip.add(gun);
+
+  const kits = new THREE.Group();
+  group.add(kits);
 
   return {
     group,
@@ -350,12 +363,19 @@ export function createExoSuit(mat: Materials): PlayerRig {
     rightThigh: mkLeg(1),
     leftArm,
     rightArm,
+    gunGrip,
     gun,
     visor,
     torso,
     head,
     backpack,
+    kits,
   };
+}
+
+export function mountGunInRightHand(gun: THREE.Object3D) {
+  gun.position.set(0.02, -0.04, 0.22);
+  gun.rotation.set(-0.08, 0.16, 0.04);
 }
 
 export function createRifle(mat: Materials) {
@@ -671,7 +691,7 @@ export function createWreck(mat: Materials) {
   return g;
 }
 
-export function addWorldFromBoxes(scene: THREE.Scene, boxes: AABB[], mat: Materials) {
+export function addWorldFromBoxes(scene: THREE.Object3D, boxes: AABB[], mat: Materials) {
   const geoCache = new Map<string, THREE.BoxGeometry>();
   for (const b of boxes) {
     const w = b.maxx - b.minx;
@@ -699,7 +719,7 @@ export function addWorldFromBoxes(scene: THREE.Scene, boxes: AABB[], mat: Materi
   }
 }
 
-export function dressWorld(scene: THREE.Scene, mat: Materials) {
+export function dressWorld(scene: THREE.Object3D, mat: Materials) {
   const road = new THREE.Mesh(new THREE.PlaneGeometry(5.6, 132), mat.asphalt);
   road.rotation.x = -Math.PI / 2;
   road.position.set(0, 0.02, -48);
@@ -1000,4 +1020,235 @@ export function createSlash() {
   const m = new THREE.Mesh(geo, mat);
   m.visible = false;
   return m;
+}
+
+function rarityHex(r: Rarity) {
+  return r === "legendary" ? 0xfb923c : r === "rare" ? 0xc4b5fd : r === "magic" ? 0x60a5fa : 0xd6d3d1;
+}
+
+export function applyArmorKits(
+  rig: PlayerRig,
+  mat: Materials,
+  items: InvItem[],
+  equipped: Record<ArmorSlot, string | null>,
+) {
+  while (rig.kits.children.length) rig.kits.remove(rig.kits.children[0]);
+  const piece = (slot: ArmorSlot) => items.find((i) => i.uid === equipped[slot]);
+  const helm = piece("helm");
+  if (helm) {
+    const g = new THREE.Group();
+    g.position.copy(rig.head.position);
+    box(mat.metal, 0.34, 0.08, 0.32, 0, 0.22, 0, g);
+    box(new THREE.MeshStandardMaterial({ color: rarityHex(helm.rarity), metalness: 0.55, roughness: 0.35, emissive: rarityHex(helm.rarity), emissiveIntensity: 0.25 }), 0.24, 0.04, 0.08, 0, 0.12, 0.18, g);
+    rig.kits.add(g);
+  }
+  const chest = piece("chest");
+  if (chest) {
+    const g = new THREE.Group();
+    g.position.copy(rig.torso.position);
+    box(mat.metal, 0.66, 0.2, 0.16, 0, 0.22, 0.22, g);
+    box(new THREE.MeshStandardMaterial({ color: rarityHex(chest.rarity), metalness: 0.4, roughness: 0.4, emissive: rarityHex(chest.rarity), emissiveIntensity: 0.2 }), 0.5, 0.08, 0.08, 0, 0.3, 0.28, g);
+    rig.kits.add(g);
+  }
+  const arms = piece("arms");
+  if (arms) {
+    const tint = new THREE.MeshStandardMaterial({ color: rarityHex(arms.rarity), metalness: 0.5, roughness: 0.38 });
+    box(tint, 0.16, 0.12, 0.22, 0.5, 0.82, 0.08, rig.kits);
+    box(tint, 0.16, 0.12, 0.22, -0.5, 0.82, 0.08, rig.kits);
+  }
+  const legs = piece("legs");
+  if (legs) {
+    const tint = new THREE.MeshStandardMaterial({ color: rarityHex(legs.rarity), metalness: 0.45, roughness: 0.42 });
+    box(tint, 0.2, 0.16, 0.22, 0.16, 0.28, 0.08, rig.kits);
+    box(tint, 0.2, 0.16, 0.22, -0.16, 0.28, 0.08, rig.kits);
+  }
+}
+
+export function createShipInterior(mat: Materials) {
+  const root = new THREE.Group();
+  root.name = "ship";
+
+  const hull = new THREE.MeshStandardMaterial({
+    color: 0x3a424c,
+    metalness: 0.62,
+    roughness: 0.38,
+  });
+  const deck = new THREE.MeshStandardMaterial({
+    color: 0x6a7380,
+    metalness: 0.42,
+    roughness: 0.48,
+  });
+  const plate = new THREE.MeshStandardMaterial({
+    color: 0x4c5560,
+    metalness: 0.55,
+    roughness: 0.4,
+  });
+
+  const stars = new THREE.Mesh(
+    new THREE.SphereGeometry(80, 24, 16),
+    new THREE.MeshBasicMaterial({ color: 0x141c28, side: THREE.BackSide, fog: false, depthWrite: false }),
+  );
+  root.add(stars);
+  for (let i = 0; i < 48; i++) {
+    const speck = new THREE.Mesh(
+      new THREE.SphereGeometry(0.06, 4, 4),
+      new THREE.MeshBasicMaterial({ color: 0xe8f4ff, toneMapped: false, fog: false }),
+    );
+    const a = (i / 48) * Math.PI * 2;
+    const b = ((i * 17) % 40) / 40 * Math.PI - Math.PI / 2;
+    speck.position.set(Math.cos(a) * 42 * Math.cos(b), 10 + Math.sin(b) * 22, Math.sin(a) * 42 * Math.cos(b));
+    root.add(speck);
+  }
+
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(26, 0.28, 22), deck);
+  floor.position.y = -0.14;
+  floor.receiveShadow = true;
+  root.add(floor);
+  const run = new THREE.Mesh(
+    new THREE.BoxGeometry(1.15, 0.05, 18),
+    new THREE.MeshBasicMaterial({ color: 0xe85d04, toneMapped: false }),
+  );
+  run.position.set(0, 0.03, 0);
+  root.add(run);
+  const run2 = run.clone();
+  run2.position.x = 5.1;
+  root.add(run2);
+  const run3 = run.clone();
+  run3.position.x = -5.1;
+  root.add(run3);
+
+  const pad = new THREE.Mesh(
+    new THREE.CylinderGeometry(2.25, 2.4, 0.24, 28),
+    new THREE.MeshStandardMaterial({
+      color: 0x5a3a24,
+      emissive: 0xe85d04,
+      emissiveIntensity: 0.85,
+      metalness: 0.28,
+      roughness: 0.46,
+    }),
+  );
+  pad.position.y = 0.14;
+  pad.receiveShadow = true;
+  root.add(pad);
+  const disc = new THREE.Mesh(
+    new THREE.CircleGeometry(1.55, 28),
+    new THREE.MeshBasicMaterial({ color: 0xff8a3a, toneMapped: false }),
+  );
+  disc.rotation.x = -Math.PI / 2;
+  disc.position.y = 0.27;
+  root.add(disc);
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(2.28, 0.05, 8, 36),
+    new THREE.MeshBasicMaterial({ color: 0xffb070, toneMapped: false }),
+  );
+  ring.rotation.x = Math.PI / 2;
+  ring.position.y = 0.28;
+  root.add(ring);
+
+  for (const x of [-12.4, 12.4]) {
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(0.4, 4.4, 22), hull);
+    wall.position.set(x, 2.1, 0);
+    wall.castShadow = true;
+    root.add(wall);
+  }
+  const aft = new THREE.Mesh(new THREE.BoxGeometry(26, 4.4, 0.4), hull);
+  aft.position.set(0, 2.1, -10.6);
+  root.add(aft);
+  const bow = new THREE.Mesh(new THREE.BoxGeometry(26, 1.6, 0.35), hull);
+  bow.position.set(0, 3.6, 10.5);
+  root.add(bow);
+
+  const glass = new THREE.Mesh(
+    new THREE.BoxGeometry(12, 2.8, 0.12),
+    new THREE.MeshStandardMaterial({
+      color: 0x123848,
+      emissive: 0x1a8aa0,
+      emissiveIntensity: 0.9,
+      metalness: 0.18,
+      roughness: 0.12,
+      transparent: true,
+      opacity: 0.78,
+    }),
+  );
+  glass.position.set(0, 2.2, 10.45);
+  root.add(glass);
+
+  for (const z of [-6, 0, 6]) {
+    const beam = new THREE.Mesh(new THREE.BoxGeometry(24, 0.16, 0.28), plate);
+    beam.position.set(0, 5.6, z);
+    root.add(beam);
+    const strip = new THREE.Mesh(
+      new THREE.BoxGeometry(20, 0.06, 0.1),
+      new THREE.MeshBasicMaterial({ color: 0xffc89a, toneMapped: false }),
+    );
+    strip.position.set(0, 5.48, z);
+    root.add(strip);
+  }
+
+  const path = new THREE.Mesh(
+    new THREE.BoxGeometry(1.05, 0.04, 5.2),
+    new THREE.MeshBasicMaterial({ color: 0x5eead4, toneMapped: false }),
+  );
+  path.position.set(3.4, 0.03, -2.2);
+  path.rotation.y = -0.42;
+  root.add(path);
+
+  const cnc = new THREE.Group();
+  cnc.position.set(5.4, 0, -4.4);
+  cnc.name = "cnc";
+  box(hull, 3.1, 0.32, 2.5, 0, 0.22, 0, cnc);
+  box(mat.metal, 2.6, 0.1, 1.9, 0, 0.42, 0, cnc);
+  const bed = new THREE.Mesh(
+    new THREE.BoxGeometry(1.8, 0.05, 1.2),
+    new THREE.MeshBasicMaterial({ color: 0x5eead4, toneMapped: false }),
+  );
+  bed.position.set(0, 0.48, 0);
+  cnc.add(bed);
+  box(hull, 0.18, 2.6, 0.18, -1.35, 1.55, -1.0, cnc);
+  box(hull, 0.18, 2.6, 0.18, 1.35, 1.55, -1.0, cnc);
+  box(hull, 0.18, 2.6, 0.18, -1.35, 1.55, 1.0, cnc);
+  box(hull, 0.18, 2.6, 0.18, 1.35, 1.55, 1.0, cnc);
+  box(mat.metal, 3.0, 0.14, 0.2, 0, 2.85, 0, cnc);
+  box(mat.voidCore, 0.2, 0.2, 2.2, 0, 2.7, 0, cnc);
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.34, 0.28), mat.ember);
+  head.position.set(0, 1.15, 0);
+  cnc.add(head);
+  const hologram = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.22, 0),
+    new THREE.MeshBasicMaterial({ color: 0x5eead4, transparent: true, opacity: 0.82, toneMapped: false }),
+  );
+  hologram.position.set(0, 0.72, 0);
+  hologram.name = "cncHolo";
+  cnc.add(hologram);
+  const lamp = new THREE.PointLight(0x5eead4, 3.2, 10, 1.4);
+  lamp.position.set(0, 1.8, 0);
+  cnc.add(lamp);
+  root.add(cnc);
+
+  const rack = new THREE.Group();
+  rack.position.set(-6.4, 0, -3.2);
+  box(hull, 2.4, 2.6, 0.4, 0, 1.4, 0, rack);
+  for (let i = 0; i < 4; i++) box(mat.metal, 0.12, 1.4, 0.08, -0.8 + i * 0.5, 1.3, 0.16, rack);
+  root.add(rack);
+
+  const crateA = createCrate(mat);
+  crateA.position.set(-5.4, 0, 3.6);
+  root.add(crateA);
+  const crateB = createCrate(mat);
+  crateB.position.set(-4.2, 0, 4.4);
+  root.add(crateB);
+
+  const fill = new THREE.PointLight(0xffd4b0, 12, 28, 1);
+  fill.position.set(0, 4.2, 1.2);
+  root.add(fill);
+  const rim = new THREE.PointLight(0xe85d04, 7, 18, 1.1);
+  rim.position.set(-3.2, 2.8, 4);
+  root.add(rim);
+  const cncFill = new THREE.PointLight(0x5eead4, 5.5, 14, 1.2);
+  cncFill.position.set(5.4, 2.8, -4.4);
+  root.add(cncFill);
+
+  root.userData.cnc = { x: 5.4, z: -4.4 };
+  root.userData.holo = hologram;
+  return root;
 }
