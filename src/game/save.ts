@@ -1,4 +1,4 @@
-import { starterLoadout } from "./items";
+import { ensureAmmoPools, starterLoadout } from "./items";
 import type { EquippedArmor, InvItem } from "./types";
 
 export type SaveData = {
@@ -57,7 +57,9 @@ export function loadSave(): SaveData {
       invertLookX: Boolean(parsed.invertLookX),
       invertLookY: Boolean(parsed.invertLookY),
       scrapBank: Math.max(0, Number(parsed.scrapBank) || (loadout ? 160 : 0)),
-      inventory: parsed.inventory?.length ? parsed.inventory : loadout?.inventory ?? defaults.inventory,
+      inventory: ensureAmmoPools(
+        parsed.inventory?.length ? parsed.inventory : loadout?.inventory ?? defaults.inventory,
+      ),
       equippedWeapon: parsed.equippedWeapon ?? loadout?.equippedWeapon ?? defaults.equippedWeapon,
       equippedArmor: { ...emptyArmor(), ...(parsed.equippedArmor ?? loadout?.equippedArmor ?? defaults.equippedArmor) },
     };

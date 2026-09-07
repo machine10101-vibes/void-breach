@@ -75,7 +75,7 @@ export function TitleScreen({ onDeploy, onBoardShip, onSettings, onInstall, canI
             </div>
             <div>
               <dt className="font-mono text-[10px] uppercase tracking-widest text-faint">Guns</dt>
-              <dd>1–3 · scroll</dd>
+              <dd>1–8 · scroll</dd>
             </div>
           </dl>
         </div>

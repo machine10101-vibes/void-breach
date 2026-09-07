@@ -1,0 +1,99 @@
+import { useEffect, useRef } from "react";
+import * as THREE from "three";
+import { createAmmoMesh, createWeaponMesh, makeMaterials } from "./meshes";
+import type { InvItem } from "./types";
+
+type Job = {
+  canvas: HTMLCanvasElement;
+  item: InvItem;
+  mesh: THREE.Object3D;
+};
+
+const jobs = new Set<Job>();
+let renderer: THREE.WebGLRenderer | null = null;
+let scene: THREE.Scene | null = null;
+let camera: THREE.PerspectiveCamera | null = null;
+let mat = makeMaterials({});
+let raf = 0;
+
+function ensureHost() {
+  if (renderer) return;
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "low-power" });
+  renderer.setPixelRatio(1);
+  renderer.setSize(160, 128, false);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  scene = new THREE.Scene();
+  scene.add(new THREE.HemisphereLight(0xffe6c8, 0x1a1610, 1.1));
+  const key = new THREE.DirectionalLight(0xffd4a8, 1.8);
+  key.position.set(2.2, 3.2, 2.4);
+  scene.add(key);
+  const fill = new THREE.DirectionalLight(0x5eead4, 0.45);
+  fill.position.set(-2, 1.4, -1.6);
+  scene.add(fill);
+  camera = new THREE.PerspectiveCamera(32, 160 / 128, 0.08, 20);
+  camera.position.set(0.55, 0.32, 0.95);
+  camera.lookAt(0, 0.04, 0);
+}
+
+function buildMesh(item: InvItem) {
+  if (item.kind === "weapon") return createWeaponMesh(item.weaponId ?? "ar", mat);
+  if (item.kind === "ammo") return createAmmoMesh(item.ammoId ?? "rifle", mat);
+  const g = new THREE.Group();
+  const plate = new THREE.Mesh(
+    new THREE.BoxGeometry(0.28, 0.34, 0.12),
+    new THREE.MeshStandardMaterial({ color: 0x8a8478, metalness: 0.55, roughness: 0.4 }),
+  );
+  g.add(plate);
+  return g;
+}
+
+function tick() {
+  raf = 0;
+  if (!renderer || !scene || !camera || jobs.size === 0) return;
+  const t = performance.now() * 0.001;
+  for (const job of jobs) {
+    job.mesh.rotation.y = t * 0.7;
+    scene.add(job.mesh);
+    renderer.render(scene, camera);
+    const ctx = job.canvas.getContext("2d");
+    if (ctx) {
+      ctx.clearRect(0, 0, job.canvas.width, job.canvas.height);
+      ctx.drawImage(renderer.domElement, 0, 0, job.canvas.width, job.canvas.height);
+    }
+    scene.remove(job.mesh);
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+function kick() {
+  if (!raf && jobs.size) raf = requestAnimationFrame(tick);
+}
+
+export function attachItemPreview(canvas: HTMLCanvasElement, item: InvItem) {
+  ensureHost();
+  const mesh = buildMesh(item);
+  const job: Job = { canvas, item, mesh };
+  jobs.add(job);
+  kick();
+  return () => {
+    jobs.delete(job);
+    mesh.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (m.geometry) m.geometry.dispose();
+    });
+    if (!jobs.size && raf) {
+      cancelAnimationFrame(raf);
+      raf = 0;
+    }
+  };
+}
+
+export function ItemPreview({ item }: { item: InvItem }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    return attachItemPreview(canvas, item);
+  }, [item.uid, item.kind, item.weaponId, item.ammoId]);
+  return <canvas ref={ref} width={160} height={128} className="h-16 w-20 shrink-0 rounded-md bg-bg/60" aria-hidden />;
+}

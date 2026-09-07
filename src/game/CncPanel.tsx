@@ -26,7 +26,7 @@ export function CncPanel({
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="font-display text-3xl font-semibold">Hull CNC</h2>
-            <p className="text-sm text-muted">Print weapons and armor from scrap recovered in the field.</p>
+            <p className="text-sm text-muted">Print weapons, armor, and ammo crates from scrap recovered in the field.</p>
             <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-accent">{scrapBank} scrap in the hopper</p>
           </div>
           <button

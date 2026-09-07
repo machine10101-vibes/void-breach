@@ -1,25 +1,110 @@
-import type { ArmorSlot, InvItem, Rarity, Recipe, WeaponId } from "./types";
+import type { AmmoId, ArmorSlot, InvItem, Rarity, Recipe, WeaponId } from "./types";
 
-export const INVENTORY_CAP = 24;
+export const INVENTORY_CAP = 32;
+
+export const AMMO_META: Record<AmmoId, { name: string; pickup: number; color: number }> = {
+  rifle: { name: "Rifle rounds", pickup: 32, color: 0xd6d3d1 },
+  shell: { name: "12G shells", pickup: 8, color: 0xe85d04 },
+  compact: { name: "Compact mags", pickup: 36, color: 0x60a5fa },
+  heavy: { name: "Heavy belt", pickup: 48, color: 0xfb923c },
+  cell: { name: "Void cells", pickup: 4, color: 0x5eead4 },
+};
+
+export const WEAPON_AMMO: Record<WeaponId, AmmoId> = {
+  ar: "rifle",
+  dmr: "rifle",
+  shotgun: "shell",
+  smg: "compact",
+  cannon: "compact",
+  lmg: "heavy",
+  rail: "cell",
+  gl: "cell",
+};
+
+const WEAPON_BASE: Record<
+  WeaponId,
+  { name: string; dmg: number; pellets: number; rpm: number; mag: number; reserve: number; spread: number; range: number; reload: number }
+> = {
+  ar: { name: "Vanguard ARX", dmg: 21, pellets: 1, rpm: 580, mag: 32, reserve: 160, spread: 0.016, range: 82, reload: 1.4 },
+  shotgun: { name: "Spartan 12G", dmg: 12, pellets: 8, rpm: 78, mag: 6, reserve: 36, spread: 0.105, range: 17, reload: 1.85 },
+  smg: { name: "Cinder SMG", dmg: 13, pellets: 1, rpm: 920, mag: 40, reserve: 200, spread: 0.038, range: 40, reload: 1.2 },
+  dmr: { name: "Kestrel DMR", dmg: 48, pellets: 1, rpm: 210, mag: 12, reserve: 48, spread: 0.006, range: 124, reload: 1.85 },
+  cannon: { name: "Judge .50", dmg: 64, pellets: 1, rpm: 88, mag: 6, reserve: 30, spread: 0.02, range: 38, reload: 1.55 },
+  lmg: { name: "Ashfall SAW", dmg: 16, pellets: 1, rpm: 760, mag: 80, reserve: 240, spread: 0.044, range: 72, reload: 2.55 },
+  rail: { name: "Null Lance", dmg: 96, pellets: 1, rpm: 46, mag: 4, reserve: 16, spread: 0.002, range: 146, reload: 2.15 },
+  gl: { name: "Helios GL", dmg: 88, pellets: 1, rpm: 52, mag: 4, reserve: 12, spread: 0.028, range: 42, reload: 2.05 },
+};
 
 export function newUid() {
   return `it-${Math.random().toString(36).slice(2, 8)}${Date.now().toString(36).slice(-4)}`;
 }
 
+export function makeAmmo(ammoId: AmmoId, qty: number): InvItem {
+  return {
+    uid: newUid(),
+    kind: "ammo",
+    name: AMMO_META[ammoId].name,
+    rarity: "common",
+    ammoId,
+    qty: Math.max(0, Math.floor(qty)),
+  };
+}
+
+export function ammoCount(items: InvItem[], ammoId: AmmoId) {
+  return items.filter((i) => i.kind === "ammo" && i.ammoId === ammoId).reduce((sum, i) => sum + (i.qty ?? 0), 0);
+}
+
+export function addAmmoToItems(items: InvItem[], ammoId: AmmoId, qty: number) {
+  const add = Math.max(0, Math.floor(qty));
+  if (!add) return items;
+  const stack = items.find((i) => i.kind === "ammo" && i.ammoId === ammoId);
+  if (stack) {
+    stack.qty = (stack.qty ?? 0) + add;
+    return items;
+  }
+  items.push(makeAmmo(ammoId, add));
+  return items;
+}
+
+export function takeAmmoFromItems(items: InvItem[], ammoId: AmmoId, qty: number) {
+  let need = Math.max(0, Math.floor(qty));
+  let taken = 0;
+  for (const stack of items) {
+    if (need <= 0) break;
+    if (stack.kind !== "ammo" || stack.ammoId !== ammoId) continue;
+    const have = stack.qty ?? 0;
+    const n = Math.min(have, need);
+    stack.qty = have - n;
+    taken += n;
+    need -= n;
+  }
+  for (let i = items.length - 1; i >= 0; i--) {
+    const it = items[i];
+    if (it.kind === "ammo" && (it.qty ?? 0) <= 0) items.splice(i, 1);
+  }
+  return taken;
+}
+
+export function ensureAmmoPools(items: InvItem[]) {
+  const seen = new Set<AmmoId>();
+  for (const it of items) {
+    if (it.kind !== "weapon" || !it.weaponId) continue;
+    const ammoId = WEAPON_AMMO[it.weaponId];
+    if (seen.has(ammoId)) continue;
+    seen.add(ammoId);
+    if (ammoCount(items, ammoId) > 0) continue;
+    const seed = it.reserve && it.reserve > 0 ? it.reserve : WEAPON_BASE[it.weaponId].reserve;
+    addAmmoToItems(items, ammoId, seed);
+  }
+  if (ammoCount(items, "rifle") <= 0) addAmmoToItems(items, "rifle", 160);
+  return items;
+}
+
 export function starterLoadout(): { inventory: InvItem[]; equippedWeapon: string; equippedArmor: Record<ArmorSlot, string | null> } {
-  const rifle = makeWeapon("ar", "Vanguard ARX", "common", {
-    dmg: 21,
-    pellets: 1,
-    rpm: 580,
-    mag: 32,
-    reserve: 160,
-    spread: 0.016,
-    range: 82,
-    reload: 1.4,
-  });
+  const rifle = makeWeapon("ar", "Vanguard ARX", "common", WEAPON_BASE.ar);
   const chest = makeArmor("chest", "Issue plate", "common", { hpBonus: 12, shieldBonus: 8 });
   return {
-    inventory: [rifle, chest],
+    inventory: [rifle, chest, makeAmmo("rifle", 160), makeAmmo("compact", 48), makeAmmo("shell", 12)],
     equippedWeapon: rifle.uid,
     equippedArmor: { helm: null, chest: chest.uid, arms: null, legs: null },
   };
@@ -60,24 +145,21 @@ export function makeArmor(
 }
 
 export function rollLootWeapon(rarity: Rarity): InvItem {
-  const pool: { id: WeaponId; name: string }[] = [
-    { id: "ar", name: "ARX-Void" },
-    { id: "shotgun", name: "Spartan Edge" },
-    { id: "smg", name: "Cinder Coil" },
-  ];
-  const pick = pool[Math.floor(Math.random() * pool.length)];
+  const pool: WeaponId[] = ["ar", "shotgun", "smg", "dmr", "cannon", "lmg", "rail", "gl"];
+  const id = pool[Math.floor(Math.random() * pool.length)];
   const prefix = rarity === "legendary" ? "Mythic " : rarity === "rare" ? "Rare " : rarity === "magic" ? "Tuned " : "";
   const mult = rarity === "legendary" ? 1.7 : rarity === "rare" ? 1.35 : rarity === "magic" ? 1.15 : 1;
-  const base =
-    pick.id === "shotgun"
-      ? { dmg: 12, pellets: 8, rpm: 78, mag: 6, reserve: 36, spread: 0.105, range: 17, reload: 1.85 }
-      : pick.id === "smg"
-        ? { dmg: 13, pellets: 1, rpm: 920, mag: 40, reserve: 200, spread: 0.038, range: 40, reload: 1.2 }
-        : { dmg: 21, pellets: 1, rpm: 580, mag: 32, reserve: 160, spread: 0.016, range: 82, reload: 1.4 };
-  return makeWeapon(pick.id, prefix + pick.name, rarity, {
+  const base = WEAPON_BASE[id];
+  return makeWeapon(id, prefix + base.name, rarity, {
     ...base,
     dmg: Math.round(base.dmg * mult),
   });
+}
+
+export function rollLootAmmo(kindHint?: WeaponId): InvItem {
+  const ammoId = kindHint ? WEAPON_AMMO[kindHint] : (Object.keys(AMMO_META) as AmmoId[])[Math.floor(Math.random() * 5)];
+  const extra = Math.floor(AMMO_META[ammoId].pickup * (0.7 + Math.random() * 0.8));
+  return makeAmmo(ammoId, extra);
 }
 
 export function rollLootArmor(rarity: Rarity): InvItem {
@@ -103,77 +185,61 @@ export const RECIPES: Recipe[] = [
     id: "ar-tuned",
     name: "Tuned ARX",
     cost: 90,
-    output: {
-      kind: "weapon",
-      name: "Tuned ARX",
-      rarity: "magic",
-      weaponId: "ar",
-      dmg: 26,
-      pellets: 1,
-      rpm: 620,
-      mag: 34,
-      reserve: 170,
-      spread: 0.014,
-      range: 86,
-      reload: 1.3,
-    },
+    output: { kind: "weapon", rarity: "magic", weaponId: "ar", ...WEAPON_BASE.ar, name: "Tuned ARX", dmg: 26, rpm: 620, mag: 34, reserve: 170, spread: 0.014, range: 86, reload: 1.3 },
+  },
+  {
+    id: "dmr",
+    name: "Kestrel DMR",
+    cost: 150,
+    output: { kind: "weapon", rarity: "rare", weaponId: "dmr", ...WEAPON_BASE.dmr, name: "Kestrel DMR" },
+  },
+  {
+    id: "cannon",
+    name: "Judge .50",
+    cost: 140,
+    output: { kind: "weapon", rarity: "rare", weaponId: "cannon", ...WEAPON_BASE.cannon, name: "Judge .50" },
+  },
+  {
+    id: "lmg",
+    name: "Ashfall SAW",
+    cost: 170,
+    output: { kind: "weapon", rarity: "rare", weaponId: "lmg", ...WEAPON_BASE.lmg, name: "Ashfall SAW" },
+  },
+  {
+    id: "rail",
+    name: "Null Lance",
+    cost: 240,
+    output: { kind: "weapon", rarity: "legendary", weaponId: "rail", ...WEAPON_BASE.rail, name: "Null Lance" },
+  },
+  {
+    id: "gl",
+    name: "Helios GL",
+    cost: 190,
+    output: { kind: "weapon", rarity: "magic", weaponId: "gl", ...WEAPON_BASE.gl, name: "Helios GL" },
   },
   {
     id: "shotgun",
     name: "Spartan 12G",
     cost: 120,
-    output: {
-      kind: "weapon",
-      name: "Spartan 12G",
-      rarity: "magic",
-      weaponId: "shotgun",
-      dmg: 14,
-      pellets: 8,
-      rpm: 82,
-      mag: 6,
-      reserve: 40,
-      spread: 0.1,
-      range: 18,
-      reload: 1.7,
-    },
+    output: { kind: "weapon", rarity: "magic", weaponId: "shotgun", ...WEAPON_BASE.shotgun, name: "Spartan 12G", dmg: 14, rpm: 82, reserve: 40, spread: 0.1, range: 18, reload: 1.7 },
   },
   {
     id: "smg",
     name: "Cinder SMG",
     cost: 100,
-    output: {
-      kind: "weapon",
-      name: "Cinder SMG",
-      rarity: "common",
-      weaponId: "smg",
-      dmg: 13,
-      pellets: 1,
-      rpm: 920,
-      mag: 40,
-      reserve: 200,
-      spread: 0.038,
-      range: 40,
-      reload: 1.2,
-    },
+    output: { kind: "weapon", rarity: "common", weaponId: "smg", ...WEAPON_BASE.smg, name: "Cinder SMG" },
   },
   {
-    id: "mythic-ar",
-    name: "Mythic ARX-Void",
-    cost: 280,
-    output: {
-      kind: "weapon",
-      name: "Mythic ARX-Void",
-      rarity: "legendary",
-      weaponId: "ar",
-      dmg: 38,
-      pellets: 1,
-      rpm: 660,
-      mag: 36,
-      reserve: 200,
-      spread: 0.01,
-      range: 94,
-      reload: 1.15,
-    },
+    id: "ammo-rifle",
+    name: "Rifle crate",
+    cost: 35,
+    output: { kind: "ammo", name: "Rifle rounds", rarity: "common", ammoId: "rifle", qty: 64 },
+  },
+  {
+    id: "ammo-cell",
+    name: "Void cell pack",
+    cost: 55,
+    output: { kind: "ammo", name: "Void cells", rarity: "common", ammoId: "cell", qty: 8 },
   },
   {
     id: "helm",
@@ -202,7 +268,9 @@ export const RECIPES: Recipe[] = [
 ];
 
 export function instantiateRecipe(recipe: Recipe): InvItem {
-  return { uid: newUid(), ...recipe.output };
+  const made = { uid: newUid(), ...recipe.output };
+  if (made.kind === "ammo") made.qty = made.qty ?? AMMO_META[made.ammoId ?? "rifle"].pickup;
+  return made;
 }
 
 export function armorBonuses(items: InvItem[], equipped: Record<ArmorSlot, string | null>) {
@@ -221,17 +289,19 @@ export function armorBonuses(items: InvItem[], equipped: Record<ArmorSlot, strin
 }
 
 export function itemToWeapon(it: InvItem) {
+  const id = it.weaponId ?? "ar";
+  const base = WEAPON_BASE[id];
   return {
-    id: it.weaponId ?? "ar",
+    id,
     name: it.name,
     rarity: it.rarity,
-    dmg: it.dmg ?? 21,
-    pellets: it.pellets ?? 1,
-    rpm: it.rpm ?? 580,
-    mag: it.mag ?? 32,
-    reserve: it.reserve ?? 160,
-    spread: it.spread ?? 0.016,
-    range: it.range ?? 82,
-    reload: it.reload ?? 1.4,
+    dmg: it.dmg ?? base.dmg,
+    pellets: it.pellets ?? base.pellets,
+    rpm: it.rpm ?? base.rpm,
+    mag: it.mag ?? base.mag,
+    reserve: it.reserve ?? base.reserve,
+    spread: it.spread ?? base.spread,
+    range: it.range ?? base.range,
+    reload: it.reload ?? base.reload,
   };
 }

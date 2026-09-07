@@ -1,9 +1,10 @@
-export type WeaponId = "ar" | "shotgun" | "smg";
+export type WeaponId = "ar" | "shotgun" | "smg" | "dmr" | "cannon" | "lmg" | "rail" | "gl";
+export type AmmoId = "rifle" | "shell" | "compact" | "heavy" | "cell";
 export type EnemyKind = "husk" | "stalker" | "brute" | "harbinger";
 export type Rarity = "common" | "magic" | "rare" | "legendary";
 export type Phase = "boot" | "title" | "playing" | "paused" | "dead" | "victory" | "ship";
 export type ArmorSlot = "helm" | "chest" | "arms" | "legs";
-export type ItemKind = "weapon" | "armor";
+export type ItemKind = "weapon" | "armor" | "ammo";
 
 export type InvItem = {
   uid: string;
@@ -11,6 +12,8 @@ export type InvItem = {
   name: string;
   rarity: Rarity;
   weaponId?: WeaponId;
+  ammoId?: AmmoId;
+  qty?: number;
   slot?: ArmorSlot;
   dmg?: number;
   pellets?: number;

@@ -17,6 +17,7 @@ import {
   createCrate,
   createExoSuit,
   createGrenade,
+  createAmmoMesh,
   createLamp,
   createMuzzleFlash,
   createRifle,
@@ -28,6 +29,7 @@ import {
   createSmg,
   createSpawnRift,
   createVoidGate,
+  createWeaponMesh,
   createWreck,
   dressWorld,
   makeMaterials,
@@ -39,13 +41,20 @@ import {
 import { ParticleField, ScorchPool } from "./particles";
 import { assetUrl } from "@/lib/asset-url";
 import {
+  addAmmoToItems,
+  ammoCount,
   armorBonuses,
+  AMMO_META,
+  ensureAmmoPools,
   INVENTORY_CAP,
   instantiateRecipe,
   itemToWeapon,
   RECIPES,
+  rollLootAmmo,
   rollLootArmor,
   rollLootWeapon,
+  takeAmmoFromItems,
+  WEAPON_AMMO,
 } from "./items";
 import { isTouchUi } from "./layout";
 import { loadSave, recordRun, writeSave, type SaveData } from "./save";
@@ -57,6 +66,7 @@ import type {
   InvItem,
   Phase,
   Rarity,
+  AmmoId,
   WeaponId,
 } from "./types";
 
@@ -126,7 +136,7 @@ type Drop = {
   rarity: Rarity;
 };
 type Proj = {
-  kind: "frag" | "bolt";
+  kind: "frag" | "bolt" | "gl";
   mesh: THREE.Object3D;
   x: number;
   y: number;
@@ -203,6 +213,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   };
 
   let save: SaveData = loadSave();
+  writeSave(save);
   let phase: Phase = "title";
   let destroyed = false;
   let yaw = 0;
@@ -650,6 +661,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     if (idx < 0) idx = 0;
     weaponIdx = idx;
     save.equippedWeapon = list[idx].uid;
+    syncWeaponReserves();
   }
 
   function applyLoadoutVisuals() {
@@ -664,12 +676,31 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     if (playerRig && mat) applyArmorKits(playerRig, mat, save.inventory, save.equippedArmor);
   }
 
+  function syncWeaponReserves() {
+    for (const w of weapons) {
+      w.reserve = ammoCount(save.inventory, WEAPON_AMMO[w.id]);
+    }
+  }
+
   function addToInventory(item: InvItem) {
+    if (item.kind === "ammo" && item.ammoId) {
+      addAmmoToItems(save.inventory, item.ammoId, item.qty ?? AMMO_META[item.ammoId].pickup);
+      persistLoadout();
+      syncWeaponReserves();
+      return;
+    }
     if (save.inventory.length >= INVENTORY_CAP) {
-      save.inventory.shift();
+      const drop = save.inventory.findIndex(
+        (i) => i.kind !== "ammo" && i.uid !== save.equippedWeapon && !Object.values(save.equippedArmor).includes(i.uid),
+      );
+      if (drop >= 0) save.inventory.splice(drop, 1);
     }
     save.inventory.push(item);
+    if (item.kind === "weapon" && item.weaponId) {
+      addAmmoToItems(save.inventory, WEAPON_AMMO[item.weaponId], Math.max(item.mag ?? 12, 8));
+    }
     persistLoadout();
+    syncWeaponReserves();
   }
 
   function currentWeapon() {
@@ -753,13 +784,51 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     if (rift) spawnRift(x, z);
   }
 
+  function spawnWorldDrop(x: number, z: number, mesh: THREE.Object3D, kind: Drop["kind"], item: InvItem | undefined, amount: number, rarity: Rarity) {
+    const g = new THREE.Group();
+    mesh.position.y = 0.12;
+    g.add(mesh);
+    const beam = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.03, 0.03, 2.2, 6),
+      new THREE.MeshBasicMaterial({ color: rarityColor(rarity), transparent: true, opacity: 0.4, toneMapped: false }),
+    );
+    beam.position.y = 1.15;
+    g.add(beam);
+    g.position.set(x, 0.2, z);
+    scene.add(g);
+    drops.push({ mesh: g, x, z, kind, item, amount, rarity });
+  }
+
+  function spawnAmmoDrop(x: number, z: number) {
+    if (!mat) return;
+    const prefer = WEAPON_AMMO[currentWeapon().id];
+    const ammoId: AmmoId = Math.random() > 0.32 ? prefer : (Object.keys(AMMO_META) as AmmoId[])[Math.floor(Math.random() * 5)];
+    const pack = rollLootAmmo(ammoId === prefer ? currentWeapon().id : undefined);
+    if (pack.ammoId !== ammoId) {
+      pack.ammoId = ammoId;
+      pack.name = AMMO_META[ammoId].name;
+      pack.qty = Math.floor(AMMO_META[ammoId].pickup * (0.7 + Math.random() * 0.8));
+    }
+    const mesh = createAmmoMesh(ammoId, mat);
+    mesh.scale.setScalar(1.35);
+    spawnWorldDrop(x + (Math.random() - 0.5) * 0.5, z + (Math.random() - 0.5) * 0.5, mesh, "ammo", pack, pack.qty ?? AMMO_META[ammoId].pickup, "common");
+  }
+
   function rollDrop(x: number, z: number, kind: EnemyKind) {
     if (!mat) return;
+    if (kind === "harbinger" || kind === "brute" || Math.random() > 0.18) spawnAmmoDrop(x, z);
     const roll = Math.random();
-    if (!(kind === "harbinger" || roll > 0.32)) return;
-    const g = new THREE.Group();
+    if (!(kind === "harbinger" || roll > 0.38)) return;
     const rarity: Rarity =
       kind === "harbinger" ? "legendary" : roll > 0.92 ? "legendary" : roll > 0.78 ? "rare" : roll > 0.5 ? "magic" : "common";
+    const gearRoll = Math.random();
+    const item =
+      rarity === "common" && gearRoll < 0.5
+        ? undefined
+        : gearRoll > 0.55
+          ? rollLootArmor(rarity)
+          : rollLootWeapon(rarity);
+    const kindDrop: Drop["kind"] = item ? (item.kind === "armor" ? "armor" : "weapon") : Math.random() > 0.5 ? "health" : "gold";
     const gem = new THREE.Mesh(
       new THREE.OctahedronGeometry(0.16, 0),
       new THREE.MeshStandardMaterial({
@@ -770,40 +839,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
         toneMapped: false,
       }),
     );
-    g.add(gem);
-    const beam = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.03, 0.03, 2.4, 6),
-      new THREE.MeshBasicMaterial({ color: rarityColor(rarity), transparent: true, opacity: 0.45, toneMapped: false }),
-    );
-    beam.position.y = 1.2;
-    g.add(beam);
-    g.position.set(x, 0.2, z);
-    scene.add(g);
-    const gearRoll = Math.random();
-    const item =
-      rarity === "common" && gearRoll < 0.42
-        ? undefined
-        : gearRoll > 0.55
-          ? rollLootArmor(rarity)
-          : rollLootWeapon(rarity);
-    const kindDrop: Drop["kind"] = item
-      ? item.kind === "armor"
-        ? "armor"
-        : "weapon"
-      : Math.random() > 0.55
-        ? Math.random() > 0.5
-          ? "health"
-          : "ammo"
-        : "gold";
-    drops.push({
-      mesh: g,
-      x,
-      z,
-      kind: kindDrop,
-      item,
-      amount: item ? 0 : 40 + Math.floor(Math.random() * 80),
-      rarity,
-    });
+    spawnWorldDrop(x, z, gem, kindDrop, item, item ? 0 : 40 + Math.floor(Math.random() * 80), rarity);
   }
 
   function killEnemy(e: Enemy) {
@@ -965,11 +1001,10 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   function craftRecipe(id: string) {
     const recipe = RECIPES.find((r) => r.id === id);
     if (!recipe || save.scrapBank < recipe.cost) return;
-    if (save.inventory.length >= INVENTORY_CAP) return;
+    if (recipe.output.kind !== "ammo" && save.inventory.length >= INVENTORY_CAP) return;
     save.scrapBank -= recipe.cost;
     const made = instantiateRecipe(recipe);
-    save.inventory.push(made);
-    persistLoadout();
+    addToInventory(made);
     pushLoot(`Printed ${made.name}`, made.rarity);
     emitHud(true);
   }
@@ -1054,9 +1089,9 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     fireCd = interval;
     mag -= 1;
     shots += w.pellets;
-    audio.fire(w.id);
-    trauma = Math.min(1, trauma + (w.id === "shotgun" ? 0.22 : 0.07));
-    pitch += w.id === "shotgun" ? 0.028 : 0.01;
+    audio.fire(w.id === "shotgun" || w.id === "cannon" || w.id === "gl" ? "shotgun" : w.id === "smg" || w.id === "lmg" ? "smg" : "ar");
+    trauma = Math.min(1, trauma + (w.id === "shotgun" || w.id === "cannon" || w.id === "gl" ? 0.22 : w.id === "rail" ? 0.28 : 0.07));
+    pitch += w.id === "shotgun" || w.id === "cannon" ? 0.028 : 0.01;
     yaw += (Math.random() - 0.5) * (w.id === "shotgun" ? 0.02 : 0.006);
     muzzleLight.intensity = 7;
     const { origin, dir } = aimRay();
@@ -1066,7 +1101,29 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       muzzleFlash.visible = true;
       muzzleFlash.scale.setScalar(0.8 + Math.random() * 0.5);
     }
-    particles.spray(px + f.x * 0.85, py + 1.38, pz + f.z * 0.85, f.x, 0.05, f.z, 4, 0xffc58a, 8, 0.08, 0.06);
+    particles.spray(px + f.x * 0.85, py + 1.38, pz + f.z * 0.85, f.x, 0.05, f.z, 4, w.id === "rail" ? 0x5eead4 : 0xffc58a, 8, 0.08, 0.06);
+    if (w.id === "gl" && mat) {
+      const { origin, dir } = aimRay();
+      const mesh = createGrenade(mat);
+      mesh.scale.setScalar(1.15);
+      mesh.position.copy(origin);
+      scene.add(mesh);
+      projs.push({
+        kind: "gl",
+        mesh,
+        x: origin.x,
+        y: origin.y,
+        z: origin.z,
+        vx: dir.x * 22,
+        vy: 3.6 + dir.y * 8,
+        vz: dir.z * 22,
+        life: 1.6,
+        dmg: w.dmg * (overdriveT > 0 ? 1.28 : 1),
+        r: 4.6,
+      });
+      if (mag <= 0) startReload();
+      return;
+    }
     const ads = 1 - adsT * 0.55;
     for (let p = 0; p < w.pellets; p++) {
       const spread = w.spread * (1 + (1 - mag / w.mag) * 0.4) * ads;
@@ -1109,7 +1166,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
 
   function startReload() {
     const w = currentWeapon();
-    if (reloadT > 0 || mag >= w.mag || w.reserve <= 0) return;
+    const reserve = ammoCount(save.inventory, WEAPON_AMMO[w.id]);
+    if (reloadT > 0 || mag >= w.mag || reserve <= 0) return;
     reloadT = w.reload;
     audio.reload();
   }
@@ -1117,9 +1175,10 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   function finishReload() {
     const w = currentWeapon();
     const need = w.mag - mag;
-    const take = Math.min(need, w.reserve);
+    const take = takeAmmoFromItems(save.inventory, WEAPON_AMMO[w.id], need);
     mag += take;
-    w.reserve -= take;
+    persistLoadout();
+    syncWeaponReserves();
     reloadT = 0;
   }
 
@@ -1191,7 +1250,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     if (!playerRig || !mat) return;
     playerRig.gunGrip.remove(playerRig.gun);
     const id = currentWeapon().id;
-    const g = id === "shotgun" ? createShotgun(mat) : id === "smg" ? createSmg(mat) : createRifle(mat);
+    const g = createWeaponMesh(id, mat);
     mountGunInRightHand(g);
     playerRig.gunGrip.add(g);
     playerRig.gun = g;
@@ -1430,7 +1489,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     for (let i = projs.length - 1; i >= 0; i--) {
       const p = projs[i];
       p.life -= dt;
-      p.vy -= (p.kind === "frag" ? 18 : 0) * dt;
+      p.vy -= (p.kind === "frag" ? 18 : p.kind === "gl" ? 10 : 0) * dt;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
       p.z += p.vz * dt;
@@ -1438,11 +1497,27 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       p.mesh.rotation.x += dt * 8;
       const wall = rayWorld(level.boxes, p.x - p.vx * dt, p.y, p.z - p.vz * dt, p.vx, p.vy, p.vz, Math.hypot(p.vx, p.vy, p.vz) * dt + 0.2);
       const hitWall = wall !== null && wall < 0.35;
-      if (p.kind === "frag" && (p.life <= 0 || p.y < 0.12 || hitWall)) {
+      if ((p.kind === "frag" || p.kind === "gl") && (p.life <= 0 || p.y < 0.12 || hitWall)) {
         explode(p.x, Math.max(0.3, p.y), p.z, p.dmg, p.r);
         scene.remove(p.mesh);
         projs.splice(i, 1);
         continue;
+      }
+      if (p.kind === "gl") {
+        let splat = false;
+        for (const e of enemies) {
+          if (!e.alive) continue;
+          if (Math.hypot(e.x - p.x, e.z - p.z) < e.radius + 0.35 && Math.abs(e.y + 1 - p.y) < 1.4) {
+            splat = true;
+            break;
+          }
+        }
+        if (splat) {
+          explode(p.x, Math.max(0.3, p.y), p.z, p.dmg, p.r);
+          scene.remove(p.mesh);
+          projs.splice(i, 1);
+          continue;
+        }
       }
       if (p.kind === "bolt") {
         particles.spawn(p.x, p.y, p.z, 0, 0, 0, 0.12, 0.07, 0x5eead4, 4, 0);
@@ -1475,8 +1550,9 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
           gold += d.amount;
           pushLoot(`${d.amount} scrap`, "common");
         } else if (d.kind === "ammo") {
-          currentWeapon().reserve += 28;
-          pushLoot("Ammo pack", "common");
+          const pack = d.item ?? rollLootAmmo(currentWeapon().id);
+          addToInventory(pack);
+          pushLoot(`${pack.name} +${pack.qty ?? d.amount}`, "common");
         } else if (d.item) {
           addToInventory(d.item);
           pushLoot(d.item.name, d.item.rarity);
@@ -1762,8 +1838,11 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     pitch = 0.08;
     updateAim();
 
-    if (justPressed("Digit1") || justPressed("Digit2") || justPressed("Digit3")) {
-      const slot = k.has("Digit1") ? 1 : k.has("Digit2") ? 2 : 3;
+    let slot = 0;
+    for (let n = 1; n <= 8; n++) {
+      if (k.has(`Digit${n}`)) slot = n;
+    }
+    if (slot && justPressed(`Digit${slot}`)) {
       if (slot !== prevSlot) selectWeaponSlot(slot - 1);
       prevSlot = slot;
     } else prevSlot = 0;
@@ -1972,9 +2051,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   const onWheel = (e: WheelEvent) => {
     if (phase !== "playing") return;
     e.preventDefault();
-    weaponIdx = (weaponIdx + (e.deltaY > 0 ? 1 : -1) + weapons.length) % weapons.length;
-    mag = Math.min(mag, currentWeapon().mag);
-    swapGunMesh();
+    const next = (weaponIdx + (e.deltaY > 0 ? 1 : -1) + weapons.length) % weapons.length;
+    selectWeaponSlot(next);
   };
   const onContext = (e: Event) => e.preventDefault();
   const onVis = () => {

@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { bindPbr } from "./textures";
-import type { AABB, ArmorSlot, EnemyKind, InvItem, Rarity } from "./types";
+import type { AABB, AmmoId, ArmorSlot, EnemyKind, InvItem, Rarity, WeaponId } from "./types";
 
 export type Materials = {
   concrete: THREE.MeshStandardMaterial;
@@ -496,6 +496,135 @@ export function createSmg(mat: Materials) {
   box(mat.metal, 0.05, 0.12, 0.08, 0, -0.08, 0.08, g);
   box(mat.dark, 0.04, 0.07, 0.16, 0, 0.02, -0.22, g);
   box(mat.rubber, 0.05, 0.035, 0.06, 0, -0.18, -0.02, g);
+  return g;
+}
+
+export function createDmr(mat: Materials) {
+  const g = new THREE.Group();
+  box(mat.dark, 0.06, 0.07, 0.48, 0, 0.02, 0.02, g);
+  barrel(mat.metal, 0.016, 0.72, 0, 0.03, 0.52, g);
+  barrel(mat.dark, 0.022, 0.14, 0, 0.03, 0.88, g);
+  box(mat.dark, 0.045, 0.16, 0.1, 0, -0.1, -0.12, g);
+  box(mat.metal, 0.04, 0.04, 0.22, 0, -0.1, 0.08, g);
+  box(mat.armor, 0.14, 0.04, 0.42, 0, -0.06, 0.12, g);
+  box(mat.dark, 0.05, 0.08, 0.16, 0, 0.09, -0.08, g);
+  box(mat.glass, 0.036, 0.036, 0.14, 0, 0.14, -0.02, g);
+  box(mat.neon, 0.012, 0.012, 0.1, 0, 0.145, 0.06, g);
+  box(mat.metal, 0.08, 0.02, 0.08, 0.05, 0.01, 0.22, g);
+  box(mat.metal, 0.08, 0.02, 0.08, -0.05, 0.01, 0.22, g);
+  box(mat.dark, 0.035, 0.12, 0.05, 0, -0.08, 0.18, g);
+  sph(mat.ember, 0.012, 0, 0.08, 0.36, g, 8);
+  return g;
+}
+
+export function createCannon(mat: Materials) {
+  const g = new THREE.Group();
+  box(mat.rust, 0.1, 0.12, 0.22, 0, 0.03, 0.02, g);
+  barrel(mat.metal, 0.032, 0.22, 0, 0.04, 0.22, g);
+  barrel(mat.dark, 0.04, 0.06, 0, 0.04, 0.34, g);
+  cyl(mat.metal, 0.07, 0.07, 0.1, 0, 0.02, -0.02, g, Math.PI / 2, 0, 10);
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    sph(mat.dark, 0.016, Math.cos(a) * 0.045, 0.02 + Math.sin(a) * 0.045, -0.02, g, 6);
+  }
+  box(mat.dark, 0.055, 0.16, 0.08, 0, -0.1, -0.06, g);
+  box(mat.rubber, 0.06, 0.04, 0.07, 0, -0.18, -0.06, g);
+  box(mat.ember, 0.03, 0.03, 0.06, 0, 0.1, 0.08, g);
+  box(mat.warning, 0.02, 0.04, 0.08, 0.05, 0.06, 0.04, g);
+  return g;
+}
+
+export function createLmg(mat: Materials) {
+  const g = new THREE.Group();
+  box(mat.dark, 0.1, 0.1, 0.46, 0, 0.03, 0.04, g);
+  barrel(mat.metal, 0.026, 0.52, 0, 0.04, 0.44, g);
+  barrel(mat.dark, 0.04, 0.18, 0, 0.04, 0.38, g);
+  box(mat.metal, 0.16, 0.14, 0.22, 0.12, -0.02, 0.02, g);
+  box(mat.warning, 0.16, 0.03, 0.04, 0.12, 0.06, 0.12, g);
+  box(mat.dark, 0.06, 0.18, 0.1, 0, -0.12, -0.1, g);
+  box(mat.armor, 0.18, 0.05, 0.4, 0, -0.06, 0.14, g);
+  box(mat.metal, 0.12, 0.03, 0.12, 0, 0.12, -0.04, g);
+  box(mat.dark, 0.08, 0.08, 0.08, 0, 0.16, -0.08, g);
+  box(mat.metal, 0.09, 0.02, 0.16, 0.08, -0.08, 0.28, g);
+  box(mat.metal, 0.09, 0.02, 0.16, -0.08, -0.08, 0.28, g);
+  box(mat.neon, 0.014, 0.014, 0.2, 0.04, 0.08, 0.1, g);
+  return g;
+}
+
+export function createRail(mat: Materials) {
+  const g = new THREE.Group();
+  box(mat.dark, 0.055, 0.06, 0.36, 0, 0.02, -0.02, g);
+  barrel(mat.metal, 0.012, 0.7, 0.028, 0.03, 0.42, g);
+  barrel(mat.metal, 0.012, 0.7, -0.028, 0.03, 0.42, g);
+  for (let i = 0; i < 5; i++) {
+    const z = 0.08 + i * 0.12;
+    const coil = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.008, 6, 12), mat.voidCore);
+    coil.rotation.y = Math.PI / 2;
+    coil.position.set(0, 0.03, z);
+    g.add(coil);
+  }
+  box(mat.voidCore, 0.04, 0.04, 0.1, 0, 0.03, 0.78, g);
+  box(mat.dark, 0.045, 0.16, 0.09, 0, -0.1, -0.12, g);
+  box(mat.neon, 0.03, 0.08, 0.04, 0, 0.08, -0.16, g);
+  sph(mat.voidCore, 0.03, 0, 0.1, -0.08, g, 8);
+  box(mat.armor, 0.12, 0.035, 0.22, 0, -0.05, 0.06, g);
+  return g;
+}
+
+export function createGrenadeLauncher(mat: Materials) {
+  const g = new THREE.Group();
+  barrel(mat.dark, 0.055, 0.42, 0, 0.06, 0.18, g);
+  barrel(mat.metal, 0.048, 0.16, 0, 0.06, 0.42, g);
+  box(mat.dark, 0.12, 0.12, 0.28, 0, 0.02, -0.06, g);
+  cyl(mat.metal, 0.08, 0.08, 0.1, 0.02, -0.04, -0.08, g, Math.PI / 2, 0, 10);
+  box(mat.dark, 0.06, 0.16, 0.1, 0, -0.12, -0.14, g);
+  box(mat.warning, 0.13, 0.04, 0.04, 0, 0.12, 0.08, g);
+  box(mat.warning, 0.13, 0.04, 0.04, 0, 0.12, 0.22, g);
+  sph(mat.ember, 0.04, 0, 0.06, 0.48, g, 8);
+  box(mat.ember, 0.03, 0.03, 0.06, 0, 0.14, -0.04, g);
+  box(mat.armor, 0.14, 0.04, 0.2, 0, -0.06, 0.02, g);
+  return g;
+}
+
+export function createWeaponMesh(id: WeaponId, mat: Materials) {
+  if (id === "shotgun") return createShotgun(mat);
+  if (id === "smg") return createSmg(mat);
+  if (id === "dmr") return createDmr(mat);
+  if (id === "cannon") return createCannon(mat);
+  if (id === "lmg") return createLmg(mat);
+  if (id === "rail") return createRail(mat);
+  if (id === "gl") return createGrenadeLauncher(mat);
+  return createRifle(mat);
+}
+
+export function createAmmoMesh(id: AmmoId, mat: Materials) {
+  const g = new THREE.Group();
+  if (id === "shell") {
+    box(mat.dark, 0.18, 0.08, 0.22, 0, 0.04, 0, g);
+    for (let i = 0; i < 4; i++) {
+      cyl(mat.ember, 0.018, 0.018, 0.07, -0.05 + (i % 2) * 0.1, 0.09, -0.05 + Math.floor(i / 2) * 0.1, g);
+      cyl(mat.metal, 0.018, 0.018, 0.03, -0.05 + (i % 2) * 0.1, 0.13, -0.05 + Math.floor(i / 2) * 0.1, g);
+    }
+  } else if (id === "compact") {
+    box(mat.dark, 0.08, 0.2, 0.12, 0, 0.1, 0, g);
+    box(mat.metal, 0.07, 0.04, 0.1, 0, 0.21, 0, g);
+    box(mat.neon, 0.02, 0.08, 0.02, 0.04, 0.1, 0.05, g);
+  } else if (id === "heavy") {
+    box(mat.metal, 0.22, 0.14, 0.16, 0, 0.07, 0, g);
+    box(mat.warning, 0.22, 0.03, 0.03, 0, 0.12, 0.08, g);
+    box(mat.dark, 0.18, 0.04, 0.12, 0, 0.15, 0, g);
+    for (let i = 0; i < 3; i++) box(mat.ember, 0.03, 0.02, 0.08, -0.06 + i * 0.06, 0.17, 0, g);
+  } else if (id === "cell") {
+    box(mat.dark, 0.1, 0.16, 0.1, 0, 0.08, 0, g);
+    box(mat.voidCore, 0.06, 0.12, 0.06, 0, 0.09, 0, g);
+    sph(mat.voidCore, 0.03, 0, 0.18, 0, g, 8);
+    box(mat.neon, 0.02, 0.08, 0.02, 0.05, 0.08, 0, g);
+  } else {
+    box(mat.dark, 0.1, 0.22, 0.14, 0, 0.11, 0, g);
+    box(mat.metal, 0.09, 0.03, 0.12, 0, 0.23, 0, g);
+    box(mat.ember, 0.03, 0.1, 0.02, 0.05, 0.1, 0.06, g);
+    box(mat.warning, 0.1, 0.02, 0.02, 0, 0.04, 0.07, g);
+  }
   return g;
 }
 
