@@ -161,7 +161,11 @@ export function Hud({
         </IconBtn>
       </div>
 
-      <div className="absolute bottom-[max(6.4rem,calc(env(safe-area-inset-bottom)+5.6rem))] left-[max(0.65rem,env(safe-area-inset-left))] w-[min(10.5rem,40vw)] desk:hidden short:bottom-auto short:left-[max(0.55rem,env(safe-area-inset-left))] short:top-[2.55rem] short:w-[min(8.75rem,26vw)]">
+      <div
+        className={`absolute left-[max(0.55rem,env(safe-area-inset-left))] w-[min(9.5rem,38vw)] desk:hidden short:w-[min(8.75rem,26vw)] ${
+          hud.boss ? "top-[3.8rem]" : "top-[2.55rem]"
+        }`}
+      >
         <div className="mb-0.5 flex items-baseline justify-between gap-2">
           <span className="font-display text-lg font-semibold tabular-nums leading-none">{Math.ceil(hud.health)}</span>
           <button
