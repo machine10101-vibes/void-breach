@@ -1,0 +1,26 @@
+apply plugin: "com.android.application"
+
+def gameUrl = project.findProperty("GAME_URL") ?: "https://void-breach.vercel.app"
+
+android {
+    namespace "world.voidbreach"
+    compileSdk 34
+    defaultConfig {
+        applicationId "world.voidbreach"
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName "0.1.0"
+        resValue "string", "game_url", gameUrl
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.debug
+        }
+    }
+}
+
+dependencies {
+    implementation "androidx.webkit:webkit:1.11.0"
+}
