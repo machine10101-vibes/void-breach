@@ -34,6 +34,7 @@ import {
   type PlayerRig,
 } from "./meshes";
 import { ParticleField, ScorchPool } from "./particles";
+import { assetUrl } from "@/lib/asset-url";
 import { isTouchUi } from "./layout";
 import { loadSave, recordRun, writeSave, type SaveData } from "./save";
 import type {
@@ -440,12 +441,12 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   setupWorld();
 
   void Promise.allSettled([
-    loadTex("/art/ground.jpg", 18).then((t) => (textures.ground = t)),
-    loadTex("/art/wall.jpg", 4).then((t) => (textures.wall = t)),
-    loadTex("/art/metal.jpg", 3).then((t) => (textures.metal = t)),
-    loadTex("/art/armor.png", 1.6).then((t) => (textures.armor = t)),
-    loadTex("/art/shade.png", 1.4).then((t) => (textures.shade = t)),
-    loadTex("/art/sky.jpg", 1).then((t) => {
+    loadTex(assetUrl("art/ground.jpg"), 18).then((t) => (textures.ground = t)),
+    loadTex(assetUrl("art/wall.jpg"), 4).then((t) => (textures.wall = t)),
+    loadTex(assetUrl("art/metal.jpg"), 3).then((t) => (textures.metal = t)),
+    loadTex(assetUrl("art/armor.png"), 1.6).then((t) => (textures.armor = t)),
+    loadTex(assetUrl("art/shade.png"), 1.4).then((t) => (textures.shade = t)),
+    loadTex(assetUrl("art/sky.jpg"), 1).then((t) => {
       t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
       textures.sky = t;
     }),

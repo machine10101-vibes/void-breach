@@ -1,4 +1,5 @@
 import { Download, Play, Settings, Smartphone } from "lucide-react";
+import { assetUrl } from "@/lib/asset-url";
 import type { BestRun } from "./types";
 
 type Props = {
@@ -22,7 +23,7 @@ export function TitleScreen({ onDeploy, onSettings, onInstall, canInstall, apkUr
     <div className="absolute inset-0 z-20 flex flex-col overflow-hidden bg-transparent text-fg">
       <div
         className="absolute inset-0 bg-cover bg-center opacity-55"
-        style={{ backgroundImage: "url(/art/title.jpg)" }}
+        style={{ backgroundImage: `url(${assetUrl("art/title.jpg")})` }}
       />
       <div className="absolute inset-0 bg-gradient-to-r from-bg via-bg/80 to-bg/25" />
       <div className="absolute inset-0 bg-gradient-to-t from-bg via-transparent to-bg/40" />
