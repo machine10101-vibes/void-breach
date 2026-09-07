@@ -267,11 +267,11 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.34;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x1a120c);
-  scene.fog = new THREE.FogExp2(0x2a1c12, 0.0085);
+  scene.fog = new THREE.FogExp2(0x2a1c12, 0.0068);
   const missionGroup = new THREE.Group();
   missionGroup.name = "mission";
   scene.add(missionGroup);
@@ -313,7 +313,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   envGround.rotation.x = -Math.PI / 2;
   envGround.position.y = -2.2;
   envScene.add(envGround);
-  scene.environment = pmrem.fromScene(envScene, 0.06).texture;
+  scene.environment = pmrem.fromScene(envScene, 0.02).texture;
   scene.environmentIntensity = 1.08;
   pmrem.dispose();
   const playerKey = new THREE.PointLight(0xffc89a, 6.4, 16, 1.5);
@@ -926,7 +926,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   function showMission() {
     missionGroup.visible = true;
     shipRoot.visible = false;
-    scene.fog = new THREE.FogExp2(0x2a1c12, 0.0085);
+    scene.fog = new THREE.FogExp2(0x2a1c12, 0.0068);
     scene.background = new THREE.Color(0x1a120c);
     hangarKey.visible = false;
     hangarFill.visible = false;
