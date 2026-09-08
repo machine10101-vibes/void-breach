@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { Download, Play, Settings, Smartphone } from "lucide-react";
+import { ApkPinSheet } from "./ApkPinSheet";
 import { assetUrl } from "@/lib/asset-url";
 import type { BestRun } from "./types";
 
@@ -20,6 +22,7 @@ function formatTime(t: number) {
 }
 
 export function TitleScreen({ onDeploy, onBoardShip, onSettings, onInstall, canInstall, apkUrl, best }: Props) {
+  const [apkOpen, setApkOpen] = useState(false);
   return (
     <div className="absolute inset-0 z-20 flex flex-col overflow-hidden bg-transparent text-fg">
       <div
@@ -115,13 +118,14 @@ export function TitleScreen({ onDeploy, onBoardShip, onSettings, onInstall, canI
             </button>
           ) : null}
           {apkUrl ? (
-            <a
-              href={apkUrl}
+            <button
+              type="button"
+              onClick={() => setApkOpen(true)}
               className="inline-flex h-10 items-center justify-center gap-2 font-mono text-[11px] uppercase tracking-widest text-muted short:h-9 desk:h-12 desk:rounded-lg desk:border desk:border-border desk:bg-surface desk:px-6 desk:font-display desk:text-lg desk:font-semibold desk:normal-case desk:tracking-normal desk:text-fg"
             >
               <Download className="size-3.5 desk:size-4" />
               Android APK
-            </a>
+            </button>
           ) : null}
         </div>
       </div>
@@ -129,6 +133,8 @@ export function TitleScreen({ onDeploy, onBoardShip, onSettings, onInstall, canI
       <p className="relative z-10 px-4 pb-[max(0.6rem,env(safe-area-inset-bottom))] font-mono text-[10px] uppercase tracking-[0.18em] text-faint short:hidden desk:hidden">
         Left stick move · right drag aim · fire
       </p>
+
+      {apkUrl ? <ApkPinSheet open={apkOpen} apkUrl={apkUrl} onClose={() => setApkOpen(false)} /> : null}
     </div>
   );
 }
