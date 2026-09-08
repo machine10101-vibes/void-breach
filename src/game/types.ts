@@ -19,6 +19,7 @@ export type InvItem = {
   pellets?: number;
   rpm?: number;
   mag?: number;
+  loaded?: number;
   reserve?: number;
   spread?: number;
   range?: number;
@@ -96,6 +97,7 @@ export type HudSnapshot = {
   ammo: number;
   magSize: number;
   reserve: number;
+  ammoName: string;
   weapon: WeaponId;
   weaponName: string;
   rarity: Rarity;
@@ -134,6 +136,7 @@ export type HudSnapshot = {
   equippedWeapon: string | null;
   equippedArmor: EquippedArmor;
   nearCnc: boolean;
+  nearPad: boolean;
 };
 
 export type ControlsProbe = {

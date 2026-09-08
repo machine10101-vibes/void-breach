@@ -1,4 +1,4 @@
-import { RECIPES } from "./items";
+import { RECIPES, scrapValue } from "./items";
 import { ItemPreview } from "./ItemPreview";
 import type { ArmorSlot, InvItem, Rarity } from "./types";
 
@@ -28,6 +28,7 @@ export function InventoryPanel({
   equippedArmor,
   scrapBank,
   onEquip,
+  onScrap,
 }: {
   open: boolean;
   onClose: () => void;
@@ -36,6 +37,7 @@ export function InventoryPanel({
   equippedArmor: Record<ArmorSlot, string | null>;
   scrapBank: number;
   onEquip: (uid: string) => void;
+  onScrap: (uid: string) => void;
 }) {
   if (!open) return null;
   const weapons = inventory.filter((i) => i.kind === "weapon");
@@ -63,7 +65,13 @@ export function InventoryPanel({
           <h3 className="font-mono text-[10px] uppercase tracking-widest text-accent">Weapons</h3>
           <div className="mt-2 grid gap-2 sm:grid-cols-2">
             {weapons.map((it) => (
-              <ItemCard key={it.uid} item={it} equipped={it.uid === equippedWeapon} onEquip={() => onEquip(it.uid)} />
+              <ItemCard
+                key={it.uid}
+                item={it}
+                equipped={it.uid === equippedWeapon}
+                onEquip={() => onEquip(it.uid)}
+                onScrap={it.uid === equippedWeapon ? undefined : () => onScrap(it.uid)}
+              />
             ))}
           </div>
         </section>
@@ -71,7 +79,7 @@ export function InventoryPanel({
           <h3 className="font-mono text-[10px] uppercase tracking-widest text-accent">Ammo</h3>
           <div className="mt-2 grid gap-2 sm:grid-cols-2">
             {ammo.length ? (
-              ammo.map((it) => <ItemCard key={it.uid} item={it} equipped={false} />)
+              ammo.map((it) => <ItemCard key={it.uid} item={it} equipped={false} onScrap={() => onScrap(it.uid)} />)
             ) : (
               <p className="font-mono text-xs text-muted">No spare packs. Drop Shade for rounds.</p>
             )}
@@ -86,6 +94,7 @@ export function InventoryPanel({
                 item={it}
                 equipped={it.slot ? equippedArmor[it.slot] === it.uid : false}
                 onEquip={() => onEquip(it.uid)}
+                onScrap={it.slot && equippedArmor[it.slot] === it.uid ? undefined : () => onScrap(it.uid)}
               />
             ))}
           </div>
@@ -102,36 +111,44 @@ function ItemCard({
   item,
   equipped,
   onEquip,
+  onScrap,
 }: {
   item: InvItem;
   equipped: boolean;
   onEquip?: () => void;
+  onScrap?: () => void;
 }) {
-  const clickable = Boolean(onEquip) && item.kind !== "ammo";
-  const inner = (
-    <>
-      <ItemPreview item={item} />
-      <span className="min-w-0 flex-1">
-        <span className={`block font-display text-lg font-semibold ${rarityClass[item.rarity]}`}>{item.name}</span>
-        <span className="block font-mono text-[10px] uppercase tracking-widest text-faint">{bonusLine(item)}</span>
-        <span className="mt-1 block font-mono text-[10px] uppercase tracking-widest text-muted">
-          {item.kind === "ammo" ? "Reserve pack" : equipped ? "Equipped" : item.kind === "weapon" ? "Equip weapon" : `Equip ${item.slot}`}
-        </span>
-      </span>
-    </>
-  );
-  if (!clickable) {
-    return <div className="flex items-center gap-3 rounded-lg border border-border bg-elevated/60 px-3 py-2.5">{inner}</div>;
-  }
   return (
-    <button
-      type="button"
-      onClick={onEquip}
-      className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left ${
+    <div
+      className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 ${
         equipped ? "border-accent bg-elevated" : "border-border bg-elevated/60"
       }`}
     >
-      {inner}
-    </button>
+      <ItemPreview item={item} />
+      {onEquip && item.kind !== "ammo" ? (
+        <button type="button" onClick={onEquip} className="min-w-0 flex-1 text-left">
+          <span className={`block font-display text-lg font-semibold ${rarityClass[item.rarity]}`}>{item.name}</span>
+          <span className="block font-mono text-[10px] uppercase tracking-widest text-faint">{bonusLine(item)}</span>
+          <span className="mt-1 block font-mono text-[10px] uppercase tracking-widest text-muted">
+            {equipped ? (item.kind === "armor" ? "Equipped · tap to stow" : "Equipped") : item.kind === "weapon" ? "Equip weapon" : `Equip ${item.slot}`}
+          </span>
+        </button>
+      ) : (
+        <span className="min-w-0 flex-1">
+          <span className={`block font-display text-lg font-semibold ${rarityClass[item.rarity]}`}>{item.name}</span>
+          <span className="block font-mono text-[10px] uppercase tracking-widest text-faint">{bonusLine(item)}</span>
+          <span className="mt-1 block font-mono text-[10px] uppercase tracking-widest text-muted">Reserve pack</span>
+        </span>
+      )}
+      {onScrap ? (
+        <button
+          type="button"
+          onClick={onScrap}
+          className="shrink-0 rounded-md border border-border bg-bg/50 px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-muted"
+        >
+          Scrap {scrapValue(item)}
+        </button>
+      ) : null}
+    </div>
   );
 }

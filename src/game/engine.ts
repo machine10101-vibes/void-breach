@@ -18,6 +18,9 @@ import {
   createExoSuit,
   createGrenade,
   createAmmoMesh,
+  createArmorMesh,
+  createHealthOrb,
+  createScrapPile,
   createLamp,
   createMuzzleFlash,
   createRifle,
@@ -53,6 +56,7 @@ import {
   rollLootAmmo,
   rollLootArmor,
   rollLootWeapon,
+  scrapValue,
   takeAmmoFromItems,
   WEAPON_AMMO,
 } from "./items";
@@ -192,6 +196,7 @@ export type GameHandle = {
   recallToShip: () => void;
   equipItem: (uid: string) => void;
   craftRecipe: (id: string) => void;
+  scrapItem: (uid: string) => void;
 };
 
 export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => void): GameHandle {
@@ -290,6 +295,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   shipRoot.visible = false;
   scene.add(shipRoot);
   let nearCnc = false;
+  let nearPad = false;
+  let lmgHeat = 0;
 
   const camera = new THREE.PerspectiveCamera(CAM_FOV, 1, 0.22, 280);
   scene.add(new THREE.HemisphereLight(0xffd8b4, 0x241810, 1.22));
@@ -413,6 +420,12 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     color: 0xffc58a,
     transparent: true,
     opacity: 0.85,
+    toneMapped: false,
+  });
+  const railTracerMat = new THREE.LineBasicMaterial({
+    color: 0x5eead4,
+    transparent: true,
+    opacity: 0.95,
     toneMapped: false,
   });
 
@@ -630,7 +643,19 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       camera.updateProjectionMatrix();
     }
   }
+  function stashChamber() {
+    const it = save.inventory.find((i) => i.uid === save.equippedWeapon);
+    if (it && it.kind === "weapon") it.loaded = mag;
+  }
+
+  function restoreChamber() {
+    const w = currentWeapon();
+    const it = save.inventory.find((i) => i.uid === save.equippedWeapon);
+    mag = clamp(it?.loaded ?? w.mag, 0, w.mag);
+  }
+
   function persistLoadout() {
+    stashChamber();
     writeSave(save);
   }
 
@@ -671,7 +696,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     maxShield = 110 + b.shield;
     hp = Math.min(hp, maxHp);
     shield = Math.min(shield, maxShield);
-    mag = Math.min(mag, currentWeapon().mag);
+    restoreChamber();
     swapGunMesh();
     if (playerRig && mat) applyArmorKits(playerRig, mat, save.inventory, save.equippedArmor);
   }
@@ -829,17 +854,19 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
           ? rollLootArmor(rarity)
           : rollLootWeapon(rarity);
     const kindDrop: Drop["kind"] = item ? (item.kind === "armor" ? "armor" : "weapon") : Math.random() > 0.5 ? "health" : "gold";
-    const gem = new THREE.Mesh(
-      new THREE.OctahedronGeometry(0.16, 0),
-      new THREE.MeshStandardMaterial({
-        color: rarityColor(rarity),
-        emissive: rarityColor(rarity),
-        emissiveIntensity: 1.8,
-        roughness: 0.3,
-        toneMapped: false,
-      }),
-    );
-    spawnWorldDrop(x, z, gem, kindDrop, item, item ? 0 : 40 + Math.floor(Math.random() * 80), rarity);
+    let mesh: THREE.Object3D;
+    if (item?.kind === "weapon") {
+      mesh = createWeaponMesh(item.weaponId ?? "ar", mat);
+      mesh.scale.setScalar(0.85);
+    } else if (item?.kind === "armor") {
+      mesh = createArmorMesh(item.slot ?? "chest", mat, item.rarity);
+      mesh.scale.setScalar(1.15);
+    } else if (kindDrop === "health") {
+      mesh = createHealthOrb(mat);
+    } else {
+      mesh = createScrapPile(mat);
+    }
+    spawnWorldDrop(x, z, mesh, kindDrop, item, item ? 0 : 40 + Math.floor(Math.random() * 80), rarity);
   }
 
   function killEnemy(e: Enemy) {
@@ -876,12 +903,12 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     }
   }
 
-  function damageEnemy(e: Enemy, dmg: number, hx: number, hz: number) {
+  function damageEnemy(e: Enemy, dmg: number, hx: number, hz: number, kb = 2.8) {
     if (!e.alive) return;
     e.hp -= dmg;
     e.flash = 0.14;
-    e.kbX += hx * 2.8;
-    e.kbZ += hz * 2.8;
+    e.kbX += hx * kb;
+    e.kbZ += hz * kb;
     damageDealt += dmg;
     hits++;
     hitMarker = 0.14;
@@ -931,10 +958,11 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   function selectWeaponSlot(idx: number) {
     const list = save.inventory.filter((i) => i.kind === "weapon");
     if (!list[idx]) return;
+    stashChamber();
     save.equippedWeapon = list[idx].uid;
-    persistLoadout();
+    writeSave(save);
     syncWeaponsFromSave();
-    mag = Math.min(mag, currentWeapon().mag);
+    restoreChamber();
     swapGunMesh();
     emitHud(true);
   }
@@ -956,6 +984,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     velZ = 0;
     yaw = Math.atan2(-5.4, 4.4);
     nearCnc = false;
+    nearPad = true;
     phase = "ship";
     objective = "Chimera hull — ready deck";
     hint = "Walk to the teal gantry · I inventory · Deploy from the pad";
@@ -978,23 +1007,37 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     hangarAmbient.visible = false;
     useComposer = Boolean(composer);
     nearCnc = false;
+    nearPad = false;
   }
 
   function equipItem(uid: string) {
     const it = save.inventory.find((i) => i.uid === uid);
     if (!it) return;
     if (it.kind === "weapon") {
+      stashChamber();
       save.equippedWeapon = it.uid;
-      persistLoadout();
+      writeSave(save);
       applyLoadoutVisuals();
-      mag = currentWeapon().mag;
     } else if (it.slot) {
-      save.equippedArmor[it.slot] = it.uid;
+      save.equippedArmor[it.slot] = save.equippedArmor[it.slot] === it.uid ? null : it.uid;
       persistLoadout();
       applyLoadoutVisuals();
       hp = maxHp;
       shield = maxShield;
     }
+    emitHud(true);
+  }
+
+  function scrapItem(uid: string) {
+    const idx = save.inventory.findIndex((i) => i.uid === uid);
+    if (idx < 0) return;
+    const it = save.inventory[idx];
+    if (it.uid === save.equippedWeapon) return;
+    if (it.slot && save.equippedArmor[it.slot] === it.uid) return;
+    save.scrapBank += scrapValue(it);
+    save.inventory.splice(idx, 1);
+    persistLoadout();
+    syncWeaponReserves();
     emitHud(true);
   }
 
@@ -1073,6 +1116,14 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     }
   }
 
+  function fireSound(id: WeaponId) {
+    if (id === "rail") return "rail" as const;
+    if (id === "cannon") return "cannon" as const;
+    if (id === "shotgun" || id === "gl") return "shotgun" as const;
+    if (id === "smg" || id === "lmg") return "smg" as const;
+    return "ar" as const;
+  }
+
   function fireWeapon() {
     const w = currentWeapon();
     if (reloadT > 0) return;
@@ -1084,16 +1135,21 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       if (reloadT <= 0) startReload();
       return;
     }
-    const interval = 60 / (w.rpm * (overdriveT > 0 ? 1.35 : 1));
+    if (w.id === "lmg") lmgHeat = Math.min(1, lmgHeat + 0.11);
+    const heat = w.id === "lmg" ? 0.62 + lmgHeat * 0.38 : 1;
+    const interval = 60 / (w.rpm * (overdriveT > 0 ? 1.35 : 1) * heat);
     if (fireCd > 0) return;
     fireCd = interval;
     mag -= 1;
     shots += w.pellets;
-    audio.fire(w.id === "shotgun" || w.id === "cannon" || w.id === "gl" ? "shotgun" : w.id === "smg" || w.id === "lmg" ? "smg" : "ar");
+    audio.fire(fireSound(w.id));
     trauma = Math.min(1, trauma + (w.id === "shotgun" || w.id === "cannon" || w.id === "gl" ? 0.22 : w.id === "rail" ? 0.28 : 0.07));
     pitch += w.id === "shotgun" || w.id === "cannon" ? 0.028 : 0.01;
     yaw += (Math.random() - 0.5) * (w.id === "shotgun" ? 0.02 : 0.006);
-    muzzleLight.intensity = 7;
+    muzzleLight.intensity = w.id === "rail" ? 9 : 7;
+    if (w.id === "rail") muzzleLight.color.setHex(0x5eead4);
+    else if (w.id === "gl") muzzleLight.color.setHex(0xe85d04);
+    else muzzleLight.color.setHex(0xffc58a);
     const { origin, dir } = aimRay();
     const f = forward();
     if (muzzleFlash) {
@@ -1101,9 +1157,9 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       muzzleFlash.visible = true;
       muzzleFlash.scale.setScalar(0.8 + Math.random() * 0.5);
     }
-    particles.spray(px + f.x * 0.85, py + 1.38, pz + f.z * 0.85, f.x, 0.05, f.z, 4, w.id === "rail" ? 0x5eead4 : 0xffc58a, 8, 0.08, 0.06);
+    const spark = w.id === "rail" ? 0x5eead4 : w.id === "gl" ? 0xe85d04 : 0xffc58a;
+    particles.spray(px + f.x * 0.85, py + 1.38, pz + f.z * 0.85, f.x, 0.05, f.z, 4, spark, 8, 0.08, 0.06);
     if (w.id === "gl" && mat) {
-      const { origin, dir } = aimRay();
       const mesh = createGrenade(mat);
       mesh.scale.setScalar(1.15);
       mesh.position.copy(origin);
@@ -1118,48 +1174,51 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
         vy: 3.6 + dir.y * 8,
         vz: dir.z * 22,
         life: 1.6,
-        dmg: w.dmg * (overdriveT > 0 ? 1.28 : 1),
+        dmg: w.dmg * (overdriveT > 0 ? 1.28 : 1) * (1 + (pLevel - 1) * 0.03),
         r: 4.6,
       });
       if (mag <= 0) startReload();
       return;
     }
-    const ads = 1 - adsT * 0.55;
+    const ads = 1 - adsT * (w.id === "dmr" || w.id === "rail" ? 0.72 : 0.55);
+    const heatSpread = w.id === "lmg" ? 1.7 - lmgHeat * 0.85 : 1;
+    const pierce = w.id === "rail" ? 5 : w.id === "dmr" ? 2 : 1;
+    const kb = w.id === "cannon" ? 6.4 : w.id === "rail" ? 4.2 : 2.8;
+    const kit = 1 + armorBonuses(save.inventory, save.equippedArmor).dmg / 100 + (pLevel - 1) * 0.03;
     for (let p = 0; p < w.pellets; p++) {
-      const spread = w.spread * (1 + (1 - mag / w.mag) * 0.4) * ads;
+      const spread = w.spread * (1 + (1 - mag / w.mag) * 0.4) * ads * heatSpread;
       tmpV2.copy(dir);
       tmpV2.x += (Math.random() - 0.5) * spread;
       tmpV2.y += (Math.random() - 0.5) * spread * 0.55;
       tmpV2.z += (Math.random() - 0.5) * spread;
       tmpV2.normalize();
       const worldT = rayWorld(level.boxes, origin.x, origin.y, origin.z, tmpV2.x, tmpV2.y, tmpV2.z, w.range);
-      let bestT = worldT ?? w.range;
-      let hit: Enemy | null = null;
+      const wallT = worldT ?? w.range;
+      const along: { e: Enemy; t: number }[] = [];
       for (const e of enemies) {
         if (!e.alive) continue;
         const toE = tmpV.set(e.x - origin.x, 1.15 + e.y - origin.y + (e.kind === "harbinger" ? 1.1 : 0), e.z - origin.z);
         const t = toE.dot(tmpV2);
-        if (t < 0 || t > bestT) continue;
+        if (t < 0 || t > wallT) continue;
         const closest = origin.clone().addScaledVector(tmpV2, t);
         const dist = Math.hypot(closest.x - e.x, closest.z - e.z);
-        if (dist < e.radius + 0.18) {
-          bestT = t;
-          hit = e;
-        }
+        if (dist < e.radius + 0.18) along.push({ e, t });
       }
-      if (hit) {
-        const kit = 1 + armorBonuses(save.inventory, save.equippedArmor).dmg / 100;
-        damageEnemy(hit, w.dmg * kit * (overdriveT > 0 ? 1.28 : 1) * (0.85 + Math.random() * 0.3), tmpV2.x, tmpV2.z);
+      along.sort((a, b) => a.t - b.t);
+      const struck = along.slice(0, pierce);
+      for (const hit of struck) {
+        damageEnemy(hit.e, w.dmg * kit * (overdriveT > 0 ? 1.28 : 1) * (0.85 + Math.random() * 0.3), tmpV2.x, tmpV2.z, kb);
       }
-      else if (worldT !== null) {
+      const bestT = struck.length ? struck[struck.length - 1].t : wallT;
+      if (!struck.length && worldT !== null) {
         const end = origin.clone().addScaledVector(tmpV2, worldT);
-        particles.burst(end.x, end.y, end.z, 5, 0xffc58a, 2.4, 0.18, 0.05, -1);
+        particles.burst(end.x, end.y, end.z, 5, spark, 2.4, 0.18, 0.05, -1);
       }
-      const end = origin.clone().addScaledVector(tmpV2, Math.min(bestT, 46));
-      const geo = new THREE.BufferGeometry().setFromPoints([origin.clone().addScaledVector(tmpV2, 0.55), end]);
-      const line = new THREE.Line(geo, tracerMat);
+      const reach = w.id === "rail" || w.id === "dmr" ? Math.min(bestT, 72) : Math.min(bestT, 46);
+      const geo = new THREE.BufferGeometry().setFromPoints([origin.clone().addScaledVector(tmpV2, 0.55), origin.clone().addScaledVector(tmpV2, reach)]);
+      const line = new THREE.Line(geo, w.id === "rail" ? railTracerMat : tracerMat);
       scene.add(line);
-      fx.push({ mesh: line, life: 0.07 });
+      fx.push({ mesh: line, life: w.id === "rail" ? 0.16 : 0.07 });
     }
     if (mag <= 0) startReload();
   }
@@ -1581,6 +1640,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       ammo: mag,
       magSize: w.mag,
       reserve: w.reserve,
+      ammoName: AMMO_META[WEAPON_AMMO[w.id]].name,
       weapon: w.id,
       weaponName: w.name,
       rarity: w.rarity,
@@ -1623,6 +1683,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       equippedWeapon: save.equippedWeapon,
       equippedArmor: save.equippedArmor,
       nearCnc,
+      nearPad,
     };
   }
 
@@ -1680,6 +1741,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     mag = currentWeapon().mag;
     fireCd = 0;
     reloadT = 0;
+    lmgHeat = 0;
     overdriveT = 0;
     skillCd = { frag: 0, overdrive: 0, cleave: 0 };
     trauma = 0;
@@ -1792,9 +1854,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       if (wm > 0.12) yaw = Math.atan2(-wishX, -wishZ);
       const cnc = { x: 5.4, z: -4.4 };
       nearCnc = Math.hypot(px - cnc.x, pz - cnc.z) < 2.35;
-      if (justPressed("KeyE") && nearCnc) {
-        /* UI listens to nearCnc + I / CNC button */
-      }
+      nearPad = Math.hypot(px, pz) < 2.15;
       const hol = shipRoot.getObjectByName("cncHolo");
       if (hol) hol.rotation.y += dt * 1.6;
       if (playerRig) {
@@ -1932,6 +1992,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       }
 
       if (held.fire || k.has("Mouse0") || pad.fire) fireWeapon();
+      else lmgHeat = Math.max(0, lmgHeat - sim * 1.6);
 
       shieldCd -= sim;
       if (shieldCd <= 0 && shield < maxShield) shield = Math.min(maxShield, shield + 28 * sim);
@@ -2154,6 +2215,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     },
     equipItem,
     craftRecipe,
+    scrapItem,
     pause() {
       if (phase === "playing") {
         phase = "paused";
@@ -2226,6 +2288,11 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       if (name === "w1") selectWeaponSlot(0);
       if (name === "w2") selectWeaponSlot(1);
       if (name === "w3") selectWeaponSlot(2);
+      if (name === "w4") selectWeaponSlot(3);
+      if (name === "w5") selectWeaponSlot(4);
+      if (name === "w6") selectWeaponSlot(5);
+      if (name === "w7") selectWeaponSlot(6);
+      if (name === "w8") selectWeaponSlot(7);
     },
   };
 }

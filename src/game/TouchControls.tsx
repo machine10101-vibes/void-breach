@@ -129,6 +129,7 @@ export function TouchControls({ handle, visible }: Props) {
           <Pill label="Cleave" onDown={() => handle?.pulse("cleave")} />
         </div>
         <div className="flex items-end gap-1.5 short:flex-col-reverse short:items-end">
+          <Pill label="Reload" onDown={() => handle?.pulse("reload")} />
           <Pill label="Roll" onDown={() => handle?.pulse("dodge")} />
           <button
             type="button"

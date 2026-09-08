@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
-import { createAmmoMesh, createWeaponMesh, makeMaterials } from "./meshes";
+import { createAmmoMesh, createArmorMesh, createWeaponMesh, makeMaterials } from "./meshes";
 import type { InvItem } from "./types";
 
 type Job = {
@@ -38,13 +38,7 @@ function ensureHost() {
 function buildMesh(item: InvItem) {
   if (item.kind === "weapon") return createWeaponMesh(item.weaponId ?? "ar", mat);
   if (item.kind === "ammo") return createAmmoMesh(item.ammoId ?? "rifle", mat);
-  const g = new THREE.Group();
-  const plate = new THREE.Mesh(
-    new THREE.BoxGeometry(0.28, 0.34, 0.12),
-    new THREE.MeshStandardMaterial({ color: 0x8a8478, metalness: 0.55, roughness: 0.4 }),
-  );
-  g.add(plate);
-  return g;
+  return createArmorMesh(item.slot ?? "chest", mat, item.rarity);
 }
 
 function tick() {
@@ -94,6 +88,6 @@ export function ItemPreview({ item }: { item: InvItem }) {
     const canvas = ref.current;
     if (!canvas) return;
     return attachItemPreview(canvas, item);
-  }, [item.uid, item.kind, item.weaponId, item.ammoId]);
+  }, [item.uid, item.kind, item.weaponId, item.ammoId, item.slot, item.rarity]);
   return <canvas ref={ref} width={160} height={128} className="h-16 w-20 shrink-0 rounded-md bg-bg/60" aria-hidden />;
 }
