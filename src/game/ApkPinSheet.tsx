@@ -27,13 +27,7 @@ function persistUnlock() {
 }
 
 function startDownload(url: string) {
-  const a = document.createElement("a");
-  a.href = url;
-  a.rel = "noopener noreferrer";
-  a.target = "_blank";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+  window.open(url, "_blank", "noopener,noreferrer");
 }
 
 export function ApkPinSheet({ open, apkUrl, onClose }: Props) {
