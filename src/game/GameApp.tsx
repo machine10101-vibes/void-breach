@@ -87,6 +87,7 @@ export function GameApp() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [inventoryOpen, setInventoryOpen] = useState(false);
   const [cncOpen, setCncOpen] = useState(false);
+  const pendingAction = useRef<null | "ship" | "mission">(null);
   const touchUi = useTouchUi();
 
   useEffect(() => {
@@ -101,13 +102,18 @@ export function GameApp() {
       });
       handleRef.current = local;
       setHandle(local);
+      if (pendingAction.current === "ship") local.enterShip();
+      if (pendingAction.current === "mission") local.startMission();
+      pendingAction.current = null;
       const qa = new URLSearchParams(window.location.search).has("qa");
       if (qa) local.startMission();
     });
     return () => {
       dead = true;
       local?.destroy();
+      handleRef.current?.destroy();
       handleRef.current = null;
+      setHandle(null);
     };
   }, []);
 
@@ -155,8 +161,14 @@ export function GameApp() {
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full touch-none" />
       {phase === "title" || phase === "boot" ? (
         <TitleScreen
-          onDeploy={() => handleRef.current?.startMission()}
-          onBoardShip={() => handleRef.current?.enterShip()}
+          onDeploy={() => {
+            if (handleRef.current) handleRef.current.startMission();
+            else pendingAction.current = "mission";
+          }}
+          onBoardShip={() => {
+            if (handleRef.current) handleRef.current.enterShip();
+            else pendingAction.current = "ship";
+          }}
           onSettings={() => openSettings(false)}
           canInstall={Boolean(installEvt)}
           onInstall={() => void installEvt?.prompt()}
@@ -178,6 +190,15 @@ export function GameApp() {
         />
       )}
       {onShip && !inventoryOpen && !cncOpen && !settingsOpen ? (
+        <div
+          className="absolute inset-0 z-[5] cursor-pointer"
+          onPointerDown={(e) => {
+            if (e.button !== 0) return;
+            handleRef.current?.walkToClient(e.clientX, e.clientY);
+          }}
+        />
+      ) : null}
+      {onShip && !inventoryOpen && !cncOpen && !settingsOpen ? (
         <div className="pointer-events-auto absolute bottom-[max(3.4rem,calc(env(safe-area-inset-bottom)+2.6rem))] left-1/2 z-30 flex w-[min(28rem,94vw)] -translate-x-1/2 gap-2">
           <button
             type="button"
@@ -195,7 +216,11 @@ export function GameApp() {
           </button>
         </div>
       ) : null}
-      <TouchControls handle={handle} visible={playing && touchUi && !settingsOpen && !inventoryOpen && !cncOpen} />
+      <TouchControls
+        handle={handle}
+        visible={(playing || onShip) && !settingsOpen && !inventoryOpen && !cncOpen && (touchUi || onShip)}
+        deckOnly={onShip}
+      />
       {phase === "paused" && !settingsOpen ? (
         <PauseOverlay
           title="Hold"

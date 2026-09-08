@@ -10,6 +10,7 @@ import {
   addWorldFromBoxes,
   applyArmorKits,
   createAimReticle,
+  createWalkMark,
   createBarrel,
   createBeam,
   createBolt,
@@ -189,6 +190,7 @@ export type GameHandle = {
   setInvertLookX: (v: boolean) => void;
   setInvertLookY: (v: boolean) => void;
   setTouchMove: (x: number, y: number) => void;
+  walkToClient: (clientX: number, clientY: number) => void;
   setTouchLook: (dx: number, dy: number) => void;
   setAction: (name: string, down: boolean) => void;
   pulse: (name: string) => void;
@@ -200,6 +202,7 @@ export type GameHandle = {
 };
 
 export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => void): GameHandle {
+  window.__voidBreachHandle?.destroy();
   const level = buildLevel();
   const audio = new GameAudio();
   const keys = new Set<string>();
@@ -275,6 +278,11 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   let lockLost = false;
   let emptyCd = 0;
   let recorded = false;
+  let shipWalk: { x: number; z: number } | null = null;
+  const hangarPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  const hangarRay = new THREE.Raycaster();
+  const SHIP_F = { x: -0.36, z: -0.93 };
+  const SHIP_R = { x: 0.93, z: -0.36 };
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
@@ -408,6 +416,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   let touchAimSR = 0;
   let touchAimSF = 8;
   let aimReticle: THREE.Group | null = null;
+  let walkMark: THREE.Group | null = null;
   const particles = new ParticleField();
   const scorch = new ScorchPool(scene);
   scene.add(particles.object);
@@ -510,6 +519,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     scene.add(slashMesh);
     aimReticle = createAimReticle();
     scene.add(aimReticle);
+    walkMark = createWalkMark();
+    scene.add(walkMark);
 
     if (!isMobile) {
       composer = new EffectComposer(renderer);
@@ -573,22 +584,42 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   function forward() {
     return { x: -Math.sin(yaw), z: -Math.cos(yaw) };
   }
+  function shipBasis() {
+    return { f: SHIP_F, r: SHIP_R };
+  }
+
+  function walkToClient(clientX: number, clientY: number) {
+    if (phase !== "ship") return;
+    const rect = canvas.getBoundingClientRect();
+    const w = rect.width || 1;
+    const h = rect.height || 1;
+    ndc.x = ((clientX - rect.left) / w) * 2 - 1;
+    ndc.y = -((clientY - rect.top) / h) * 2 + 1;
+    hangarRay.setFromCamera(ndc, camera);
+    if (hangarRay.ray.intersectPlane(hangarPlane, tmpV)) {
+      shipWalk = {
+        x: THREE.MathUtils.clamp(tmpV.x, -8.2, 8.2),
+        z: THREE.MathUtils.clamp(tmpV.z, -7.2, 7.4),
+      };
+    }
+  }
+
   function placeFollowCam(dt: number, snap = false) {
     if (phase === "ship") {
       camPos.set(
-        THREE.MathUtils.clamp(px + 3.9, -8.0, 8.0),
-        3.95,
-        THREE.MathUtils.clamp(pz + 5.6, -6.6, 7.4),
+        THREE.MathUtils.clamp(px + 4.2, -9.2, 9.2),
+        3.96,
+        THREE.MathUtils.clamp(pz + 5.65, -6.8, 8.4),
       );
-      camLook.set(px + 1.1, 1.25, pz - 2.1);
+      camLook.set(px + 0.4, 1.02, pz - 2.2);
       if (snap || camSnap) {
         camera.position.copy(camPos);
         camSnap = false;
       } else {
-        camera.position.lerp(camPos, 1 - Math.exp(-8 * dt));
+        camera.position.lerp(camPos, 1 - Math.exp(-4.2 * dt));
       }
       camera.lookAt(camLook);
-      camera.fov = 50;
+      camera.fov = 48;
       camera.updateProjectionMatrix();
       return;
     }
@@ -982,18 +1013,22 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     py = 0.12;
     velX = 0;
     velZ = 0;
+    shipWalk = null;
     yaw = Math.atan2(-5.4, 4.4);
     nearCnc = false;
     nearPad = true;
     phase = "ship";
     objective = "Chimera hull — ready deck";
-    hint = "Walk to the teal gantry · I inventory · Deploy from the pad";
+    hint = "Drag the left stick or tap the deck · WASD also walks · E at the CNC";
     if (playerRig) playerRig.group.visible = true;
     drone.visible = false;
     if (aimReticle) aimReticle.visible = false;
+    if (walkMark) walkMark.visible = false;
     applyLoadoutVisuals();
     camSnap = true;
     placeFollowCam(1 / 60, true);
+    canvas.tabIndex = 0;
+    canvas.focus({ preventScroll: true });
     emitHud(true);
   }
 
@@ -1008,6 +1043,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     useComposer = Boolean(composer);
     nearCnc = false;
     nearPad = false;
+    if (walkMark) walkMark.visible = false;
+    shipWalk = null;
   }
 
   function equipItem(uid: string) {
@@ -1821,6 +1858,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       if (playerRig) playerRig.group.visible = false;
       drone.visible = false;
       if (aimReticle) aimReticle.visible = false;
+      if (walkMark) walkMark.visible = false;
       const t = now * 0.00008;
       camera.position.set(2.4 + Math.sin(t) * 2.2, 9.4, 14.5 + Math.cos(t * 0.7) * 1.6);
       camera.lookAt(0.2, 0.4, -16);
@@ -1832,21 +1870,48 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       return;
     }
     if (phase === "ship") {
-      if (aimReticle) aimReticle.visible = false;
       drone.visible = false;
       if (playerRig) playerRig.group.visible = true;
       const mv = inputMove();
-      const basis = { f: { x: -0.36, z: -0.93 }, r: { x: 0.93, z: -0.36 } };
-      let wishX = basis.f.x * mv.y + basis.r.x * mv.x;
-      let wishZ = basis.f.z * mv.y + basis.r.z * mv.x;
+      const stick = Math.hypot(mv.x, mv.y);
+      const basis = shipBasis();
+      let wishX = 0;
+      let wishZ = 0;
+      if (stick > 0.06) {
+        shipWalk = null;
+        wishX = basis.f.x * mv.y + basis.r.x * mv.x;
+        wishZ = basis.f.z * mv.y + basis.r.z * mv.x;
+      } else if (shipWalk) {
+        const dx = shipWalk.x - px;
+        const dz = shipWalk.z - pz;
+        const d = Math.hypot(dx, dz);
+        if (d < 0.28) shipWalk = null;
+        else {
+          wishX = dx / d;
+          wishZ = dz / d;
+        }
+      }
       const wm = Math.hypot(wishX, wishZ);
-      if (wm > 1) {
+      if (wm > 1e-4) {
         wishX /= wm;
         wishZ /= wm;
+        velX = wishX * 7.6;
+        velZ = wishZ * 7.6;
+      } else {
+        velX = 0;
+        velZ = 0;
       }
-      px = THREE.MathUtils.clamp(px + wishX * 4.6 * dt, -8.2, 8.2);
-      pz = THREE.MathUtils.clamp(pz + wishZ * 4.6 * dt, -7.2, 7.4);
+      px = THREE.MathUtils.clamp(px + velX * dt, -8.2, 8.2);
+      pz = THREE.MathUtils.clamp(pz + velZ * dt, -7.2, 7.4);
       py = 0.12;
+      if (walkMark) {
+        if (shipWalk) {
+          walkMark.visible = true;
+          walkMark.position.set(shipWalk.x, 0.04, shipWalk.z);
+          walkMark.rotation.y += dt * 3.2;
+        } else walkMark.visible = false;
+      }
+      if (aimReticle) aimReticle.visible = false;
       playerKey.position.set(px + 1.1, py + 3.6, pz + 1.6);
       playerRim.position.set(px - 1.2, py + 2.0, pz - 1.0);
       sun.position.set(px + 8, py + 16, pz + 10);
@@ -1858,15 +1923,16 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       const hol = shipRoot.getObjectByName("cncHolo");
       if (hol) hol.rotation.y += dt * 1.6;
       if (playerRig) {
-        const moving = wm > 0.12;
-        const bob = moving ? Math.sin(now * 0.01) : 0;
-        playerRig.leftThigh.rotation.x = bob * 0.55;
-        playerRig.rightThigh.rotation.x = -bob * 0.55;
-        playerRig.leftArm.rotation.x = -0.7 - bob * 0.1;
+        const moving = wm > 0.12 || Math.hypot(velX, velZ) > 0.35;
+        const bob = moving ? Math.sin(now * 0.012) : 0;
+        playerRig.leftThigh.rotation.x = bob * 0.72;
+        playerRig.rightThigh.rotation.x = -bob * 0.72;
+        playerRig.leftArm.rotation.x = -0.7 - bob * 0.16;
         playerRig.leftArm.rotation.z = 0.32;
-        playerRig.rightArm.rotation.x = -0.88 + bob * 0.06;
+        playerRig.rightArm.rotation.x = -0.88 + bob * 0.1;
         playerRig.rightArm.rotation.y = -0.06;
-        playerRig.group.position.set(px, py, pz);
+        playerRig.torso.rotation.x = moving ? 0.08 : 0;
+        playerRig.group.position.set(px, py + Math.abs(bob) * 0.03, pz);
         playerRig.group.rotation.y = yaw + Math.PI;
       }
       placeFollowCam(dt);
@@ -2049,13 +2115,17 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   let acc = 0;
   const STEP = 1 / 60;
 
-  function frame(now: number) {
+  function frame() {
     if (destroyed) return;
     requestAnimationFrame(frame);
-    let dlt = Math.min(0.1, (now - last) / 1000);
+    const now = performance.now();
+    let dlt = (now - last) / 1000;
     last = now;
+    if (!Number.isFinite(dlt) || dlt <= 0 || dlt > 0.1) dlt = STEP;
     acc += dlt;
-    while (acc >= STEP) {
+    if (acc < 0) acc = 0;
+    let guard = 0;
+    while (acc >= STEP && guard++ < 8) {
       step(STEP);
       acc -= STEP;
     }
@@ -2102,7 +2172,10 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     mouseAim = true;
   };
   const onDown = (e: MouseEvent) => {
-    if (e.button === 0) held.fire = true;
+    if (e.button === 0) {
+      if (phase === "ship") walkToClient(e.clientX, e.clientY);
+      else held.fire = true;
+    }
     if (e.button === 2) held.ads = true;
   };
   const onUp = (e: MouseEvent) => {
@@ -2128,7 +2201,12 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   window.addEventListener("keyup", onKeyUp);
   window.addEventListener("blur", onBlur);
   window.addEventListener("mousemove", onMouse);
+  const onShipPointer = (e: PointerEvent) => {
+    if (phase !== "ship" || e.button !== 0) return;
+    walkToClient(e.clientX, e.clientY);
+  };
   canvas.addEventListener("mousedown", onDown);
+  canvas.addEventListener("pointerdown", onShipPointer);
   window.addEventListener("mouseup", onUp);
   canvas.addEventListener("wheel", onWheel, { passive: false });
   canvas.addEventListener("contextmenu", onContext);
@@ -2137,10 +2215,13 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   window.addEventListener("resize", resize);
   canvas.style.touchAction = "none";
   canvas.style.cursor = "crosshair";
+  canvas.tabIndex = 0;
 
   const probe: ControlsProbe = {
     getYaw: () => yaw,
-    getSpeed: () => Math.hypot(velX, velZ) || Math.hypot(inputMove().x, inputMove().y),
+    getSpeed: () => Math.hypot(velX, velZ),
+    getPhase: () => phase,
+    getMove: () => inputMove(),
     setKeys: (codes: string[]) => {
       qaKeys.active = codes.length > 0;
       qaKeys.codes = codes;
@@ -2166,7 +2247,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   audio.setMuted(save.mute);
   emitHud(true);
 
-  return {
+  const handle: GameHandle = {
     destroy() {
       destroyed = true;
       window.removeEventListener("keydown", onKeyDown);
@@ -2174,6 +2255,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       window.removeEventListener("blur", onBlur);
       window.removeEventListener("mousemove", onMouse);
       canvas.removeEventListener("mousedown", onDown);
+      canvas.removeEventListener("pointerdown", onShipPointer);
       window.removeEventListener("mouseup", onUp);
       canvas.removeEventListener("wheel", onWheel);
       canvas.removeEventListener("contextmenu", onContext);
@@ -2184,6 +2266,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       scorch.dispose();
       renderer.dispose();
       if (window.__controlsTest === probe) delete window.__controlsTest;
+      if (window.__voidBreachHandle === handle) delete window.__voidBreachHandle;
     },
     startMission() {
       audio.unlock();
@@ -2253,6 +2336,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       touch.mx = x;
       touch.my = y;
     },
+    walkToClient,
     setTouchLook(dx, dy) {
       const inv = lookSign();
       const s = BASE_SENS * 26 * save.sensitivity;
@@ -2295,4 +2379,6 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       if (name === "w8") selectWeaponSlot(7);
     },
   };
+  window.__voidBreachHandle = handle;
+  return handle;
 }

@@ -328,7 +328,11 @@ export function Hud({
 
       {atShip ? (
         <p className="absolute bottom-[max(7.2rem,calc(env(safe-area-inset-bottom)+6.4rem))] left-1/2 z-20 w-[min(28rem,92vw)] -translate-x-1/2 text-center font-mono text-[10px] uppercase tracking-[0.2em] text-faint">
-          {hud.nearCnc ? "E · use the hull CNC" : hud.nearPad ? "E · deploy to Ashfall Gate" : "Walk the pad to deploy · teal gantry to print"}
+          {hud.nearCnc
+            ? "E · use the hull CNC"
+            : hud.nearPad
+              ? "Hold Walk · tap the deck · E deploys from the pad"
+              : "Hold Walk or tap the deck · teal gantry prints"}
         </p>
       ) : (
         <p className="absolute bottom-4 left-1/2 hidden -translate-x-1/2 font-mono text-[10px] uppercase tracking-[0.2em] text-faint desk:block">
