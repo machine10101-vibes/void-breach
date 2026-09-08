@@ -87,6 +87,7 @@ export function GameApp() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [inventoryOpen, setInventoryOpen] = useState(false);
   const [cncOpen, setCncOpen] = useState(false);
+  const pendingAction = useRef<null | "ship" | "mission">(null);
   const touchUi = useTouchUi();
 
   useEffect(() => {
@@ -101,13 +102,18 @@ export function GameApp() {
       });
       handleRef.current = local;
       setHandle(local);
+      if (pendingAction.current === "ship") local.enterShip();
+      if (pendingAction.current === "mission") local.startMission();
+      pendingAction.current = null;
       const qa = new URLSearchParams(window.location.search).has("qa");
       if (qa) local.startMission();
     });
     return () => {
       dead = true;
       local?.destroy();
+      handleRef.current?.destroy();
       handleRef.current = null;
+      setHandle(null);
     };
   }, []);
 
@@ -155,8 +161,14 @@ export function GameApp() {
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full touch-none" />
       {phase === "title" || phase === "boot" ? (
         <TitleScreen
-          onDeploy={() => handleRef.current?.startMission()}
-          onBoardShip={() => handleRef.current?.enterShip()}
+          onDeploy={() => {
+            if (handleRef.current) handleRef.current.startMission();
+            else pendingAction.current = "mission";
+          }}
+          onBoardShip={() => {
+            if (handleRef.current) handleRef.current.enterShip();
+            else pendingAction.current = "ship";
+          }}
           onSettings={() => openSettings(false)}
           canInstall={Boolean(installEvt)}
           onInstall={() => void installEvt?.prompt()}

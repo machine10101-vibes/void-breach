@@ -202,6 +202,7 @@ export type GameHandle = {
 };
 
 export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => void): GameHandle {
+  window.__voidBreachHandle?.destroy();
   const level = buildLevel();
   const audio = new GameAudio();
   const keys = new Set<string>();
@@ -584,12 +585,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     return { x: -Math.sin(yaw), z: -Math.cos(yaw) };
   }
   function shipBasis() {
-    const fx = camLook.x - camera.position.x;
-    const fz = camLook.z - camera.position.z;
-    const fl = Math.hypot(fx, fz);
-    if (fl < 0.25) return { f: SHIP_F, r: SHIP_R };
-    const f = { x: fx / fl, z: fz / fl };
-    return { f, r: { x: -f.z, z: f.x } };
+    return { f: SHIP_F, r: SHIP_R };
   }
 
   function walkToClient(clientX: number, clientY: number) {
@@ -1879,10 +1875,13 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       const mv = inputMove();
       const stick = Math.hypot(mv.x, mv.y);
       const basis = shipBasis();
-      let wishX = basis.f.x * mv.y + basis.r.x * mv.x;
-      let wishZ = basis.f.z * mv.y + basis.r.z * mv.x;
-      if (stick > 0.08) shipWalk = null;
-      else if (shipWalk) {
+      let wishX = 0;
+      let wishZ = 0;
+      if (stick > 0.06) {
+        shipWalk = null;
+        wishX = basis.f.x * mv.y + basis.r.x * mv.x;
+        wishZ = basis.f.z * mv.y + basis.r.z * mv.x;
+      } else if (shipWalk) {
         const dx = shipWalk.x - px;
         const dz = shipWalk.z - pz;
         const d = Math.hypot(dx, dz);
@@ -1893,16 +1892,14 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
         }
       }
       const wm = Math.hypot(wishX, wishZ);
-      if (wm > 1) {
+      if (wm > 1e-4) {
         wishX /= wm;
         wishZ /= wm;
-      }
-      const targetSp = wm > 0.08 ? 7.4 : 0;
-      velX += (wishX * targetSp - velX) * Math.min(1, 22 * dt);
-      velZ += (wishZ * targetSp - velZ) * Math.min(1, 22 * dt);
-      if (wm < 0.08) {
-        velX *= Math.pow(0.012, dt);
-        velZ *= Math.pow(0.012, dt);
+        velX = wishX * 7.6;
+        velZ = wishZ * 7.6;
+      } else {
+        velX = 0;
+        velZ = 0;
       }
       px = THREE.MathUtils.clamp(px + velX * dt, -8.2, 8.2);
       pz = THREE.MathUtils.clamp(pz + velZ * dt, -7.2, 7.4);
@@ -2118,13 +2115,17 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   let acc = 0;
   const STEP = 1 / 60;
 
-  function frame(now: number) {
+  function frame() {
     if (destroyed) return;
     requestAnimationFrame(frame);
-    let dlt = Math.min(0.1, (now - last) / 1000);
+    const now = performance.now();
+    let dlt = (now - last) / 1000;
     last = now;
+    if (!Number.isFinite(dlt) || dlt <= 0 || dlt > 0.1) dlt = STEP;
     acc += dlt;
-    while (acc >= STEP) {
+    if (acc < 0) acc = 0;
+    let guard = 0;
+    while (acc >= STEP && guard++ < 8) {
       step(STEP);
       acc -= STEP;
     }
@@ -2218,7 +2219,9 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
 
   const probe: ControlsProbe = {
     getYaw: () => yaw,
-    getSpeed: () => Math.hypot(velX, velZ) || Math.hypot(inputMove().x, inputMove().y),
+    getSpeed: () => Math.hypot(velX, velZ),
+    getPhase: () => phase,
+    getMove: () => inputMove(),
     setKeys: (codes: string[]) => {
       qaKeys.active = codes.length > 0;
       qaKeys.codes = codes;
@@ -2244,7 +2247,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   audio.setMuted(save.mute);
   emitHud(true);
 
-  return {
+  const handle: GameHandle = {
     destroy() {
       destroyed = true;
       window.removeEventListener("keydown", onKeyDown);
@@ -2263,6 +2266,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       scorch.dispose();
       renderer.dispose();
       if (window.__controlsTest === probe) delete window.__controlsTest;
+      if (window.__voidBreachHandle === handle) delete window.__voidBreachHandle;
     },
     startMission() {
       audio.unlock();
@@ -2375,4 +2379,6 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       if (name === "w8") selectWeaponSlot(7);
     },
   };
+  window.__voidBreachHandle = handle;
+  return handle;
 }

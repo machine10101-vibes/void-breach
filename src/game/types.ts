@@ -146,11 +146,14 @@ export type ControlsProbe = {
   setSteer?: (v: number) => void;
   getPos?: () => { x: number; y: number; z: number };
   getCam?: () => { x: number; y: number; z: number; fov: number; dist: number };
+  getPhase?: () => string;
+  getMove?: () => { x: number; y: number };
 };
 
 declare global {
   interface Window {
     __controlsTest?: ControlsProbe;
+    __voidBreachHandle?: { destroy: () => void };
   }
 }
 
