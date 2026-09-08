@@ -178,6 +178,15 @@ export function GameApp() {
         />
       )}
       {onShip && !inventoryOpen && !cncOpen && !settingsOpen ? (
+        <div
+          className="absolute inset-0 z-[5] cursor-pointer"
+          onPointerDown={(e) => {
+            if (e.button !== 0) return;
+            handleRef.current?.walkToClient(e.clientX, e.clientY);
+          }}
+        />
+      ) : null}
+      {onShip && !inventoryOpen && !cncOpen && !settingsOpen ? (
         <div className="pointer-events-auto absolute bottom-[max(3.4rem,calc(env(safe-area-inset-bottom)+2.6rem))] left-1/2 z-30 flex w-[min(28rem,94vw)] -translate-x-1/2 gap-2">
           <button
             type="button"
@@ -195,7 +204,11 @@ export function GameApp() {
           </button>
         </div>
       ) : null}
-      <TouchControls handle={handle} visible={playing && touchUi && !settingsOpen && !inventoryOpen && !cncOpen} />
+      <TouchControls
+        handle={handle}
+        visible={(playing || onShip) && !settingsOpen && !inventoryOpen && !cncOpen && (touchUi || onShip)}
+        deckOnly={onShip}
+      />
       {phase === "paused" && !settingsOpen ? (
         <PauseOverlay
           title="Hold"

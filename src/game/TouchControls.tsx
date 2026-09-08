@@ -4,6 +4,7 @@ import type { GameHandle } from "./engine";
 type Props = {
   handle: GameHandle | null;
   visible: boolean;
+  deckOnly?: boolean;
 };
 
 function Pill({
@@ -40,7 +41,7 @@ function Pill({
   );
 }
 
-export function TouchControls({ handle, visible }: Props) {
+export function TouchControls({ handle, visible, deckOnly }: Props) {
   const moveId = useRef<number | null>(null);
   const lookId = useRef<number | null>(null);
   const origin = useRef({ x: 0, y: 0 });
@@ -50,6 +51,8 @@ export function TouchControls({ handle, visible }: Props) {
   const onMoveDown = useCallback(
     (e: React.PointerEvent) => {
       if (!handle) return;
+      e.preventDefault();
+      e.stopPropagation();
       moveId.current = e.pointerId;
       origin.current = { x: e.clientX, y: e.clientY };
       e.currentTarget.setPointerCapture(e.pointerId);
@@ -70,12 +73,12 @@ export function TouchControls({ handle, visible }: Props) {
         const dx = e.clientX - origin.current.x;
         const dy = e.clientY - origin.current.y;
         const m = Math.hypot(dx, dy);
-        const max = 36;
+        const max = deckOnly ? 48 : 36;
         const s = m > max ? max / m : 1;
         const x = (dx * s) / max;
         const y = (-dy * s) / max;
         handle.setTouchMove(x, y);
-        handle.setAction("sprint", m > max * 0.92);
+        handle.setAction("sprint", !deckOnly && m > max * 0.92);
         if (knob.current) {
           knob.current.style.transform = `translate(${dx * s}px, ${dy * s}px)`;
         }
@@ -84,7 +87,7 @@ export function TouchControls({ handle, visible }: Props) {
         last.current = { x: e.clientX, y: e.clientY };
       }
     },
-    [handle],
+    [handle, deckOnly],
   );
 
   const endMove = useCallback(
@@ -104,48 +107,64 @@ export function TouchControls({ handle, visible }: Props) {
 
   return (
     <div className="pointer-events-none absolute inset-0 z-20">
-      <div
-        className="pointer-events-auto absolute top-14 right-0 bottom-40 left-[32%] short:top-12 short:right-[5.75rem] short:bottom-2 short:left-[34%]"
-        onPointerDown={onLookDown}
-        onPointerMove={onPtrMove}
-        onPointerUp={endMove}
-        onPointerCancel={endMove}
-      />
+      {!deckOnly ? (
+        <div
+          className="pointer-events-auto absolute top-14 right-0 bottom-40 left-[32%] short:top-12 short:right-[5.75rem] short:bottom-2 short:left-[34%]"
+          onPointerDown={onLookDown}
+          onPointerMove={onPtrMove}
+          onPointerUp={endMove}
+          onPointerCancel={endMove}
+        />
+      ) : null}
 
       <div
-        className="pointer-events-auto absolute bottom-[max(0.75rem,calc(env(safe-area-inset-bottom)+0.4rem))] left-[max(0.65rem,env(safe-area-inset-left))] flex h-[5.25rem] w-[5.25rem] items-center justify-center rounded-full border border-border/70 bg-surface/25 short:h-16 short:w-16"
+        className={`pointer-events-auto absolute left-[max(0.65rem,env(safe-area-inset-left))] flex items-center justify-center rounded-full border border-accent/70 bg-surface/55 shadow-[0_0_0_1px_rgba(94,234,212,0.25)] ${
+          deckOnly
+            ? "bottom-[max(5.6rem,calc(env(safe-area-inset-bottom)+4.8rem))] h-[6.4rem] w-[6.4rem] short:h-[5.4rem] short:w-[5.4rem]"
+            : "bottom-[max(0.75rem,calc(env(safe-area-inset-bottom)+0.4rem))] h-[5.25rem] w-[5.25rem] short:h-16 short:w-16"
+        }`}
         onPointerDown={onMoveDown}
         onPointerMove={onPtrMove}
         onPointerUp={endMove}
         onPointerCancel={endMove}
       >
-        <div ref={knob} className="h-9 w-9 rounded-full bg-fg/35 short:h-7 short:w-7" />
+        <div
+          ref={knob}
+          className={`rounded-full bg-accent/80 ${deckOnly ? "h-11 w-11 short:h-9 short:w-9" : "h-9 w-9 short:h-7 short:w-7"}`}
+        />
+        {deckOnly ? (
+          <span className="pointer-events-none absolute -bottom-5 font-mono text-[9px] uppercase tracking-[0.22em] text-accent">
+            Walk
+          </span>
+        ) : null}
       </div>
 
-      <div className="pointer-events-auto absolute right-[max(0.55rem,env(safe-area-inset-right))] bottom-[max(0.7rem,calc(env(safe-area-inset-bottom)+0.35rem))] flex flex-col items-end gap-1.5 short:top-1/2 short:bottom-auto short:-translate-y-1/2 short:gap-1">
-        <div className="flex gap-1 short:flex-col">
-          <Pill label="Frag" onDown={() => handle?.pulse("frag")} />
-          <Pill label="Drive" onDown={() => handle?.pulse("overdrive")} />
-          <Pill label="Cleave" onDown={() => handle?.pulse("cleave")} />
+      {!deckOnly ? (
+        <div className="pointer-events-auto absolute right-[max(0.55rem,env(safe-area-inset-right))] bottom-[max(0.7rem,calc(env(safe-area-inset-bottom)+0.35rem))] flex flex-col items-end gap-1.5 short:top-1/2 short:bottom-auto short:-translate-y-1/2 short:gap-1">
+          <div className="flex gap-1 short:flex-col">
+            <Pill label="Frag" onDown={() => handle?.pulse("frag")} />
+            <Pill label="Drive" onDown={() => handle?.pulse("overdrive")} />
+            <Pill label="Cleave" onDown={() => handle?.pulse("cleave")} />
+          </div>
+          <div className="flex items-end gap-1.5 short:flex-col-reverse short:items-end">
+            <Pill label="Reload" onDown={() => handle?.pulse("reload")} />
+            <Pill label="Roll" onDown={() => handle?.pulse("dodge")} />
+            <button
+              type="button"
+              className="flex h-14 w-14 items-center justify-center rounded-full bg-accent font-display text-sm font-semibold text-accent-fg short:h-12 short:w-12 short:text-xs"
+              onPointerDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handle?.setAction("fire", true);
+              }}
+              onPointerUp={() => handle?.setAction("fire", false)}
+              onPointerCancel={() => handle?.setAction("fire", false)}
+            >
+              Fire
+            </button>
+          </div>
         </div>
-        <div className="flex items-end gap-1.5 short:flex-col-reverse short:items-end">
-          <Pill label="Reload" onDown={() => handle?.pulse("reload")} />
-          <Pill label="Roll" onDown={() => handle?.pulse("dodge")} />
-          <button
-            type="button"
-            className="flex h-14 w-14 items-center justify-center rounded-full bg-accent font-display text-sm font-semibold text-accent-fg short:h-12 short:w-12 short:text-xs"
-            onPointerDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handle?.setAction("fire", true);
-            }}
-            onPointerUp={() => handle?.setAction("fire", false)}
-            onPointerCancel={() => handle?.setAction("fire", false)}
-          >
-            Fire
-          </button>
-        </div>
-      </div>
+      ) : null}
     </div>
   );
 }
