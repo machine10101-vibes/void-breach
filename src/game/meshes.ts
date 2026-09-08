@@ -628,6 +628,65 @@ export function createAmmoMesh(id: AmmoId, mat: Materials) {
   return g;
 }
 
+export function createArmorMesh(slot: ArmorSlot, mat: Materials, rarity: Rarity = "common") {
+  const g = new THREE.Group();
+  const tint = new THREE.MeshStandardMaterial({
+    color: rarityHex(rarity),
+    metalness: 0.58,
+    roughness: 0.36,
+    emissive: rarityHex(rarity),
+    emissiveIntensity: 0.18,
+  });
+  if (slot === "helm") {
+    sph(mat.armor, 0.16, 0, 0.08, 0, g, 12);
+    box(mat.dark, 0.28, 0.06, 0.26, 0, 0.18, 0, g);
+    box(tint, 0.2, 0.04, 0.06, 0, 0.1, 0.16, g);
+    box(mat.metal, 0.22, 0.02, 0.04, 0, 0.13, 0.17, g);
+    box(mat.metal, 0.22, 0.02, 0.04, 0, 0.07, 0.17, g);
+  } else if (slot === "chest") {
+    box(mat.armor, 0.32, 0.28, 0.16, 0, 0.1, 0, g);
+    box(mat.metal, 0.22, 0.12, 0.08, 0, 0.12, 0.1, g);
+    box(tint, 0.16, 0.04, 0.04, 0, 0.18, 0.12, g);
+    box(mat.dark, 0.1, 0.16, 0.08, 0.14, 0.08, -0.06, g);
+    box(mat.dark, 0.1, 0.16, 0.08, -0.14, 0.08, -0.06, g);
+  } else if (slot === "arms") {
+    box(mat.armor, 0.12, 0.22, 0.12, 0.1, 0.08, 0, g);
+    box(mat.armor, 0.12, 0.22, 0.12, -0.1, 0.08, 0, g);
+    box(tint, 0.1, 0.06, 0.1, 0.1, 0.16, 0.04, g);
+    box(tint, 0.1, 0.06, 0.1, -0.1, 0.16, 0.04, g);
+    box(mat.metal, 0.08, 0.08, 0.1, 0.1, -0.02, 0.04, g);
+    box(mat.metal, 0.08, 0.08, 0.1, -0.1, -0.02, 0.04, g);
+  } else {
+    box(mat.armor, 0.12, 0.26, 0.14, 0.08, 0.08, 0, g);
+    box(mat.armor, 0.12, 0.26, 0.14, -0.08, 0.08, 0, g);
+    box(tint, 0.1, 0.05, 0.12, 0.08, 0.16, 0.04, g);
+    box(tint, 0.1, 0.05, 0.12, -0.08, 0.16, 0.04, g);
+    box(mat.rubber, 0.14, 0.04, 0.18, 0.08, -0.06, 0.04, g);
+    box(mat.rubber, 0.14, 0.04, 0.18, -0.08, -0.06, 0.04, g);
+  }
+  return g;
+}
+
+export function createHealthOrb(mat: Materials) {
+  const g = new THREE.Group();
+  sph(mat.ember, 0.12, 0, 0.08, 0, g, 10);
+  const glow = new THREE.Mesh(
+    new THREE.SphereGeometry(0.16, 10, 8),
+    new THREE.MeshBasicMaterial({ color: 0xe85d04, transparent: true, opacity: 0.28, toneMapped: false, depthWrite: false }),
+  );
+  glow.position.y = 0.08;
+  g.add(glow);
+  return g;
+}
+
+export function createScrapPile(mat: Materials) {
+  const g = new THREE.Group();
+  box(mat.metal, 0.16, 0.08, 0.12, 0, 0.04, 0, g);
+  box(mat.rust, 0.1, 0.06, 0.14, 0.05, 0.08, 0.02, g);
+  box(mat.warning, 0.06, 0.04, 0.08, -0.04, 0.09, -0.02, g);
+  return g;
+}
+
 export type EnemyRig = {
   group: THREE.Group;
   kind: EnemyKind;
@@ -661,6 +720,9 @@ function createHusk(mat: Materials): EnemyRig {
   glow.push(box(gMat, 0.016, 0.28, 0.016, -0.1, 1.28, 0.16, group));
   box(mat.shade, 0.12, 0.36, 0.04, 0.16, 1.1, -0.12, group, 0.2, 0, 0.4);
   box(mat.shade, 0.1, 0.28, 0.04, -0.14, 0.92, -0.1, group, 0.3, 0, -0.35);
+  box(mat.shade, 0.06, 0.22, 0.05, 0.1, 0.78, 0.08, group, 0.5, 0, 0.2);
+  sph(mat.shade, 0.05, 0.12, 0.68, 0.1, group, 6);
+  glow.push(box(gMat, 0.04, 0.04, 0.04, 0, 1.42, 0.18, group));
   const mkArm = (side: number, extra = 0) => {
     const root = new THREE.Group();
     root.position.set(0.27 * side, 1.36, 0.04);
@@ -1245,6 +1307,42 @@ export function dressWorld(scene: THREE.Object3D, mat: Materials) {
     mound.receiveShadow = true;
     scene.add(mound);
   }
+
+  for (let i = 0; i < 9; i++) {
+    const z = 6 - i * 14;
+    const hole = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.05, 12), mat.metal);
+    hole.position.set((i % 2 ? -1.1 : 1.15), 0.04, z);
+    scene.add(hole);
+    const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.03, 12), mat.dark);
+    lid.position.set((i % 2 ? -1.1 : 1.15), 0.07, z);
+    scene.add(lid);
+  }
+  for (let i = 0; i < 8; i++) {
+    const side = i % 2 === 0 ? -1 : 1;
+    const z = 2 - i * 15;
+    box(mat.ember, 0.16, 0.55, 0.16, side * 3.35, 0.32, z, scene);
+    box(mat.metal, 0.2, 0.08, 0.2, side * 3.35, 0.62, z, scene);
+    box(mat.dark, 0.06, 0.22, 0.06, side * 3.35, 0.78, z, scene);
+  }
+  for (let i = 0; i < 6; i++) {
+    const z = -8 - i * 18;
+    for (const x of [-1.6, -0.55, 0.55, 1.6]) {
+      const bar = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.7, 0.12),
+        new THREE.MeshBasicMaterial({ color: 0xe8dcc4, transparent: true, opacity: 0.55, toneMapped: false }),
+      );
+      bar.rotation.x = -Math.PI / 2;
+      bar.position.set(x, 0.036, z);
+      scene.add(bar);
+    }
+  }
+  for (let i = 0; i < 10; i++) {
+    const side = i % 2 === 0 ? -1 : 1;
+    const z = 4 - i * 12.5;
+    box(mat.dark, 0.42, 0.28, 0.32, side * 4.7, 0.16, z, scene);
+    box(mat.rust, 0.28, 0.18, 0.22, side * 4.55, 0.32, z + 0.12, scene);
+    box(mat.warning, 0.18, 0.04, 0.18, side * 4.75, 0.36, z - 0.08, scene);
+  }
 }
 
 export function createAimReticle() {
@@ -1563,6 +1661,11 @@ function hazardTex() {
   return t;
 }
 
+function stripKitChildren(obj: THREE.Object3D) {
+  const kill = obj.children.filter((c) => c.userData.kit);
+  for (const c of kill) obj.remove(c);
+}
+
 export function applyArmorKits(
   rig: PlayerRig,
   mat: Materials,
@@ -1570,34 +1673,58 @@ export function applyArmorKits(
   equipped: Record<ArmorSlot, string | null>,
 ) {
   while (rig.kits.children.length) rig.kits.remove(rig.kits.children[0]);
+  stripKitChildren(rig.head);
+  stripKitChildren(rig.torso);
+  stripKitChildren(rig.leftArm);
+  stripKitChildren(rig.rightArm);
+  stripKitChildren(rig.leftThigh);
+  stripKitChildren(rig.rightThigh);
   const piece = (slot: ArmorSlot) => items.find((i) => i.uid === equipped[slot]);
   const helm = piece("helm");
   if (helm) {
     const g = new THREE.Group();
-    g.position.copy(rig.head.position);
+    g.userData.kit = true;
     box(mat.metal, 0.34, 0.08, 0.32, 0, 0.22, 0, g);
-    box(new THREE.MeshStandardMaterial({ color: rarityHex(helm.rarity), metalness: 0.55, roughness: 0.35, emissive: rarityHex(helm.rarity), emissiveIntensity: 0.25 }), 0.24, 0.04, 0.08, 0, 0.12, 0.18, g);
-    rig.kits.add(g);
+    box(new THREE.MeshStandardMaterial({ color: rarityHex(helm.rarity), metalness: 0.55, roughness: 0.35, emissive: rarityHex(helm.rarity), emissiveIntensity: 0.28 }), 0.24, 0.04, 0.08, 0, 0.12, 0.18, g);
+    box(mat.dark, 0.08, 0.1, 0.1, 0.16, 0.16, 0.04, g);
+    rig.head.add(g);
   }
   const chest = piece("chest");
   if (chest) {
     const g = new THREE.Group();
-    g.position.copy(rig.torso.position);
+    g.userData.kit = true;
     box(mat.metal, 0.66, 0.2, 0.16, 0, 0.22, 0.22, g);
-    box(new THREE.MeshStandardMaterial({ color: rarityHex(chest.rarity), metalness: 0.4, roughness: 0.4, emissive: rarityHex(chest.rarity), emissiveIntensity: 0.2 }), 0.5, 0.08, 0.08, 0, 0.3, 0.28, g);
-    rig.kits.add(g);
+    box(new THREE.MeshStandardMaterial({ color: rarityHex(chest.rarity), metalness: 0.4, roughness: 0.4, emissive: rarityHex(chest.rarity), emissiveIntensity: 0.22 }), 0.5, 0.08, 0.08, 0, 0.3, 0.28, g);
+    box(mat.ember, 0.08, 0.04, 0.04, 0, 0.18, 0.3, g);
+    rig.torso.add(g);
   }
   const arms = piece("arms");
   if (arms) {
     const tint = new THREE.MeshStandardMaterial({ color: rarityHex(arms.rarity), metalness: 0.5, roughness: 0.38 });
-    box(tint, 0.16, 0.12, 0.22, 0.5, 0.82, 0.08, rig.kits);
-    box(tint, 0.16, 0.12, 0.22, -0.5, 0.82, 0.08, rig.kits);
+    const left = new THREE.Group();
+    left.userData.kit = true;
+    box(tint, 0.16, 0.12, 0.22, 0.08, -0.62, 0.1, left);
+    box(mat.metal, 0.1, 0.08, 0.1, 0.1, -0.52, 0.18, left);
+    rig.leftArm.add(left);
+    const right = new THREE.Group();
+    right.userData.kit = true;
+    box(tint, 0.16, 0.12, 0.22, -0.08, -0.62, 0.1, right);
+    box(mat.metal, 0.1, 0.08, 0.1, -0.1, -0.52, 0.18, right);
+    rig.rightArm.add(right);
   }
   const legs = piece("legs");
   if (legs) {
     const tint = new THREE.MeshStandardMaterial({ color: rarityHex(legs.rarity), metalness: 0.45, roughness: 0.42 });
-    box(tint, 0.2, 0.16, 0.22, 0.16, 0.28, 0.08, rig.kits);
-    box(tint, 0.2, 0.16, 0.22, -0.16, 0.28, 0.08, rig.kits);
+    const left = new THREE.Group();
+    left.userData.kit = true;
+    box(tint, 0.2, 0.16, 0.22, 0, -0.42, 0.1, left);
+    box(mat.metal, 0.14, 0.05, 0.16, 0, -0.3, 0.16, left);
+    rig.leftThigh.add(left);
+    const right = new THREE.Group();
+    right.userData.kit = true;
+    box(tint, 0.2, 0.16, 0.22, 0, -0.42, 0.1, right);
+    box(mat.metal, 0.14, 0.05, 0.16, 0, -0.3, 0.16, right);
+    rig.rightThigh.add(right);
   }
 }
 
@@ -1990,6 +2117,36 @@ export function createShipInterior(mat: Materials) {
   for (let i = 0; i < 5; i++) {
     sph(mat.metal, 0.05, -9.45, 2.2 + i * 0.45, -4.6, root, 6);
   }
+
+  const tanks = new THREE.Group();
+  tanks.position.set(7.15, 0, 2.55);
+  for (let i = 0; i < 3; i++) {
+    cyl(mat.metal, 0.16, 0.16, 1.15, i * 0.42, 0.62, 0, tanks);
+    sph(mat.dark, 0.12, i * 0.42, 1.22, 0, tanks, 8);
+    box(i === 1 ? mat.ember : mat.neon, 0.05, 0.08, 0.03, i * 0.42, 0.85, 0.16, tanks);
+  }
+  root.add(tanks);
+
+  const console = new THREE.Group();
+  console.position.set(8.35, 0, 0.4);
+  box(plate, 0.22, 1.55, 1.35, 0, 1.4, 0, console);
+  box(mat.neon, 0.04, 0.55, 0.85, -0.14, 1.55, 0, console);
+  box(mat.ember, 0.05, 0.08, 0.08, -0.14, 1.05, 0.35, console);
+  box(mat.dark, 0.18, 0.22, 0.4, -0.08, 0.55, 0, console);
+  root.add(console);
+
+  const cable = new THREE.Mesh(new THREE.TorusGeometry(1.15, 0.03, 6, 18, Math.PI * 0.9), mat.rubber);
+  cable.rotation.set(Math.PI / 2, 0.4, 0.2);
+  cable.position.set(1.8, 0.04, 0.35);
+  root.add(cable);
+  for (let i = 0; i < 4; i++) {
+    box(mat.warning, 0.55, 0.03, 0.08, -0.9 + i * 0.55, 0.05, -0.15, root);
+  }
+  box(plate, 0.7, 0.08, 0.7, 0.15, 2.85, 2.1, root);
+  box(mat.ember, 0.42, 0.05, 0.22, 0.15, 2.78, 2.1, root);
+  const deskLamp = new THREE.PointLight(0xffc58a, 2.4, 7, 1.6);
+  deskLamp.position.set(0.15, 2.55, 2.1);
+  root.add(deskLamp);
 
   const fill = new THREE.PointLight(0xffe0c0, 10, 24, 1);
   fill.position.set(0, 4.4, 0.8);

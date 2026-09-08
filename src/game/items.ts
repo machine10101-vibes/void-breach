@@ -123,7 +123,15 @@ export function makeWeapon(
     rarity,
     weaponId,
     ...stats,
+    loaded: stats.mag,
   };
+}
+
+export function scrapValue(it: InvItem) {
+  if (it.kind === "ammo") return Math.max(2, Math.floor((it.qty ?? 0) * 0.35));
+  const base = it.kind === "weapon" ? 28 : 18;
+  const rarity = it.rarity === "legendary" ? 3.2 : it.rarity === "rare" ? 2.1 : it.rarity === "magic" ? 1.45 : 1;
+  return Math.round(base * rarity);
 }
 
 export function makeArmor(
@@ -240,6 +248,24 @@ export const RECIPES: Recipe[] = [
     name: "Void cell pack",
     cost: 55,
     output: { kind: "ammo", name: "Void cells", rarity: "common", ammoId: "cell", qty: 8 },
+  },
+  {
+    id: "ammo-shell",
+    name: "12G crate",
+    cost: 30,
+    output: { kind: "ammo", name: "12G shells", rarity: "common", ammoId: "shell", qty: 16 },
+  },
+  {
+    id: "ammo-compact",
+    name: "Compact crate",
+    cost: 32,
+    output: { kind: "ammo", name: "Compact mags", rarity: "common", ammoId: "compact", qty: 72 },
+  },
+  {
+    id: "ammo-heavy",
+    name: "Belt crate",
+    cost: 40,
+    output: { kind: "ammo", name: "Heavy belt", rarity: "common", ammoId: "heavy", qty: 96 },
   },
   {
     id: "helm",

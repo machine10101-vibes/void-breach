@@ -111,23 +111,38 @@ export class GameAudio {
     src.stop(t + dur + 0.02);
   }
 
-  fire(kind: "ar" | "shotgun" | "smg" | "frag") {
+  fire(kind: "ar" | "shotgun" | "smg" | "frag" | "rail" | "cannon") {
     if (!this.ctx || !this.sfx || !this.noise) return;
     const t = this.ctx.currentTime;
-    const rate = kind === "shotgun" ? 0.55 + Math.random() * 0.08 : kind === "smg" ? 1.5 + Math.random() * 0.2 : 1.05 + Math.random() * 0.12;
+    if (kind === "rail") {
+      this.noiseBurst(0.7, 2400, 0.35, 0.55, 0.22);
+      const o = this.ctx.createOscillator();
+      o.type = "sawtooth";
+      o.frequency.setValueAtTime(920, t);
+      o.frequency.exponentialRampToValueAtTime(140, t + 0.28);
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(0.22, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+      o.connect(g);
+      g.connect(this.sfx);
+      o.start(t);
+      o.stop(t + 0.32);
+      return;
+    }
+    const rate = kind === "shotgun" || kind === "cannon" ? 0.55 + Math.random() * 0.08 : kind === "smg" ? 1.5 + Math.random() * 0.2 : 1.05 + Math.random() * 0.12;
     this.noiseBurst(
       rate,
-      kind === "shotgun" ? 210 : kind === "smg" ? 1450 : 880,
+      kind === "shotgun" || kind === "cannon" ? 210 : kind === "smg" ? 1450 : 880,
       0.7,
-      kind === "shotgun" || kind === "frag" ? 0.92 : 0.42,
-      kind === "shotgun" ? 0.24 : kind === "frag" ? 0.5 : 0.07,
+      kind === "shotgun" || kind === "frag" || kind === "cannon" ? 0.92 : 0.42,
+      kind === "shotgun" || kind === "cannon" ? 0.24 : kind === "frag" ? 0.5 : 0.07,
     );
     const click = this.ctx.createOscillator();
     click.type = "triangle";
-    click.frequency.setValueAtTime(kind === "frag" ? 80 : 220 + Math.random() * 40, t);
+    click.frequency.setValueAtTime(kind === "frag" ? 80 : kind === "cannon" ? 90 : 220 + Math.random() * 40, t);
     click.frequency.exponentialRampToValueAtTime(40, t + 0.08);
     const cg = this.ctx.createGain();
-    cg.gain.setValueAtTime(0.18, t);
+    cg.gain.setValueAtTime(kind === "cannon" ? 0.26 : 0.18, t);
     cg.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
     click.connect(cg);
     cg.connect(this.sfx);

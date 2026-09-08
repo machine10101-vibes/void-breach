@@ -216,6 +216,7 @@ export function Hud({
           >
             {hud.reloading ? "…" : hud.ammo}
             <span className="ml-0.5 font-mono text-[10px] text-muted">/{hud.reserve}</span>
+            <span className="mt-0.5 block font-mono text-[9px] uppercase tracking-widest text-faint">{hud.ammoName}</span>
           </button>
         </div>
         <Bar value={hud.health} max={hud.maxHealth} color="bg-health" height="h-1.5" />
@@ -250,7 +251,7 @@ export function Hud({
           <div>
             <p className={`font-display text-xl font-semibold ${rarityClass[hud.rarity]}`}>{hud.weaponName}</p>
             <p className="font-mono text-xs uppercase tracking-widest text-muted">
-              {hud.reloading ? "Reloading" : hud.overdrive ? "Overdrive" : hud.ads ? "Aimed" : "Primary"}
+              {hud.reloading ? "Reloading" : hud.overdrive ? "Overdrive" : hud.ads ? "Aimed" : hud.ammoName}
             </p>
           </div>
           <p
@@ -327,7 +328,7 @@ export function Hud({
 
       {atShip ? (
         <p className="absolute bottom-[max(7.2rem,calc(env(safe-area-inset-bottom)+6.4rem))] left-1/2 z-20 w-[min(28rem,92vw)] -translate-x-1/2 text-center font-mono text-[10px] uppercase tracking-[0.2em] text-faint">
-          {hud.nearCnc ? "E · use the hull CNC" : "Walk to the teal gantry to print gear"}
+          {hud.nearCnc ? "E · use the hull CNC" : hud.nearPad ? "E · deploy to Ashfall Gate" : "Walk the pad to deploy · teal gantry to print"}
         </p>
       ) : (
         <p className="absolute bottom-4 left-1/2 hidden -translate-x-1/2 font-mono text-[10px] uppercase tracking-[0.2em] text-faint desk:block">

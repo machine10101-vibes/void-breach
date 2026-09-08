@@ -1,5 +1,6 @@
 import { RECIPES } from "./items";
-import type { Rarity } from "./types";
+import { ItemPreview } from "./ItemPreview";
+import type { InvItem, Rarity } from "./types";
 
 const rarityClass: Record<Rarity, string> = {
   common: "text-fg",
@@ -40,21 +41,25 @@ export function CncPanel({
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
           {RECIPES.map((r) => {
             const can = scrapBank >= r.cost;
+            const preview: InvItem = { uid: r.id, ...r.output };
             return (
               <button
                 key={r.id}
                 type="button"
                 disabled={!can}
                 onClick={() => onCraft(r.id)}
-                className="rounded-lg border border-border bg-elevated px-3 py-3 text-left disabled:opacity-40"
+                className="flex items-center gap-3 rounded-lg border border-border bg-elevated px-3 py-3 text-left disabled:opacity-40"
               >
-                <span className={`block font-display text-xl font-semibold ${rarityClass[r.output.rarity]}`}>
-                  {r.name}
+                <ItemPreview item={preview} />
+                <span className="min-w-0 flex-1">
+                  <span className={`block font-display text-xl font-semibold ${rarityClass[r.output.rarity]}`}>
+                    {r.name}
+                  </span>
+                  <span className="block font-mono text-[10px] uppercase tracking-widest text-faint">
+                    {r.output.kind} · {r.cost} scrap
+                  </span>
+                  <span className="mt-2 block font-display text-base text-fg">{can ? "Print" : "Need more scrap"}</span>
                 </span>
-                <span className="block font-mono text-[10px] uppercase tracking-widest text-faint">
-                  {r.output.kind} · {r.cost} scrap
-                </span>
-                <span className="mt-2 block font-display text-base text-fg">{can ? "Print" : "Need more scrap"}</span>
               </button>
             );
           })}

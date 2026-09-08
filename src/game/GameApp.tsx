@@ -20,6 +20,7 @@ const bootHud: HudSnapshot = {
   ammo: 32,
   magSize: 32,
   reserve: 160,
+  ammoName: "Rifle rounds",
   weapon: "ar",
   weaponName: "Vanguard ARX",
   rarity: "common",
@@ -58,6 +59,7 @@ const bootHud: HudSnapshot = {
   equippedWeapon: null,
   equippedArmor: emptyArmor,
   nearCnc: false,
+  nearPad: false,
 };
 
 function useTouchUi() {
@@ -126,9 +128,13 @@ export function GameApp() {
         setInventoryOpen((v) => !v);
         setCncOpen(false);
       }
-      if (e.code === "KeyE" && hud.nearCnc && hud.phase === "ship") {
-        setCncOpen(true);
-        setInventoryOpen(false);
+      if (e.code === "KeyE" && hud.phase === "ship") {
+        if (hud.nearCnc) {
+          setCncOpen(true);
+          setInventoryOpen(false);
+        } else if (hud.nearPad) {
+          handleRef.current?.startMission();
+        }
       }
     };
     window.addEventListener("keydown", onKey);
@@ -237,6 +243,7 @@ export function GameApp() {
         equippedArmor={hud.equippedArmor}
         scrapBank={hud.scrapBank}
         onEquip={(uid) => handleRef.current?.equipItem(uid)}
+        onScrap={(uid) => handleRef.current?.scrapItem(uid)}
       />
       <CncPanel
         open={cncOpen}
