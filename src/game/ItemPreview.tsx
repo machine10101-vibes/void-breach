@@ -23,11 +23,12 @@ function ensureHost() {
   renderer.setSize(160, 128, false);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   scene = new THREE.Scene();
-  scene.add(new THREE.HemisphereLight(0xffe6c8, 0x1a1610, 1.1));
-  const key = new THREE.DirectionalLight(0xffd4a8, 1.8);
+  scene.add(new THREE.HemisphereLight(0xfff0dc, 0x2a2218, 1.45));
+  scene.add(new THREE.AmbientLight(0xc8b8a4, 0.55));
+  const key = new THREE.DirectionalLight(0xffe2c0, 2.6);
   key.position.set(2.2, 3.2, 2.4);
   scene.add(key);
-  const fill = new THREE.DirectionalLight(0x5eead4, 0.45);
+  const fill = new THREE.DirectionalLight(0x8ef0e6, 0.85);
   fill.position.set(-2, 1.4, -1.6);
   scene.add(fill);
   camera = new THREE.PerspectiveCamera(32, 160 / 128, 0.08, 20);
