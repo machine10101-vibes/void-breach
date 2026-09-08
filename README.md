@@ -28,7 +28,7 @@ Clear packs, pick up colored drops, push the boulevard → overpass → atrium �
 
 The game is a PWA. On Android Chrome: menu → **Install app** / Add to Home Screen.
 
-A sideloadable Android APK (WebView wrapper around the live game) is built from GitHub Actions on `main`. Grab it from [Releases](https://github.com/machine10101-vibes/void-breach/releases).
+A sideloadable Android APK (WebView wrapper around the live game) is built from GitHub Actions on `main`. Download it from the title screen **Android APK** control after entering the access pin.
 
 ## Stack
 
