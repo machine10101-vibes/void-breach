@@ -148,6 +148,16 @@ export type ControlsProbe = {
   getCam?: () => { x: number; y: number; z: number; fov: number; dist: number };
   getPhase?: () => string;
   getMove?: () => { x: number; y: number };
+  getPose?: () => {
+    lThigh: number;
+    rThigh: number;
+    lShin: number;
+    rShin: number;
+    lFore: number;
+    rFore: number;
+    gunX: number;
+    hop: number;
+  };
 };
 
 declare global {
