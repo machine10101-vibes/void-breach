@@ -157,7 +157,7 @@ export function GameApp() {
       setDeckArmed(false);
       return;
     }
-    const id = window.setTimeout(() => setDeckArmed(true), 700);
+    const id = window.setTimeout(() => setDeckArmed(true), 1400);
     return () => window.clearTimeout(id);
   }, [phase, inventoryOpen, cncOpen, settingsOpen]);
 

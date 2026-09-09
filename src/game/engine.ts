@@ -280,6 +280,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   let recorded = false;
   let shipWalk: { x: number; z: number } | null = null;
   let shipTapLock = 0;
+  let shipStickLock = 0;
   const hangarPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
   const hangarRay = new THREE.Raycaster();
   const SHIP_F = { x: -0.36, z: -0.93 };
@@ -1021,7 +1022,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     velX = 0;
     velZ = 0;
     shipWalk = null;
-    shipTapLock = performance.now() + 650;
+    shipTapLock = performance.now() + 1400;
+    shipStickLock = performance.now() + 480;
     touch.mx = 0;
     touch.my = 0;
     touch.lookX = 0;
@@ -1884,6 +1886,12 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     if (phase === "ship") {
       drone.visible = false;
       if (playerRig) playerRig.group.visible = true;
+      const nowLock = performance.now();
+      if (nowLock < shipStickLock) {
+        touch.mx = 0;
+        touch.my = 0;
+      }
+      if (nowLock < shipTapLock) shipWalk = null;
       const mv = inputMove();
       const stick = Math.hypot(mv.x, mv.y);
       const basis = shipBasis();
