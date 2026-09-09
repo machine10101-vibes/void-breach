@@ -89,6 +89,7 @@ export function GameApp() {
   const [cncOpen, setCncOpen] = useState(false);
   const pendingAction = useRef<null | "ship" | "mission">(null);
   const touchUi = useTouchUi();
+  const [deckArmed, setDeckArmed] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -151,6 +152,15 @@ export function GameApp() {
   const playing = phase === "playing";
   const onShip = phase === "ship";
 
+  useEffect(() => {
+    if (phase !== "ship" || inventoryOpen || cncOpen || settingsOpen) {
+      setDeckArmed(false);
+      return;
+    }
+    const id = window.setTimeout(() => setDeckArmed(true), 1400);
+    return () => window.clearTimeout(id);
+  }, [phase, inventoryOpen, cncOpen, settingsOpen]);
+
   const openSettings = (pauseFirst: boolean) => {
     if (pauseFirst && phase === "playing") handleRef.current?.pause();
     setSettingsOpen(true);
@@ -189,11 +199,12 @@ export function GameApp() {
           onShip={() => handleRef.current?.recallToShip()}
         />
       )}
-      {onShip && !inventoryOpen && !cncOpen && !settingsOpen ? (
+      {onShip && deckArmed && !inventoryOpen && !cncOpen && !settingsOpen ? (
         <div
-          className="absolute inset-0 z-[5] cursor-pointer"
+          className="absolute inset-x-0 top-12 bottom-[30%] z-[5] cursor-pointer"
           onPointerDown={(e) => {
             if (e.button !== 0) return;
+            e.stopPropagation();
             handleRef.current?.walkToClient(e.clientX, e.clientY);
           }}
         />

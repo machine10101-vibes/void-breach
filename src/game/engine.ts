@@ -279,6 +279,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   let emptyCd = 0;
   let recorded = false;
   let shipWalk: { x: number; z: number } | null = null;
+  let shipTapLock = 0;
+  let shipStickLock = 0;
   const hangarPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
   const hangarRay = new THREE.Raycaster();
   const SHIP_F = { x: -0.36, z: -0.93 };
@@ -590,17 +592,23 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
 
   function walkToClient(clientX: number, clientY: number) {
     if (phase !== "ship") return;
+    if (performance.now() < shipTapLock) return;
     const rect = canvas.getBoundingClientRect();
     const w = rect.width || 1;
     const h = rect.height || 1;
-    ndc.x = ((clientX - rect.left) / w) * 2 - 1;
-    ndc.y = -((clientY - rect.top) / h) * 2 + 1;
+    const nx = (clientX - rect.left) / w;
+    const ny = (clientY - rect.top) / h;
+    if (ny > 0.7 || ny < 0.08) return;
+    if (nx < 0.3 && ny > 0.48) return;
+    if (nx > 0.28 && nx < 0.72 && ny > 0.78) return;
+    ndc.x = nx * 2 - 1;
+    ndc.y = -ny * 2 + 1;
     hangarRay.setFromCamera(ndc, camera);
     if (hangarRay.ray.intersectPlane(hangarPlane, tmpV)) {
-      shipWalk = {
-        x: THREE.MathUtils.clamp(tmpV.x, -8.2, 8.2),
-        z: THREE.MathUtils.clamp(tmpV.z, -7.2, 7.4),
-      };
+      const tx = THREE.MathUtils.clamp(tmpV.x, -8.2, 8.2);
+      const tz = THREE.MathUtils.clamp(tmpV.z, -7.2, 7.4);
+      if (Math.hypot(tx - px, tz - pz) < 0.45) return;
+      shipWalk = { x: tx, z: tz };
     }
   }
 
@@ -1014,12 +1022,18 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     velX = 0;
     velZ = 0;
     shipWalk = null;
+    shipTapLock = performance.now() + 1400;
+    shipStickLock = performance.now() + 480;
+    touch.mx = 0;
+    touch.my = 0;
+    touch.lookX = 0;
+    touch.lookY = 0;
     yaw = Math.atan2(-5.4, 4.4);
     nearCnc = false;
     nearPad = true;
     phase = "ship";
     objective = "Chimera hull — ready deck";
-    hint = "Drag the left stick or tap the deck · WASD also walks · E at the CNC";
+    hint = "Hold Walk to move · tap open deck · WASD also walks · E at the CNC";
     if (playerRig) playerRig.group.visible = true;
     drone.visible = false;
     if (aimReticle) aimReticle.visible = false;
@@ -1872,6 +1886,12 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     if (phase === "ship") {
       drone.visible = false;
       if (playerRig) playerRig.group.visible = true;
+      const nowLock = performance.now();
+      if (nowLock < shipStickLock) {
+        touch.mx = 0;
+        touch.my = 0;
+      }
+      if (nowLock < shipTapLock) shipWalk = null;
       const mv = inputMove();
       const stick = Math.hypot(mv.x, mv.y);
       const basis = shipBasis();
@@ -2173,7 +2193,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   };
   const onDown = (e: MouseEvent) => {
     if (e.button === 0) {
-      if (phase === "ship") walkToClient(e.clientX, e.clientY);
+      if (phase === "ship" && e.target === canvas) walkToClient(e.clientX, e.clientY);
       else held.fire = true;
     }
     if (e.button === 2) held.ads = true;
@@ -2203,6 +2223,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   window.addEventListener("mousemove", onMouse);
   const onShipPointer = (e: PointerEvent) => {
     if (phase !== "ship" || e.button !== 0) return;
+    if (e.target !== canvas) return;
     walkToClient(e.clientX, e.clientY);
   };
   canvas.addEventListener("mousedown", onDown);
