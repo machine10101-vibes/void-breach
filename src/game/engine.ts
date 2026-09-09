@@ -248,6 +248,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   let weapons = defaultWeapons();
   let mag = weapons[0].mag;
   let fireCd = 0;
+  let recoil = 0;
+  let gaitT = 0;
   let reloadT = 0;
   let overdriveT = 0;
   let skillCd = { frag: 0, overdrive: 0, cleave: 0 };
@@ -1021,6 +1023,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     py = 0.12;
     velX = 0;
     velZ = 0;
+    recoil = 0;
+    gaitT = 0;
     shipWalk = null;
     shipTapLock = performance.now() + 1400;
     shipStickLock = performance.now() + 480;
@@ -1195,6 +1199,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     shots += w.pellets;
     audio.fire(fireSound(w.id));
     trauma = Math.min(1, trauma + (w.id === "shotgun" || w.id === "cannon" || w.id === "gl" ? 0.22 : w.id === "rail" ? 0.28 : 0.07));
+    recoil = Math.min(1, recoil + (w.id === "shotgun" || w.id === "cannon" || w.id === "gl" ? 0.88 : w.id === "rail" ? 0.72 : 0.4));
     pitch += w.id === "shotgun" || w.id === "cannon" ? 0.028 : 0.01;
     yaw += (Math.random() - 0.5) * (w.id === "shotgun" ? 0.02 : 0.006);
     muzzleLight.intensity = w.id === "rail" ? 9 : 7;
@@ -1354,6 +1359,85 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       const dist = Math.hypot(dx, dz);
       if (dist < 3.4 && dx * f.x + dz * f.z > 0) damageEnemy(e, 90, f.x, f.z);
     }
+  }
+
+  function poseOperator(args: {
+    moving: boolean;
+    sprint: boolean;
+    yaw: number;
+    pitch: number;
+    lift: number;
+    now: number;
+    dt: number;
+    dodge: number;
+    ads: number;
+    reload: number;
+  }) {
+    if (!playerRig) return;
+    const rate = args.sprint ? 14.4 : 9.4;
+    gaitT += args.dt * (args.moving ? rate : 1.2);
+    const step = args.moving ? Math.sin(gaitT) : 0;
+    const opposite = args.moving ? Math.sin(gaitT + Math.PI) : 0;
+    const idle = Math.sin(args.now * 0.0026) * 0.022;
+    const breath = Math.sin(args.now * 0.0017) * 0.012;
+    const amp = args.moving ? (args.sprint ? 0.92 : 0.64) : 0;
+    const knee = (ph: number) => {
+      if (!args.moving) return 0.1;
+      const lift = Math.max(0, -Math.sin(ph));
+      const pass = Math.max(0, Math.cos(ph)) * 0.16;
+      return 0.14 + lift * (args.sprint ? 1.12 : 0.84) + pass;
+    };
+    const plant = args.moving ? Math.pow(Math.abs(Math.sin(gaitT)), 1.55) : 0;
+    const hop = args.moving ? plant * (args.sprint ? 0.068 : 0.046) : idle * 0.45;
+    const kick = recoil;
+    const dodgeLean = Math.min(1, args.dodge * 3.4);
+    const rel = Math.sin(args.reload * Math.PI);
+    const ads = args.ads;
+
+    playerRig.leftThigh.rotation.x = step * amp + idle * 0.28 + dodgeLean * 0.42;
+    playerRig.rightThigh.rotation.x = opposite * amp + idle * 0.28 - dodgeLean * 0.18;
+    playerRig.leftShin.rotation.x = knee(gaitT) + dodgeLean * 0.55;
+    playerRig.rightShin.rotation.x = knee(gaitT + Math.PI) + dodgeLean * 0.2;
+
+    playerRig.torso.position.y = 1.2 + breath * 1.4 + (args.moving ? plant * 0.012 : 0);
+    playerRig.torso.rotation.x =
+      args.pitch * 0.16 + idle + (args.moving ? (args.sprint ? 0.16 : 0.08) : 0.035) + ads * 0.12 + rel * 0.1 + kick * 0.14 + dodgeLean * 0.22;
+    playerRig.torso.rotation.y = args.moving ? -step * 0.09 : 0;
+    playerRig.torso.rotation.z = (args.moving ? -step * 0.055 : 0) + dodgeLean * 0.16;
+
+    playerRig.head.position.y = 1.66 + breath * 0.7 + hop * 0.15;
+    playerRig.head.rotation.x = args.pitch * 0.34 + idle * 0.6 - ads * 0.06 - kick * 0.1 + rel * 0.08;
+    playerRig.head.rotation.y = args.moving ? step * 0.055 : 0;
+    playerRig.head.rotation.z = args.moving ? -step * 0.03 : dodgeLean * 0.08;
+
+    playerRig.backpack.rotation.x = (args.moving ? -step * 0.07 : idle * 0.4) - kick * 0.18;
+    playerRig.backpack.rotation.z = args.moving ? step * 0.04 : 0;
+    playerRig.backpack.position.y = 0.16 + hop * 0.28 + breath * 0.4;
+
+    playerRig.leftArm.rotation.x = -0.62 - step * amp * (ads > 0.4 ? 0.08 : 0.34) - ads * 0.18 - kick * 0.1 + rel * 0.22;
+    playerRig.leftArm.rotation.y = ads * 0.12 + rel * 0.18;
+    playerRig.leftArm.rotation.z = 0.3 + Math.abs(step) * amp * 0.1;
+    playerRig.leftForearm.rotation.x = 0.22 + (args.moving ? Math.max(0, -step) * 0.48 : 0) + ads * 0.2 + rel * 0.28;
+
+    playerRig.rightArm.rotation.x = -0.86 + opposite * amp * (ads > 0.4 ? 0.04 : 0.12) - kick * 0.62 - rel * 0.55 - ads * 0.14;
+    playerRig.rightArm.rotation.y = -0.06 + rel * 0.38;
+    playerRig.rightArm.rotation.z = kick * 0.14 + dodgeLean * 0.08;
+    playerRig.rightForearm.rotation.x = 0.1 + kick * 0.32 + rel * 0.62 + ads * 0.12;
+
+    playerRig.gunGrip.rotation.x = 0.86 + kick * 0.62 + rel * 0.28;
+    playerRig.gunGrip.rotation.y = 0.04 + rel * 0.16;
+    playerRig.gunGrip.position.z = 0.12 - kick * 0.07 - ads * 0.03;
+    playerRig.gunGrip.position.y = -0.28 + rel * 0.04;
+
+    const visorMat = playerRig.visor.material as THREE.MeshStandardMaterial;
+    visorMat.emissiveIntensity = 2.35 + breath * 14 + kick * 1.4;
+
+    playerRig.group.position.set(px, args.lift + hop, pz);
+    playerRig.group.rotation.set(
+      dodgeLean * 0.12 + kick * 0.04,
+      args.yaw + Math.PI,
+      args.moving ? step * 0.038 : dodgeLean * 0.1,
+    );
   }
 
   function swapGunMesh() {
@@ -1791,6 +1875,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     syncWeaponsFromSave();
     mag = currentWeapon().mag;
     fireCd = 0;
+    recoil = 0;
+    gaitT = 0;
     reloadT = 0;
     lmgHeat = 0;
     overdriveT = 0;
@@ -1943,17 +2029,18 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       const hol = shipRoot.getObjectByName("cncHolo");
       if (hol) hol.rotation.y += dt * 1.6;
       if (playerRig) {
-        const moving = wm > 0.12 || Math.hypot(velX, velZ) > 0.35;
-        const bob = moving ? Math.sin(now * 0.012) : 0;
-        playerRig.leftThigh.rotation.x = bob * 0.72;
-        playerRig.rightThigh.rotation.x = -bob * 0.72;
-        playerRig.leftArm.rotation.x = -0.7 - bob * 0.16;
-        playerRig.leftArm.rotation.z = 0.32;
-        playerRig.rightArm.rotation.x = -0.88 + bob * 0.1;
-        playerRig.rightArm.rotation.y = -0.06;
-        playerRig.torso.rotation.x = moving ? 0.08 : 0;
-        playerRig.group.position.set(px, py + Math.abs(bob) * 0.03, pz);
-        playerRig.group.rotation.y = yaw + Math.PI;
+        poseOperator({
+          moving: wm > 0.12 || Math.hypot(velX, velZ) > 0.35,
+          sprint: false,
+          yaw,
+          pitch: 0.05,
+          lift: py,
+          now,
+          dt,
+          dodge: 0,
+          ads: 0,
+          reload: 0,
+        });
       }
       placeFollowCam(dt);
       emitHud();
@@ -2005,6 +2092,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     adsT = THREE.MathUtils.damp(adsT, wantAds ? 1 : 0, 12, dt);
 
     fireCd = Math.max(0, fireCd - dt);
+    recoil = Math.max(0, recoil - dt * 7.6);
     if (reloadT > 0) {
       reloadT -= dt;
       if (reloadT <= 0) finishReload();
@@ -2091,20 +2179,20 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
 
     const f = forward();
     if (playerRig) {
-      const t = now * 0.001;
       const moving = Math.hypot(velX, velZ) > 0.6 && grounded;
       const sprint = held.sprint || k.has("ShiftLeft") || k.has("ShiftRight");
-      const bob = moving ? Math.sin(t * (sprint ? 12 : 8)) : 0;
-      playerRig.leftThigh.rotation.x = bob * 0.7;
-      playerRig.rightThigh.rotation.x = -bob * 0.7;
-      playerRig.leftArm.rotation.x = -0.7 - bob * 0.1;
-      playerRig.leftArm.rotation.z = 0.32;
-      playerRig.rightArm.rotation.x = -0.88 + bob * 0.06 - (fireCd > 0 ? 0.12 : 0) - (reloadT > 0 ? 0.28 : 0);
-      playerRig.rightArm.rotation.y = -0.06;
-      playerRig.group.position.set(px, py, pz);
-      playerRig.group.rotation.y = yaw + Math.PI;
-      playerRig.torso.rotation.x = pitch * 0.22;
-      playerRig.head.rotation.x = pitch * 0.35;
+      poseOperator({
+        moving,
+        sprint,
+        yaw,
+        pitch,
+        lift: py,
+        now,
+        dt,
+        dodge: dodgeT,
+        ads: adsT,
+        reload: reloadT > 0 ? Math.min(1, 1 - reloadT / Math.max(0.4, currentWeapon().reload)) : 0,
+      });
       if (overdriveT > 0) {
         (playerRig.visor.material as THREE.MeshStandardMaterial).emissiveIntensity = 5;
         overLight.intensity = 2.2;
