@@ -1380,15 +1380,16 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     const opposite = args.moving ? Math.sin(gaitT + Math.PI) : 0;
     const idle = Math.sin(args.now * 0.0026) * 0.022;
     const breath = Math.sin(args.now * 0.0017) * 0.012;
-    const amp = args.moving ? (args.sprint ? 0.92 : 0.64) : 0;
+    const amp = args.moving ? (args.sprint ? 1.02 : 0.74) : 0;
     const knee = (ph: number) => {
       if (!args.moving) return 0.1;
-      const lift = Math.max(0, -Math.sin(ph));
-      const pass = Math.max(0, Math.cos(ph)) * 0.16;
-      return 0.14 + lift * (args.sprint ? 1.12 : 0.84) + pass;
+      const swing = Math.sin(ph);
+      const lift = Math.max(0, -swing);
+      const crumple = Math.max(0, Math.cos(ph + 0.35));
+      return 0.18 + lift * (args.sprint ? 1.42 : 1.12) + crumple * 0.34;
     };
-    const plant = args.moving ? Math.pow(Math.abs(Math.sin(gaitT)), 1.55) : 0;
-    const hop = args.moving ? plant * (args.sprint ? 0.068 : 0.046) : idle * 0.45;
+    const plant = args.moving ? Math.pow(Math.abs(Math.sin(gaitT)), 1.35) : 0;
+    const hop = args.moving ? plant * (args.sprint ? 0.078 : 0.052) : idle * 0.45;
     const kick = recoil;
     const dodgeLean = Math.min(1, args.dodge * 3.4);
     const rel = Math.sin(args.reload * Math.PI);
@@ -1417,12 +1418,14 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     playerRig.leftArm.rotation.x = -0.62 - step * amp * (ads > 0.4 ? 0.08 : 0.34) - ads * 0.18 - kick * 0.1 + rel * 0.22;
     playerRig.leftArm.rotation.y = ads * 0.12 + rel * 0.18;
     playerRig.leftArm.rotation.z = 0.3 + Math.abs(step) * amp * 0.1;
-    playerRig.leftForearm.rotation.x = 0.22 + (args.moving ? Math.max(0, -step) * 0.48 : 0) + ads * 0.2 + rel * 0.28;
+    playerRig.leftForearm.rotation.x =
+      0.2 + (args.moving ? 0.16 + Math.max(0, -step) * 0.62 + Math.abs(step) * 0.18 : 0) + ads * 0.2 + rel * 0.28;
 
     playerRig.rightArm.rotation.x = -0.86 + opposite * amp * (ads > 0.4 ? 0.04 : 0.12) - kick * 0.62 - rel * 0.55 - ads * 0.14;
     playerRig.rightArm.rotation.y = -0.06 + rel * 0.38;
     playerRig.rightArm.rotation.z = kick * 0.14 + dodgeLean * 0.08;
-    playerRig.rightForearm.rotation.x = 0.1 + kick * 0.32 + rel * 0.62 + ads * 0.12;
+    playerRig.rightForearm.rotation.x =
+      0.1 + kick * 0.32 + rel * 0.62 + ads * 0.12 + (args.moving ? Math.max(0, -opposite) * 0.18 : 0);
 
     playerRig.gunGrip.rotation.x = 0.86 + kick * 0.62 + rel * 0.28;
     playerRig.gunGrip.rotation.y = 0.04 + rel * 0.16;
@@ -2331,6 +2334,16 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     getSpeed: () => Math.hypot(velX, velZ),
     getPhase: () => phase,
     getMove: () => inputMove(),
+    getPose: () => ({
+      lThigh: playerRig?.leftThigh.rotation.x ?? 0,
+      rThigh: playerRig?.rightThigh.rotation.x ?? 0,
+      lShin: playerRig?.leftShin.rotation.x ?? 0,
+      rShin: playerRig?.rightShin.rotation.x ?? 0,
+      lFore: playerRig?.leftForearm.rotation.x ?? 0,
+      rFore: playerRig?.rightForearm.rotation.x ?? 0,
+      gunX: playerRig?.gunGrip.rotation.x ?? 0,
+      hop: playerRig?.group.position.y ?? 0,
+    }),
     setKeys: (codes: string[]) => {
       qaKeys.active = codes.length > 0;
       qaKeys.codes = codes;
