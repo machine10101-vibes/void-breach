@@ -39,7 +39,7 @@ function ensureHost() {
 function buildMesh(item: InvItem) {
   if (item.kind === "weapon") return createWeaponMesh(item.weaponId ?? "ar", mat);
   if (item.kind === "ammo") return createAmmoMesh(item.ammoId ?? "rifle", mat);
-  return createArmorMesh(item.slot ?? "chest", mat, item.rarity);
+  return createArmorMesh(item.slot ?? "chest", mat, item.rarity, item.name);
 }
 
 function tick() {

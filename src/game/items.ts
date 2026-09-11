@@ -102,14 +102,44 @@ export function ensureAmmoPools(items: InvItem[]) {
   return items;
 }
 
+const ISSUE_KIT: Record<ArmorSlot, { name: string; hpBonus: number; shieldBonus: number; dmgBonus?: number }> = {
+  helm: { name: "Issue helm", hpBonus: 6, shieldBonus: 4 },
+  chest: { name: "Issue plate", hpBonus: 12, shieldBonus: 8 },
+  arms: { name: "Issue gauntlets", hpBonus: 4, shieldBonus: 2, dmgBonus: 2 },
+  legs: { name: "Issue greaves", hpBonus: 6, shieldBonus: 6 },
+};
+
 export function starterLoadout(): { inventory: InvItem[]; equippedWeapon: string; equippedArmor: Record<ArmorSlot, string | null> } {
   const rifle = makeWeapon("ar", "Vanguard ARX", "common", WEAPON_BASE.ar);
-  const chest = makeArmor("chest", "Issue plate", "common", { hpBonus: 12, shieldBonus: 8 });
+  const helm = makeArmor("helm", ISSUE_KIT.helm.name, "common", ISSUE_KIT.helm);
+  const chest = makeArmor("chest", ISSUE_KIT.chest.name, "common", ISSUE_KIT.chest);
+  const arms = makeArmor("arms", ISSUE_KIT.arms.name, "common", ISSUE_KIT.arms);
+  const legs = makeArmor("legs", ISSUE_KIT.legs.name, "common", ISSUE_KIT.legs);
   return {
-    inventory: [rifle, chest, makeAmmo("rifle", 160), makeAmmo("compact", 48), makeAmmo("shell", 12)],
+    inventory: [rifle, helm, chest, arms, legs, makeAmmo("rifle", 160), makeAmmo("compact", 48), makeAmmo("shell", 12)],
     equippedWeapon: rifle.uid,
-    equippedArmor: { helm: null, chest: chest.uid, arms: null, legs: null },
+    equippedArmor: { helm: helm.uid, chest: chest.uid, arms: arms.uid, legs: legs.uid },
   };
+}
+
+export function ensureIssueKit(items: InvItem[], equipped: Record<ArmorSlot, string | null>) {
+  const nextItems = items.slice();
+  const nextEq = { ...equipped };
+  for (const slot of Object.keys(ISSUE_KIT) as ArmorSlot[]) {
+    const uid = nextEq[slot];
+    if (uid && nextItems.some((i) => i.uid === uid && i.kind === "armor" && i.slot === slot)) continue;
+    const existing = nextItems.find((i) => i.kind === "armor" && i.slot === slot && i.name.toLowerCase().includes("issue"));
+    if (existing) {
+      nextEq[slot] = existing.uid;
+      continue;
+    }
+    if (nextItems.length >= INVENTORY_CAP) continue;
+    const spec = ISSUE_KIT[slot];
+    const piece = makeArmor(slot, spec.name, "common", spec);
+    nextItems.push(piece);
+    nextEq[slot] = piece.uid;
+  }
+  return { inventory: nextItems, equippedArmor: nextEq };
 }
 
 export function makeWeapon(
@@ -175,15 +205,14 @@ export function rollLootAmmo(kindHint?: WeaponId): InvItem {
 export function rollLootArmor(rarity: Rarity): InvItem {
   const slots: ArmorSlot[] = ["helm", "chest", "arms", "legs"];
   const slot = slots[Math.floor(Math.random() * slots.length)];
-  const names: Record<ArmorSlot, string> = {
-    helm: "Helm",
-    chest: "Cuirass",
-    arms: "Gauntlets",
-    legs: "Greaves",
+  const names: Record<ArmorSlot, Record<Rarity, string>> = {
+    helm: { common: "Salvaged helm", magic: "Sealed helm", rare: "Ember visor", legendary: "Void helm" },
+    chest: { common: "Salvaged cuirass", magic: "Lined plate", rare: "Assault cuirass", legendary: "Null mantle" },
+    arms: { common: "Salvaged gauntlets", magic: "Servo gauntlets", rare: "Hardened gauntlets", legendary: "Void gauntlets" },
+    legs: { common: "Salvaged greaves", magic: "Strider greaves", rare: "Rail greaves", legendary: "Void greaves" },
   };
-  const prefix = rarity === "legendary" ? "Void " : rarity === "rare" ? "Hardened " : rarity === "magic" ? "Lined " : "Salvaged ";
   const scale = rarity === "legendary" ? 3 : rarity === "rare" ? 2 : rarity === "magic" ? 1.4 : 1;
-  return makeArmor(slot, prefix + names[slot], rarity, {
+  return makeArmor(slot, names[slot][rarity], rarity, {
     hpBonus: Math.round((slot === "chest" ? 22 : 12) * scale),
     shieldBonus: Math.round((slot === "chest" ? 16 : 8) * scale),
     dmgBonus: slot === "arms" ? Math.round(6 * scale) : 0,
@@ -310,6 +339,12 @@ export const RECIPES: Recipe[] = [
     name: "Strider greaves",
     cost: 80,
     output: { kind: "armor", name: "Strider greaves", rarity: "magic", slot: "legs", hpBonus: 14, shieldBonus: 16, dmgBonus: 0 },
+  },
+  {
+    id: "chest-null",
+    name: "Null mantle",
+    cost: 160,
+    output: { kind: "armor", name: "Null mantle", rarity: "legendary", slot: "chest", hpBonus: 28, shieldBonus: 32, dmgBonus: 6 },
   },
 ];
 

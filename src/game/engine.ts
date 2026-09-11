@@ -949,7 +949,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       mesh = createWeaponMesh(item.weaponId ?? "ar", mat);
       mesh.scale.setScalar(0.85);
     } else if (item?.kind === "armor") {
-      mesh = createArmorMesh(item.slot ?? "chest", mat, item.rarity);
+      mesh = createArmorMesh(item.slot ?? "chest", mat, item.rarity, item.name);
       mesh.scale.setScalar(1.15);
     } else if (kindDrop === "health") {
       mesh = createHealthOrb(mat);
