@@ -1569,21 +1569,21 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       playerRig.rightForearm.rotation.x = 0.14 + (args.moving ? Math.max(0, -opposite) * 0.32 : 0);
     } else {
       if (playerRig.gun) playerRig.gun.visible = true;
-      const pump = THREE.MathUtils.lerp(0.1, 0.03, aim);
-      playerRig.leftArm.rotation.x = THREE.MathUtils.lerp(-0.46, -0.96, aim) - step * amp * pump - kick * 0.1 + rel * 0.22;
-      playerRig.leftArm.rotation.y = THREE.MathUtils.lerp(0.24, 0.12, aim) + rel * 0.18;
-      playerRig.leftArm.rotation.z = THREE.MathUtils.lerp(0.4, 0.2, aim) + Math.abs(step) * amp * 0.04;
-      playerRig.leftForearm.rotation.x = THREE.MathUtils.lerp(0.46, 0.2, aim) + rel * 0.28;
+      const pump = THREE.MathUtils.lerp(0.08, 0.02, aim);
+      playerRig.leftArm.rotation.x = THREE.MathUtils.lerp(-0.32, -1.05, aim) - step * amp * pump - kick * 0.08 + rel * 0.22;
+      playerRig.leftArm.rotation.y = THREE.MathUtils.lerp(0.32, 0.1, aim) + rel * 0.18;
+      playerRig.leftArm.rotation.z = THREE.MathUtils.lerp(0.48, 0.16, aim) + Math.abs(step) * amp * 0.03;
+      playerRig.leftForearm.rotation.x = THREE.MathUtils.lerp(0.55, 0.16, aim) + rel * 0.28;
       playerRig.rightArm.rotation.x =
-        THREE.MathUtils.lerp(-0.36, -1.06, aim) + opposite * amp * pump * 0.6 - kick * 0.62 - rel * 0.55;
-      playerRig.rightArm.rotation.y = THREE.MathUtils.lerp(0.12, -0.05, aim) + rel * 0.38;
-      playerRig.rightArm.rotation.z = THREE.MathUtils.lerp(0.08, 0.02, aim) + kick * 0.14 + dodgeLean * 0.08;
-      playerRig.rightForearm.rotation.x = THREE.MathUtils.lerp(0.4, 0.05, aim) + kick * 0.32 + rel * 0.62;
-      playerRig.gunGrip.rotation.x = THREE.MathUtils.lerp(1.22, 0.66, aim) + kick * 0.55 + rel * 0.28;
-      playerRig.gunGrip.rotation.y = THREE.MathUtils.lerp(0.14, 0.02, aim) + rel * 0.16;
-      playerRig.gunGrip.rotation.z = THREE.MathUtils.lerp(-0.08, 0.01, aim);
-      playerRig.gunGrip.position.y = THREE.MathUtils.lerp(-0.36, -0.2, aim) + rel * 0.04;
-      playerRig.gunGrip.position.z = THREE.MathUtils.lerp(0.04, 0.18, aim) - kick * 0.07;
+        THREE.MathUtils.lerp(-0.18, -1.18, aim) + opposite * amp * pump * 0.45 - kick * 0.38 - rel * 0.55;
+      playerRig.rightArm.rotation.y = THREE.MathUtils.lerp(0.22, -0.08, aim) + rel * 0.38;
+      playerRig.rightArm.rotation.z = THREE.MathUtils.lerp(0.16, 0.0, aim) + kick * 0.1 + dodgeLean * 0.08;
+      playerRig.rightForearm.rotation.x = THREE.MathUtils.lerp(0.52, 0.02, aim) + kick * 0.22 + rel * 0.62;
+      playerRig.gunGrip.rotation.x = THREE.MathUtils.lerp(1.42, 0.52, aim) + kick * 0.22 + rel * 0.28;
+      playerRig.gunGrip.rotation.y = THREE.MathUtils.lerp(0.22, 0.0, aim) + rel * 0.16;
+      playerRig.gunGrip.rotation.z = THREE.MathUtils.lerp(-0.14, 0.02, aim);
+      playerRig.gunGrip.position.y = THREE.MathUtils.lerp(-0.4, -0.16, aim) + rel * 0.04;
+      playerRig.gunGrip.position.z = THREE.MathUtils.lerp(0.0, 0.22, aim) - kick * 0.05;
     }
 
     const visorMat = playerRig.visor.material as THREE.MeshStandardMaterial;
