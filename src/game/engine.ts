@@ -2555,6 +2555,10 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     },
     setSteer: () => {},
     getPos: () => ({ x: px, z: pz, y: py }),
+    setPos: (x, z) => {
+      px = x;
+      pz = z;
+    },
     getCam: () => {
       const dx = camera.position.x - px;
       const dy = camera.position.y - py;

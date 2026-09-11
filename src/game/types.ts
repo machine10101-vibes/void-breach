@@ -160,6 +160,7 @@ export type ControlsProbe = {
   setKeys: (codes: string[]) => void;
   setSteer?: (v: number) => void;
   getPos?: () => { x: number; y: number; z: number };
+  setPos?: (x: number, z: number) => void;
   getCam?: () => { x: number; y: number; z: number; fov: number; dist: number };
   getPhase?: () => string;
   getMove?: () => { x: number; y: number };
