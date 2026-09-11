@@ -469,13 +469,13 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   function fillMissionDecor() {
     if (!mat) return;
     while (missionGroup.children.length) missionGroup.remove(missionGroup.children[0]);
-    const ground = new THREE.Mesh(groundGeo, mat.concrete);
+    const ground = new THREE.Mesh(groundGeo, mat.lot);
     ground.receiveShadow = true;
     ground.position.set(0, 0, -48);
     missionGroup.add(ground);
     if (textures.ground) {
       const g = textures.ground.clone();
-      g.repeat.set(28, 32);
+      g.repeat.set(22, 26);
       g.needsUpdate = true;
       mat.concrete.map = g;
       mat.concrete.needsUpdate = true;
@@ -604,12 +604,12 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     if (textures.ground) {
       mat.concrete.map = textures.ground;
       mat.concrete.needsUpdate = true;
-      mat.asphalt.map = textures.ground;
-      mat.asphalt.needsUpdate = true;
     }
     if (textures.wall) {
       mat.wall.map = textures.wall;
       mat.wall.needsUpdate = true;
+      mat.brick.map = textures.wall;
+      mat.brick.needsUpdate = true;
     }
     if (textures.metal) {
       mat.metal.map = textures.metal;
