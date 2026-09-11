@@ -5,7 +5,8 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { GameAudio } from "./audio";
 import { collidePlayer, groundHeight, rayWorld, clamp } from "./collision";
-import { buildLevel } from "./level";
+import { isMissionUnlocked, missionInfo } from "./campaign";
+import { buildMission } from "./level";
 import {
   addWorldFromBoxes,
   applyArmorKits,
@@ -16,6 +17,7 @@ import {
   createBolt,
   createCar,
   createCrate,
+  createExtractPad,
   createExoSuit,
   createGrenade,
   createAmmoMesh,
@@ -69,8 +71,10 @@ import type {
   FloatNum,
   HudSnapshot,
   InvItem,
+  MissionId,
   Phase,
   Rarity,
+  RunOutcome,
   AmmoId,
   WeaponId,
 } from "./types";
@@ -170,6 +174,8 @@ function enemyStats(kind: EnemyKind) {
   if (kind === "harbinger") return { hp: 1680, radius: 1.2, speed: 2.5, dmg: 26 };
   if (kind === "brute") return { hp: 390, radius: 0.78, speed: 2.7, dmg: 24 };
   if (kind === "stalker") return { hp: 125, radius: 0.46, speed: 4.5, dmg: 16 };
+  if (kind === "spitter") return { hp: 110, radius: 0.5, speed: 2.9, dmg: 18 };
+  if (kind === "wraith") return { hp: 72, radius: 0.38, speed: 6.4, dmg: 15 };
   return { hp: 78, radius: 0.42, speed: 5.0, dmg: 13 };
 }
 
@@ -183,6 +189,8 @@ function radialDeadzone(x: number, y: number, dz = 0.16) {
 export type GameHandle = {
   destroy: () => void;
   startMission: () => void;
+  selectMission: (id: MissionId) => void;
+  buyStim: () => void;
   pause: () => void;
   resume: () => void;
   setMuted: (m: boolean) => void;
@@ -203,7 +211,7 @@ export type GameHandle = {
 
 export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => void): GameHandle {
   window.__voidBreachHandle?.destroy();
-  const level = buildLevel();
+  let level = buildMission(loadSave().selectedMission);
   const audio = new GameAudio();
   const keys = new Set<string>();
   const prevKeys = new Set<string>();
@@ -216,6 +224,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     frag: false,
     overdrive: false,
     cleave: false,
+    scan: false,
+    extract: false,
     reload: false,
     ads: false,
   };
@@ -252,7 +262,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   let gaitT = 0;
   let reloadT = 0;
   let overdriveT = 0;
-  let skillCd = { frag: 0, overdrive: 0, cleave: 0 };
+  let skillCd = { frag: 0, overdrive: 0, cleave: 0, scan: 0 };
   let trauma = 0;
   let hitFlash = 0;
   let footT = 0;
@@ -308,6 +318,15 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   scene.add(shipRoot);
   let nearCnc = false;
   let nearPad = false;
+  let nearOps = false;
+  let nearMed = false;
+  let nearExtract = false;
+  let extractReady = false;
+  let extractHold = 0;
+  let scanT = 0;
+  let outcome: RunOutcome = "none";
+  let extractMark: THREE.Object3D | null = null;
+  let cacheTaken = false;
   let lmgHeat = 0;
 
   const camera = new THREE.PerspectiveCamera(CAM_FOV, 1, 0.22, 280);
@@ -445,10 +464,9 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   const groundGeo = new THREE.PlaneGeometry(160, 180, 1, 1);
   groundGeo.rotateX(-Math.PI / 2);
 
-  function setupWorld() {
-    if (worldBuilt) return;
-    worldBuilt = true;
-    mat = makeMaterials(textures);
+  function fillMissionDecor() {
+    if (!mat) return;
+    while (missionGroup.children.length) missionGroup.remove(missionGroup.children[0]);
     const ground = new THREE.Mesh(groundGeo, mat.concrete);
     ground.receiveShadow = true;
     ground.position.set(0, 0, -48);
@@ -461,7 +479,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       mat.concrete.needsUpdate = true;
     }
     addWorldFromBoxes(missionGroup, level.boxes, mat);
-    dressWorld(missionGroup, mat);
+    dressWorld(missionGroup, mat, level.theme);
     for (const [x, z] of level.lamps) {
       const lamp = createLamp(mat);
       lamp.position.set(x, 0, z);
@@ -491,22 +509,51 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     const wreck = createWreck(mat);
     wreck.position.set(level.wreck.x, 0, level.wreck.z);
     missionGroup.add(wreck);
+    const cache = createCrate(mat);
+    cache.name = "fieldCache";
+    cache.position.set(level.cache.x, 0, level.cache.z);
+    const beacon = new THREE.Mesh(
+      new THREE.OctahedronGeometry(0.16, 0),
+      new THREE.MeshBasicMaterial({ color: 0xfb923c, toneMapped: false }),
+    );
+    beacon.position.set(0, 1.15, 0);
+    cache.add(beacon);
+    missionGroup.add(cache);
     gateGroup = createVoidGate(mat);
     gateGroup.position.set(level.gate.x, 2.4, level.gate.z);
     missionGroup.add(gateGroup);
     const riftLight = new THREE.PointLight(0x22d3ee, 7.5, 32, 1.5);
     riftLight.position.set(level.gate.x, 3.2, level.gate.z);
     missionGroup.add(riftLight);
-    shipRoot.add(createShipInterior(mat));
-
     if (textures.sky) {
       const sky = new THREE.Mesh(
         new THREE.SphereGeometry(170, 24, 16),
         new THREE.MeshBasicMaterial({ map: textures.sky, side: THREE.BackSide, fog: false, depthWrite: false }),
       );
       sky.position.set(0, 20, -20);
+      sky.userData.sky = true;
       missionGroup.add(sky);
     }
+  }
+
+  function applyMission(id: MissionId) {
+    if (!isMissionUnlocked(id, save.clearedMissions)) return;
+    save.selectedMission = id;
+    writeSave(save);
+    level = buildMission(id);
+    if (worldBuilt && mat) {
+      clearCombat();
+      fillMissionDecor();
+    }
+    emitHud(true);
+  }
+
+  function setupWorld() {
+    if (worldBuilt) return;
+    worldBuilt = true;
+    mat = makeMaterials(textures);
+    fillMissionDecor();
+    shipRoot.add(createShipInterior(mat));
 
     playerRig = createExoSuit(mat);
     scene.add(playerRig.group);
@@ -525,6 +572,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     scene.add(aimReticle);
     walkMark = createWalkMark();
     scene.add(walkMark);
+    extractMark = createExtractPad();
+    scene.add(extractMark);
 
     if (!isMobile) {
       composer = new EffectComposer(renderer);
@@ -918,7 +967,9 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     kills++;
     comboT = 2.4;
     combo++;
-    const xpGain = (e.kind === "harbinger" ? 800 : e.kind === "brute" ? 120 : 40) * (1 + Math.min(combo, 8) * 0.05);
+    const xpGain =
+      (e.kind === "harbinger" ? 800 : e.kind === "brute" ? 120 : e.kind === "spitter" ? 70 : e.kind === "wraith" ? 55 : 40) *
+      (1 + Math.min(combo, 8) * 0.05);
     xp += xpGain;
     while (xp >= pLevel * 200) {
       xp -= pLevel * 200;
@@ -937,9 +988,10 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     rollDrop(e.x, e.z, e.kind);
     if (e.kind === "harbinger") {
       bossAlive = false;
+      outcome = "clear";
       phase = "victory";
-      objective = "Harbinger down — Void Gate sealed";
-      hint = "Ashfall Gate is yours";
+      objective = `${level.bossName} down`;
+      hint = `${level.name} is yours`;
       finishRun(true);
     }
   }
@@ -987,8 +1039,13 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   function finishRun(won: boolean) {
     if (recorded) return;
     recorded = true;
-    bankScrap(won ? 1 : 0.45);
+    if (won && !save.clearedMissions.includes(level.id)) {
+      save.clearedMissions = [...save.clearedMissions, level.id];
+    }
+    const factor = won ? 1 : outcome === "extract" ? 0.85 : 0.45;
+    bankScrap(factor);
     save = recordRun(save, kills, missionTime, gold, won);
+    writeSave(save);
   }
 
   function bankScrap(factor: number) {
@@ -1035,6 +1092,10 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     yaw = Math.atan2(-5.4, 4.4);
     nearCnc = false;
     nearPad = true;
+    nearOps = false;
+    nearMed = false;
+    nearExtract = false;
+    if (extractMark) extractMark.visible = false;
     phase = "ship";
     objective = "Chimera hull — ready deck";
     hint = "Hold Walk to move · tap open deck · WASD also walks · E at the CNC";
@@ -1053,14 +1114,17 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   function showMission() {
     missionGroup.visible = true;
     shipRoot.visible = false;
-    scene.fog = new THREE.FogExp2(0x2a1c12, 0.0068);
-    scene.background = new THREE.Color(0x1a120c);
+    scene.fog = new THREE.FogExp2(level.fog, 0.0068);
+    scene.background = new THREE.Color(level.sky);
     hangarKey.visible = false;
     hangarFill.visible = false;
     hangarAmbient.visible = false;
     useComposer = Boolean(composer);
     nearCnc = false;
     nearPad = false;
+    nearOps = false;
+    nearMed = false;
+    nearExtract = false;
     if (walkMark) walkMark.visible = false;
     shipWalk = null;
   }
@@ -1297,6 +1361,59 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     reloadT = 0;
   }
 
+  function triggerScan() {
+    if (skillCd.scan > 0) return;
+    skillCd.scan = 12;
+    scanT = 7;
+    particles.burst(px, py + 1.4, pz, 22, 0x5eead4, 4.2, 0.45, 0.1, 1);
+    audio.fire("rail");
+  }
+
+  function buyStim() {
+    if (phase !== "ship") return;
+    if (save.stimReady) {
+      hint = "Stim already loaded for the next drop";
+      emitHud(true);
+      return;
+    }
+    if (save.scrapBank < 45) {
+      hint = "Need 45 scrap for a medbay stim";
+      emitHud(true);
+      return;
+    }
+    save.scrapBank -= 45;
+    save.stimReady = true;
+    writeSave(save);
+    hint = "Medbay stim loaded — next deploy +50 HP / +20 shield";
+    pushLoot("Medbay stim primed", "rare");
+    emitHud(true);
+  }
+
+  function tryFieldCache() {
+    if (cacheTaken) return;
+    if (Math.hypot(px - level.cache.x, pz - level.cache.z) > 1.55) return;
+    cacheTaken = true;
+    gold += 48;
+    addAmmoToItems(save.inventory, WEAPON_AMMO[currentWeapon().id], 20);
+    persistLoadout();
+    pushLoot("Field cache", "rare");
+    audio.kill();
+    const obj = missionGroup.getObjectByName("fieldCache");
+    if (obj) obj.visible = false;
+  }
+
+  function beginExtract() {
+    if (phase !== "playing" || !extractReady) return;
+    outcome = "extract";
+    phase = "victory";
+    objective = "Extracted";
+    hint = "85% scrap banked to the hull";
+    if (extractMark) extractMark.visible = false;
+    held.extract = false;
+    finishRun(false);
+    emitHud(true);
+  }
+
   function throwFrag() {
     if (skillCd.frag > 0 || !mat) return;
     skillCd.frag = 8;
@@ -1495,7 +1612,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       if (pz > s.zTrigger) continue;
       spawned.add(s.id);
       objective = s.message;
-      hint = s.id === "gate" ? "Burn the Harbinger" : "Clear the pack, then push";
+      hint = s.enemies.some((en) => en.kind === "harbinger") ? `Burn the ${level.bossName}` : "Clear the pack, then push";
       for (const e of s.enemies) spawnEnemy(e.kind, e.x, e.z);
     }
   }
@@ -1528,7 +1645,16 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       const nz = dz / dist;
       e.yaw = Math.atan2(-dx, -dz);
       const st = enemyStats(e.kind);
-      const stop = e.kind === "stalker" ? 8.5 : e.kind === "harbinger" ? 3.4 : e.radius + 1.15;
+      const stop =
+        e.kind === "stalker"
+          ? 8.5
+          : e.kind === "spitter"
+            ? 9.2
+            : e.kind === "harbinger"
+              ? 3.4
+              : e.kind === "wraith"
+                ? 1.55
+                : e.radius + 1.15;
 
       if (e.state === "windup") {
         e.stateT -= dt;
@@ -1577,28 +1703,46 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
           e.x = c.x;
           e.z = c.z;
         }
-        if (e.kind === "stalker" && dist < 16 && e.attackCd <= 0) {
-          e.attackCd = 1.35;
+        if ((e.kind === "stalker" || e.kind === "spitter") && dist < (e.kind === "spitter" ? 18 : 16) && e.attackCd <= 0) {
+          e.attackCd = e.kind === "spitter" ? 1.7 : 1.35;
           const mesh = createBolt();
+          if (e.kind === "spitter") {
+            mesh.traverse((c) => {
+              if (c instanceof THREE.Mesh && c.material instanceof THREE.MeshBasicMaterial) {
+                c.material.color.setHex(0xe85d04);
+              }
+            });
+          }
           mesh.position.set(e.x, 1.5, e.z);
           scene.add(mesh);
-          const lead = 0.12;
+          const lead = e.kind === "spitter" ? 0.2 : 0.12;
           const bx = nx + velX * lead;
           const bz = nz + velZ * lead;
           const bm = Math.hypot(bx, bz) || 1;
+          const spd = e.kind === "spitter" ? 16 : 22;
           projs.push({
             kind: "bolt",
             mesh,
             x: e.x,
             y: 1.5,
             z: e.z,
-            vx: (bx / bm) * 22,
-            vy: 0.4,
-            vz: (bz / bm) * 22,
-            life: 1.6,
+            vx: (bx / bm) * spd,
+            vy: e.kind === "spitter" ? 1.1 : 0.4,
+            vz: (bz / bm) * spd,
+            life: 1.8,
             dmg: st.dmg,
-            r: 0.35,
+            r: e.kind === "spitter" ? 0.42 : 0.35,
           });
+        }
+        if (e.kind === "wraith" && dist < 7.5 && e.attackCd <= 0) {
+          e.attackCd = 1.15;
+          e.x += nx * 3.4;
+          e.z += nz * 3.4;
+          const c = collidePlayer(level.boxes, e.x, 0, e.z, e.radius, 1.8);
+          e.x = c.x;
+          e.z = c.z;
+          particles.spray(e.x, 1.1, e.z, -nx, 0.3, -nz, 8, 0x5eead4, 6, 0.2, 0.08);
+          if (Math.hypot(px - e.x, pz - e.z) < 1.8) hurtPlayer(st.dmg);
         }
         if (e.kind === "husk" && dist < 3.6 && e.attackCd <= 0) {
           e.state = "windup";
@@ -1646,7 +1790,10 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       const pulse = 1 + Math.sin(performance.now() * 0.008 + e.id) * 0.18;
       for (const g of e.rig.glow) {
         const m = g.material as THREE.MeshStandardMaterial;
-        if (m.emissiveIntensity !== undefined) m.emissiveIntensity = (e.flash > 0 ? 9 : 3.1) * pulse;
+        if (m.emissiveIntensity !== undefined) {
+          m.emissiveIntensity = (scanT > 0 ? 8.8 : e.flash > 0 ? 9 : 3.1) * pulse;
+          if (scanT > 0 && m.emissive) m.emissive.setHex(0x5eead4);
+        }
       }
     }
 
@@ -1790,13 +1937,14 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
         { id: "frag", key: "Q", name: "Frag", cd: skillCd.frag, max: 8, ready: skillCd.frag <= 0 },
         { id: "overdrive", key: "E", name: "Overdrive", cd: skillCd.overdrive, max: 16, ready: skillCd.overdrive <= 0 },
         { id: "cleave", key: "F", name: "Cleave", cd: skillCd.cleave, max: 7, ready: skillCd.cleave <= 0 },
+        { id: "scan", key: "G", name: "Scan", cd: skillCd.scan, max: 12, ready: skillCd.scan <= 0 },
       ],
       loot,
       reloading: reloadT > 0,
       overdrive: overdriveT > 0,
       sprinting: held.sprint || keySet().has("ShiftLeft") || keySet().has("ShiftRight"),
       ads: adsT > 0.4,
-      boss: boss ? { name: "Void Harbinger", hp: Math.max(0, boss.hp), max: boss.max } : bossAlive ? { name: "Void Harbinger", hp: 0, max: 1 } : null,
+      boss: boss ? { name: level.bossName, hp: Math.max(0, boss.hp), max: boss.max } : bossAlive ? { name: level.bossName, hp: 0, max: 1 } : null,
       hitFlash,
       xp,
       xpNeed: pLevel * 200,
@@ -1822,6 +1970,18 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       equippedArmor: save.equippedArmor,
       nearCnc,
       nearPad,
+      nearOps,
+      nearMed,
+      nearExtract,
+      extractReady,
+      extractHold,
+      scanT,
+      stimReady: save.stimReady,
+      missionId: save.selectedMission,
+      missionName: missionInfo(save.selectedMission).name,
+      missionBlurb: missionInfo(save.selectedMission).blurb,
+      clearedMissions: [...save.clearedMissions],
+      outcome,
     };
   }
 
@@ -1883,7 +2043,13 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     reloadT = 0;
     lmgHeat = 0;
     overdriveT = 0;
-    skillCd = { frag: 0, overdrive: 0, cleave: 0 };
+    skillCd = { frag: 0, overdrive: 0, cleave: 0, scan: 0 };
+    extractReady = false;
+    extractHold = 0;
+    scanT = 0;
+    outcome = "wipe";
+    cacheTaken = false;
+    if (extractMark) extractMark.visible = false;
     trauma = 0;
     hitFlash = 0;
     combo = 0;
@@ -1906,6 +2072,12 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       playerRig.group.scale.setScalar(1);
     }
     applyLoadoutVisuals();
+    if (save.stimReady) {
+      maxHp += 50;
+      maxShield += 20;
+      save.stimReady = false;
+      writeSave(save);
+    }
     hp = maxHp;
     shield = maxShield;
   }
@@ -2029,8 +2201,15 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       const cnc = { x: 5.4, z: -4.4 };
       nearCnc = Math.hypot(px - cnc.x, pz - cnc.z) < 2.35;
       nearPad = Math.hypot(px, pz) < 2.15;
+      nearOps = Math.hypot(px, pz + 6.2) < 2.2;
+      nearMed = Math.hypot(px - 6.2, pz - 3.8) < 2.05;
       const hol = shipRoot.getObjectByName("cncHolo");
       if (hol) hol.rotation.y += dt * 1.6;
+      const opsHolo = shipRoot.getObjectByName("opsHolo");
+      if (opsHolo) {
+        opsHolo.rotation.y += dt * 1.4;
+        opsHolo.rotation.x = Math.sin(now * 0.002) * 0.22;
+      }
       if (playerRig) {
         poseOperator({
           moving: wm > 0.12 || Math.hypot(velX, velZ) > 0.35,
@@ -2091,6 +2270,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       particles.burst(px, py + 1.2, pz, 16, 0xe85d04, 3, 0.4, 0.1, 1);
     }
     if (justPressed("KeyF") || (held.cleave && skillCd.cleave <= 0)) cleave();
+    if (justPressed("KeyG") || (held.scan && skillCd.scan <= 0)) triggerScan();
     const wantAds = held.ads || k.has("ControlLeft") || pad.ads;
     adsT = THREE.MathUtils.damp(adsT, wantAds ? 1 : 0, 12, dt);
 
@@ -2103,6 +2283,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     skillCd.frag = Math.max(0, skillCd.frag - dt);
     skillCd.overdrive = Math.max(0, skillCd.overdrive - dt);
     skillCd.cleave = Math.max(0, skillCd.cleave - dt);
+    skillCd.scan = Math.max(0, skillCd.scan - dt);
+    scanT = Math.max(0, scanT - dt);
     overdriveT = Math.max(0, overdriveT - dt);
     invuln = Math.max(0, invuln - dt);
     trauma = Math.max(0, trauma - dt * 1.7);
@@ -2178,6 +2360,28 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       updateEnemies(sim);
       updateProjs(sim);
       updateDrops(sim);
+      tryFieldCache();
+    }
+
+    if (!extractReady && (spawned.size >= 2 || kills >= 8)) {
+      extractReady = true;
+      hint = "Extract pad live at drop — hold X, or push the gate";
+    }
+    if (extractReady && extractMark && phase === "playing") {
+      extractMark.visible = true;
+      extractMark.position.set(level.spawn.x, 0.04, level.spawn.z);
+      extractMark.rotation.y += dt * 1.2;
+      nearExtract = Math.hypot(px - level.spawn.x, pz - level.spawn.z) < 1.85;
+      if (nearExtract && (held.extract || k.has("KeyX"))) {
+        extractHold = Math.min(1, extractHold + dt / 1.8);
+        if (extractHold >= 1) beginExtract();
+      } else {
+        extractHold = Math.max(0, extractHold - dt * 1.15);
+      }
+    } else {
+      nearExtract = false;
+      extractHold = 0;
+      if (extractMark) extractMark.visible = false;
     }
 
     const f = forward();
@@ -2351,6 +2555,10 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     },
     setSteer: () => {},
     getPos: () => ({ x: px, z: pz, y: py }),
+    setPos: (x, z) => {
+      px = x;
+      pz = z;
+    },
     getCam: () => {
       const dx = camera.position.x - px;
       const dy = camera.position.y - py;
@@ -2390,16 +2598,21 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       if (window.__controlsTest === probe) delete window.__controlsTest;
       if (window.__voidBreachHandle === handle) delete window.__voidBreachHandle;
     },
+    selectMission(id) {
+      applyMission(id);
+    },
+    buyStim,
     startMission() {
       audio.unlock();
       if (!worldBuilt) setupWorld();
+      applyMission(save.selectedMission);
       showMission();
       resetRun();
       phase = "playing";
       if (playerRig) playerRig.group.visible = true;
       drone.visible = true;
-      objective = "Advance to the Void Gate";
-      hint = isMobile ? "Left stick move · right drag aim" : "WASD move · mouse aim · click fire · Q/E/F skills";
+      objective = level.objective;
+      hint = isMobile ? "Left stick move · right drag aim · G scan · hold X to extract" : "WASD move · mouse aim · click fire · Q/E/F/G skills · hold X to extract";
       aimPoint.set(px, 0, pz - 8);
       touchAimYaw = 0;
       touchAimSR = 0;
@@ -2478,6 +2691,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       if (name === "frag") held.frag = down;
       if (name === "overdrive") held.overdrive = down;
       if (name === "cleave") held.cleave = down;
+      if (name === "scan") held.scan = down;
+      if (name === "extract") held.extract = down;
       if (name === "ads") held.ads = down;
     },
     pulse(name) {
@@ -2486,6 +2701,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       }
       if (name === "frag") throwFrag();
       if (name === "cleave") cleave();
+      if (name === "scan") triggerScan();
       if (name === "overdrive" && skillCd.overdrive <= 0) {
         skillCd.overdrive = 16;
         overdriveT = 6;

@@ -12,6 +12,8 @@ type Props = {
   canInstall: boolean;
   apkUrl?: string;
   best?: BestRun | null;
+  missionName?: string;
+  missionBlurb?: string;
 };
 
 function formatTime(t: number) {
@@ -21,7 +23,17 @@ function formatTime(t: number) {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-export function TitleScreen({ onDeploy, onBoardShip, onSettings, onInstall, canInstall, apkUrl, best }: Props) {
+export function TitleScreen({
+  onDeploy,
+  onBoardShip,
+  onSettings,
+  onInstall,
+  canInstall,
+  apkUrl,
+  best,
+  missionName = "Ashfall Gate",
+  missionBlurb,
+}: Props) {
   const [apkOpen, setApkOpen] = useState(false);
   return (
     <div className="absolute inset-0 z-20 flex flex-col overflow-hidden bg-transparent text-fg">
@@ -42,11 +54,11 @@ export function TitleScreen({ onDeploy, onBoardShip, onSettings, onInstall, canI
             <span className="block">BREACH</span>
           </h1>
           <p className="mt-3 hidden max-w-md text-sm leading-relaxed text-muted desk:mt-5 desk:block desk:text-base">
-            Top-down survival shooter. Suit up, hold the ash streets, vacuum loot
-            off the Shade, and burn the Harbinger at Ashfall Gate.
+            {missionBlurb ??
+              "Top-down survival shooter. Suit up, hold the ash streets, vacuum loot off the Shade, and burn the Harbinger at Ashfall Gate."}
           </p>
           <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-faint desk:text-xs">
-            Level 01 · Ashfall Gate
+            Selected · {missionName}
           </p>
 
           {best && best.runs > 0 ? (
@@ -74,7 +86,7 @@ export function TitleScreen({ onDeploy, onBoardShip, onSettings, onInstall, canI
             </div>
             <div>
               <dt className="font-mono text-[10px] uppercase tracking-widest text-faint">Skills</dt>
-              <dd>Q frag · E drive · F cleave</dd>
+              <dd>Q frag · E drive · F cleave · G scan</dd>
             </div>
             <div>
               <dt className="font-mono text-[10px] uppercase tracking-widest text-faint">Guns</dt>

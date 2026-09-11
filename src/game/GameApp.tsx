@@ -4,6 +4,7 @@ import type { GameHandle } from "./engine";
 import { Hud, PauseOverlay } from "./Hud";
 import { InventoryPanel } from "./InventoryPanel";
 import { isTouchUi, TOUCH_UI_QUERY } from "./layout";
+import { MissionPanel } from "./MissionPanel";
 import { SettingsSheet } from "./SettingsSheet";
 import { TitleScreen } from "./TitleScreen";
 import { TouchControls } from "./TouchControls";
@@ -60,6 +61,18 @@ const bootHud: HudSnapshot = {
   equippedArmor: emptyArmor,
   nearCnc: false,
   nearPad: false,
+  nearOps: false,
+  nearMed: false,
+  nearExtract: false,
+  extractReady: false,
+  extractHold: 0,
+  scanT: 0,
+  stimReady: false,
+  missionId: "ashfall",
+  missionName: "Ashfall Gate",
+  missionBlurb: "Boulevard drop. Push the plaza, hold the overpass, and burn the Harbinger at the Void Gate.",
+  clearedMissions: [],
+  outcome: "none",
 };
 
 function useTouchUi() {
@@ -87,6 +100,7 @@ export function GameApp() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [inventoryOpen, setInventoryOpen] = useState(false);
   const [cncOpen, setCncOpen] = useState(false);
+  const [opsOpen, setOpsOpen] = useState(false);
   const pendingAction = useRef<null | "ship" | "mission">(null);
   const touchUi = useTouchUi();
   const [deckArmed, setDeckArmed] = useState(false);
@@ -134,11 +148,19 @@ export function GameApp() {
         e.preventDefault();
         setInventoryOpen((v) => !v);
         setCncOpen(false);
+        setOpsOpen(false);
       }
       if (e.code === "KeyE" && hud.phase === "ship") {
         if (hud.nearCnc) {
           setCncOpen(true);
           setInventoryOpen(false);
+          setOpsOpen(false);
+        } else if (hud.nearOps) {
+          setOpsOpen(true);
+          setCncOpen(false);
+          setInventoryOpen(false);
+        } else if (hud.nearMed) {
+          handleRef.current?.buyStim();
         } else if (hud.nearPad) {
           handleRef.current?.startMission();
         }
@@ -146,20 +168,20 @@ export function GameApp() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [hud.nearCnc, hud.phase]);
+  }, [hud.nearCnc, hud.nearOps, hud.nearMed, hud.nearPad, hud.phase]);
 
   const phase: Phase = hud.phase;
   const playing = phase === "playing";
   const onShip = phase === "ship";
 
   useEffect(() => {
-    if (phase !== "ship" || inventoryOpen || cncOpen || settingsOpen) {
+    if (phase !== "ship" || inventoryOpen || cncOpen || opsOpen || settingsOpen) {
       setDeckArmed(false);
       return;
     }
     const id = window.setTimeout(() => setDeckArmed(true), 1400);
     return () => window.clearTimeout(id);
-  }, [phase, inventoryOpen, cncOpen, settingsOpen]);
+  }, [phase, inventoryOpen, cncOpen, opsOpen, settingsOpen]);
 
   const openSettings = (pauseFirst: boolean) => {
     if (pauseFirst && phase === "playing") handleRef.current?.pause();
@@ -184,6 +206,8 @@ export function GameApp() {
           onInstall={() => void installEvt?.prompt()}
           apkUrl="https://github.com/machine10101-vibes/void-breach/releases/latest"
           best={hud.best}
+          missionName={hud.missionName}
+          missionBlurb={hud.missionBlurb}
         />
       ) : (
         <Hud
@@ -199,7 +223,7 @@ export function GameApp() {
           onShip={() => handleRef.current?.recallToShip()}
         />
       )}
-      {onShip && deckArmed && !inventoryOpen && !cncOpen && !settingsOpen ? (
+      {onShip && deckArmed && !inventoryOpen && !cncOpen && !opsOpen && !settingsOpen ? (
         <div
           className="absolute inset-x-0 top-12 bottom-[30%] z-[5] cursor-pointer"
           onPointerDown={(e) => {
@@ -209,33 +233,49 @@ export function GameApp() {
           }}
         />
       ) : null}
-      {onShip && !inventoryOpen && !cncOpen && !settingsOpen ? (
-        <div className="pointer-events-auto absolute bottom-[max(3.4rem,calc(env(safe-area-inset-bottom)+2.6rem))] left-1/2 z-30 flex w-[min(28rem,94vw)] -translate-x-1/2 gap-2">
+      {onShip && !inventoryOpen && !cncOpen && !opsOpen && !settingsOpen ? (
+        <div className="pointer-events-auto absolute bottom-[max(3.4rem,calc(env(safe-area-inset-bottom)+2.6rem))] left-1/2 z-30 flex w-[min(32rem,96vw)] -translate-x-1/2 gap-1.5">
           <button
             type="button"
             onClick={() => handleRef.current?.startMission()}
-            className="flex h-11 flex-1 items-center justify-center rounded-lg bg-fg font-display text-lg font-semibold text-accent-fg"
+            className="flex h-11 flex-1 items-center justify-center rounded-lg bg-fg font-display text-base font-semibold text-accent-fg desk:text-lg"
           >
             Deploy
           </button>
           <button
             type="button"
             onClick={() => setCncOpen(true)}
-            className="flex h-11 flex-1 items-center justify-center rounded-lg border border-border bg-surface font-display text-lg font-semibold text-fg"
+            className="flex h-11 flex-1 items-center justify-center rounded-lg border border-border bg-surface font-display text-base font-semibold text-fg desk:text-lg"
           >
-            {hud.nearCnc ? "Use CNC" : "CNC printer"}
+            {hud.nearCnc ? "Use CNC" : "CNC"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setOpsOpen(true)}
+            className="flex h-11 flex-1 items-center justify-center rounded-lg border border-border bg-surface font-display text-base font-semibold text-fg desk:text-lg"
+          >
+            Ops
+          </button>
+          <button
+            type="button"
+            onClick={() => handleRef.current?.buyStim()}
+            className="flex h-11 flex-1 items-center justify-center rounded-lg border border-border bg-surface font-display text-base font-semibold text-fg disabled:opacity-40 desk:text-lg"
+            disabled={hud.stimReady}
+          >
+            {hud.stimReady ? "Stim ready" : "Stim"}
           </button>
         </div>
       ) : null}
       <TouchControls
         handle={handle}
-        visible={(playing || onShip) && !settingsOpen && !inventoryOpen && !cncOpen && (touchUi || onShip)}
+        visible={(playing || onShip) && !settingsOpen && !inventoryOpen && !cncOpen && !opsOpen && (touchUi || onShip)}
         deckOnly={onShip}
+        extractReady={hud.extractReady}
       />
       {phase === "paused" && !settingsOpen ? (
         <PauseOverlay
           title="Hold"
-          body="Ashfall Gate is still live. Resume, restart, or extract to the ship with your scrap."
+          body={`${hud.missionName} is still live. Resume, restart, or extract to the ship with your scrap.`}
           action="Resume"
           onAction={() => handleRef.current?.resume()}
           secondary="Restart run"
@@ -261,8 +301,12 @@ export function GameApp() {
       ) : null}
       {phase === "victory" ? (
         <PauseOverlay
-          title="Gate sealed"
-          body="Harbinger is ash. Return to the hull to print gear, or run the breach again."
+          title={hud.outcome === "extract" ? "Extracted" : "District sealed"}
+          body={
+            hud.outcome === "extract"
+              ? `Pulled out of ${hud.missionName}. 85% of the scrap is in the hopper.`
+              : `${hud.missionName} is clear. Return to the hull to print, or push the next district.`
+          }
           action="Return to ship"
           onAction={() => handleRef.current?.recallToShip()}
           secondary="Run it back"
@@ -286,6 +330,13 @@ export function GameApp() {
         onClose={() => setCncOpen(false)}
         scrapBank={hud.scrapBank}
         onCraft={(id) => handleRef.current?.craftRecipe(id)}
+      />
+      <MissionPanel
+        open={opsOpen}
+        onClose={() => setOpsOpen(false)}
+        selected={hud.missionId}
+        cleared={hud.clearedMissions}
+        onSelect={(id) => handleRef.current?.selectMission(id)}
       />
       <SettingsSheet
         open={settingsOpen}
