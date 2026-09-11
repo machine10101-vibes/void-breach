@@ -125,12 +125,19 @@ export function starterLoadout(): { inventory: InvItem[]; equippedWeapon: string
 export function ensureIssueKit(items: InvItem[], equipped: Record<ArmorSlot, string | null>) {
   const nextItems = items.slice();
   const nextEq = { ...equipped };
-  for (const slot of Object.keys(ISSUE_KIT) as ArmorSlot[]) {
+  const slots = Object.keys(ISSUE_KIT) as ArmorSlot[];
+  const anyWorn = slots.some((slot) => {
+    const uid = nextEq[slot];
+    return Boolean(uid && nextItems.some((i) => i.uid === uid && i.kind === "armor" && i.slot === slot));
+  });
+  for (const slot of slots) {
     const uid = nextEq[slot];
     if (uid && nextItems.some((i) => i.uid === uid && i.kind === "armor" && i.slot === slot)) continue;
-    const existing = nextItems.find((i) => i.kind === "armor" && i.slot === slot && i.name.toLowerCase().includes("issue"));
+    const existing =
+      nextItems.find((i) => i.kind === "armor" && i.slot === slot && i.name.toLowerCase().includes("issue")) ??
+      nextItems.find((i) => i.kind === "armor" && i.slot === slot);
     if (existing) {
-      nextEq[slot] = existing.uid;
+      if (!anyWorn) nextEq[slot] = existing.uid;
       continue;
     }
     if (nextItems.length >= INVENTORY_CAP) continue;

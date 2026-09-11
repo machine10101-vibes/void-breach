@@ -48,10 +48,10 @@ export function makeMaterials(tex: {
     metalness: 0.78,
   });
   const armor = new THREE.MeshStandardMaterial({
-    color: 0xe7ddd0,
-    roughness: 0.3,
-    metalness: 0.72,
-    envMapIntensity: 1.2,
+    color: 0x8a7a62,
+    roughness: 0.42,
+    metalness: 0.58,
+    envMapIntensity: 0.95,
   });
   const shade = new THREE.MeshStandardMaterial({
     color: 0x1a1c22,

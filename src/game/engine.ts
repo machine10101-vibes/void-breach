@@ -303,7 +303,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   renderer.setSize(canvas.clientWidth || window.innerWidth, canvas.clientHeight || window.innerHeight, false);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.4;
+  renderer.toneMappingExposure = 1.18;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
 
@@ -368,18 +368,18 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   scene.environment = pmrem.fromScene(envScene, 0.02).texture;
   scene.environmentIntensity = 1.08;
   pmrem.dispose();
-  const playerKey = new THREE.PointLight(0xffd0a8, 7.2, 18, 1.45);
+  const playerKey = new THREE.PointLight(0xffd0a8, 3.1, 16, 1.55);
   scene.add(playerKey);
-  const playerRim = new THREE.PointLight(0x5eead4, 2.8, 11, 1.9);
+  const playerRim = new THREE.PointLight(0x5eead4, 1.8, 11, 1.9);
   scene.add(playerRim);
-  const hangarKey = new THREE.DirectionalLight(0xfff1dd, 2.15);
+  const hangarKey = new THREE.DirectionalLight(0xfff1dd, 1.35);
   hangarKey.position.set(8, 18, 12);
   hangarKey.visible = false;
   scene.add(hangarKey);
-  const hangarFill = new THREE.HemisphereLight(0xffe6c8, 0x243040, 1.15);
+  const hangarFill = new THREE.HemisphereLight(0xffe6c8, 0x243040, 0.72);
   hangarFill.visible = false;
   scene.add(hangarFill);
-  const hangarAmbient = new THREE.AmbientLight(0xc4d0dc, 0.7);
+  const hangarAmbient = new THREE.AmbientLight(0xc4d0dc, 0.32);
   hangarAmbient.visible = false;
   scene.add(hangarAmbient);
 

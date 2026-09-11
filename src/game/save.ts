@@ -59,11 +59,9 @@ export function loadSave(): SaveData {
       parsed.inventory?.length ? parsed.inventory : loadout?.inventory ?? defaults.inventory,
     );
     let equippedArmor = { ...emptyArmor(), ...(parsed.equippedArmor ?? loadout?.equippedArmor ?? defaults.equippedArmor) };
-    if ((parsed.version ?? 0) < 4) {
-      const kit = ensureIssueKit(inventory, equippedArmor);
-      inventory = kit.inventory;
-      equippedArmor = kit.equippedArmor;
-    }
+    const kit = ensureIssueKit(inventory, equippedArmor);
+    inventory = kit.inventory;
+    equippedArmor = kit.equippedArmor;
     return {
       ...defaults,
       ...parsed,
