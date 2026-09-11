@@ -47,16 +47,29 @@ function buildAshfall(): LevelDef {
   const boxes: AABB[] = [];
   const add = (...b: AABB[]) => boxes.push(...b);
 
-  add(box(-22, -2, 8, 56, 8), box(22, -2, 8, 56, 8), box(0, 28, 52, 6, 8));
+  add(
+    box(-22, 10, 8, 14, 7),
+    box(-24, -8, 10, 16, 10),
+    box(-21, -28, 7, 14, 8),
+    box(22, 9, 8, 16, 8),
+    box(23.5, -10, 9, 18, 6),
+    box(21, -30, 7, 14, 9),
+    box(0, 28, 52, 6, 8),
+    box(-12, 18, 10, 8, 5),
+    box(13, 17, 9, 8, 6),
+  );
   add(
     box(-4.5, 4, 2.4, 0.7, 0.9, 0, true, "cover"),
     box(5.2, 2.5, 2.6, 0.8, 0.9, 0, true, "cover"),
+    box(-1.8, 6.2, 1.2, 2.2, 0.55, 0, true, "cover"),
+    box(1.6, 5.4, 1.1, 2.0, 0.55, 0, true, "cover"),
     box(0.2, -2, 3.2, 1.1, 0.85, 0, true, "car"),
     box(-8, -4, 1.4, 1.4, 1.2, 0, true, "crate"),
     box(8.5, -5, 1.4, 1.4, 1.2, 0, true, "crate"),
     box(-6.2, 8, 1.5, 1.5, 1.1, 0, true, "crate"),
+    box(6.8, 7.2, 1.3, 1.3, 1.0, 0, true, "crate"),
   );
-  add(box(-11, -28, 6, 36, 7), box(11, -28, 6, 36, 7));
+  add(box(-12, -22, 7, 18, 8), box(12.5, -24, 8, 20, 6), box(-11, -40, 6, 14, 9), box(11, -42, 6, 16, 7));
   for (const z of [-12, -18, -24, -32, -38]) {
     add(box(-3.2, z, 2.2, 0.7, 0.88, 0, true, "cover"));
     add(box(3.4, z - 2, 2.4, 0.8, 0.88, 0, true, "cover"));
@@ -178,6 +191,8 @@ function buildAshfall(): LevelDef {
       },
     ],
     lamps: [
+      [-9, 6],
+      [9, 4],
       [-9, -2],
       [9, -10],
       [-8, -26],
@@ -190,6 +205,8 @@ function buildAshfall(): LevelDef {
     rubble: [
       [-6, 6],
       [7, 5],
+      [-7.2, 9],
+      [6.4, 8],
       [-5, -14],
       [4.5, -20],
       [-4, -36],
@@ -206,6 +223,9 @@ function buildAshfall(): LevelDef {
       [2.0, -27, 1.2],
       [0, -54, 0.2],
       [0, -76, -0.6],
+      [-5.8, 3.2, 1.4],
+      [5.6, -38, -1.1],
+      [-5.4, -70, 0.6],
     ],
     barrels: [
       [-7.2, 3],
@@ -223,7 +243,7 @@ function buildAshfall(): LevelDef {
       [-5, -80],
       [5.4, -80],
     ],
-    wreck: { x: -7.5, z: 9 },
+    wreck: { x: -8.2, z: 10 },
     gate: { x: 0, z: -108 },
     cache: { x: 7.4, z: -18 },
   };
@@ -233,7 +253,15 @@ function buildEmberRail(): LevelDef {
   const boxes: AABB[] = [];
   const add = (...b: AABB[]) => boxes.push(...b);
 
-  add(box(-16, -4, 6, 48, 7), box(16, -4, 6, 48, 7), box(0, 22, 40, 6, 7));
+  add(
+    box(-16, 8, 6, 16, 6),
+    box(-17.5, -12, 7, 18, 8),
+    box(-15, -32, 5, 14, 6),
+    box(16, 7, 6, 14, 7),
+    box(17, -14, 7, 16, 5),
+    box(15.5, -34, 5, 16, 8),
+    box(0, 22, 40, 6, 7),
+  );
   add(
     box(-3.4, 2, 1.8, 4.6, 1.1, 0, true, "cover"),
     box(3.6, 0.4, 1.8, 4.2, 1.1, 0, true, "cover"),
@@ -380,7 +408,15 @@ function buildNullSpire(): LevelDef {
   const boxes: AABB[] = [];
   const add = (...b: AABB[]) => boxes.push(...b);
 
-  add(box(-20, 0, 8, 40, 9), box(20, 0, 8, 40, 9), box(0, 24, 48, 6, 9));
+  add(
+    box(-20, 8, 8, 16, 10),
+    box(-21.5, -12, 9, 18, 8),
+    box(-19, -28, 7, 14, 11),
+    box(20, 7, 8, 14, 9),
+    box(21, -14, 9, 16, 7),
+    box(19.5, -30, 7, 16, 10),
+    box(0, 24, 48, 6, 9),
+  );
   add(
     box(-5, 6, 2.6, 0.8, 0.9, 0, true, "cover"),
     box(5.4, 4, 2.6, 0.8, 0.9, 0, true, "cover"),
