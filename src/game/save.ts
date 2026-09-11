@@ -1,8 +1,8 @@
-import { ensureAmmoPools, starterLoadout } from "./items";
+import { ensureAmmoPools, ensureIssueKit, starterLoadout } from "./items";
 import type { EquippedArmor, InvItem, MissionId } from "./types";
 
 export type SaveData = {
-  version: 3;
+  version: 4;
   bestKills: number;
   bestTime: number;
   bestGold: number;
@@ -29,7 +29,7 @@ function emptyArmor(): EquippedArmor {
 export function defaultSave(): SaveData {
   const loadout = starterLoadout();
   return {
-    version: 3,
+    version: 4,
     bestKills: 0,
     bestTime: 0,
     bestGold: 0,
@@ -55,19 +55,24 @@ export function loadSave(): SaveData {
     if (!raw) return defaults;
     const parsed = JSON.parse(raw) as Partial<SaveData> & { version?: number };
     const loadout = parsed.inventory?.length ? null : starterLoadout();
+    let inventory = ensureAmmoPools(
+      parsed.inventory?.length ? parsed.inventory : loadout?.inventory ?? defaults.inventory,
+    );
+    let equippedArmor = { ...emptyArmor(), ...(parsed.equippedArmor ?? loadout?.equippedArmor ?? defaults.equippedArmor) };
+    const kit = ensureIssueKit(inventory, equippedArmor);
+    inventory = kit.inventory;
+    equippedArmor = kit.equippedArmor;
     return {
       ...defaults,
       ...parsed,
-      version: 3,
+      version: 4,
       sensitivity: Math.min(2, Math.max(0.4, Number(parsed.sensitivity) || 1)),
       invertLookX: Boolean(parsed.invertLookX),
       invertLookY: Boolean(parsed.invertLookY),
       scrapBank: Math.max(0, Number(parsed.scrapBank) || (loadout ? 160 : 0)),
-      inventory: ensureAmmoPools(
-        parsed.inventory?.length ? parsed.inventory : loadout?.inventory ?? defaults.inventory,
-      ),
+      inventory,
       equippedWeapon: parsed.equippedWeapon ?? loadout?.equippedWeapon ?? defaults.equippedWeapon,
-      equippedArmor: { ...emptyArmor(), ...(parsed.equippedArmor ?? loadout?.equippedArmor ?? defaults.equippedArmor) },
+      equippedArmor,
       clearedMissions: Array.isArray(parsed.clearedMissions)
         ? (parsed.clearedMissions.filter((id) => id === "ashfall" || id === "ember" || id === "spire") as MissionId[])
         : [],
