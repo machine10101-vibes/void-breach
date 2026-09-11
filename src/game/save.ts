@@ -1,8 +1,8 @@
 import { ensureAmmoPools, starterLoadout } from "./items";
-import type { EquippedArmor, InvItem } from "./types";
+import type { EquippedArmor, InvItem, MissionId } from "./types";
 
 export type SaveData = {
-  version: 2;
+  version: 3;
   bestKills: number;
   bestTime: number;
   bestGold: number;
@@ -15,6 +15,9 @@ export type SaveData = {
   inventory: InvItem[];
   equippedWeapon: string | null;
   equippedArmor: EquippedArmor;
+  clearedMissions: MissionId[];
+  selectedMission: MissionId;
+  stimReady: boolean;
 };
 
 const KEY = "void-breach-v1";
@@ -26,7 +29,7 @@ function emptyArmor(): EquippedArmor {
 export function defaultSave(): SaveData {
   const loadout = starterLoadout();
   return {
-    version: 2,
+    version: 3,
     bestKills: 0,
     bestTime: 0,
     bestGold: 0,
@@ -39,6 +42,9 @@ export function defaultSave(): SaveData {
     inventory: loadout.inventory,
     equippedWeapon: loadout.equippedWeapon,
     equippedArmor: loadout.equippedArmor,
+    clearedMissions: [],
+    selectedMission: "ashfall",
+    stimReady: false,
   };
 }
 
@@ -52,7 +58,7 @@ export function loadSave(): SaveData {
     return {
       ...defaults,
       ...parsed,
-      version: 2,
+      version: 3,
       sensitivity: Math.min(2, Math.max(0.4, Number(parsed.sensitivity) || 1)),
       invertLookX: Boolean(parsed.invertLookX),
       invertLookY: Boolean(parsed.invertLookY),
@@ -62,6 +68,14 @@ export function loadSave(): SaveData {
       ),
       equippedWeapon: parsed.equippedWeapon ?? loadout?.equippedWeapon ?? defaults.equippedWeapon,
       equippedArmor: { ...emptyArmor(), ...(parsed.equippedArmor ?? loadout?.equippedArmor ?? defaults.equippedArmor) },
+      clearedMissions: Array.isArray(parsed.clearedMissions)
+        ? (parsed.clearedMissions.filter((id) => id === "ashfall" || id === "ember" || id === "spire") as MissionId[])
+        : [],
+      selectedMission:
+        parsed.selectedMission === "ember" || parsed.selectedMission === "spire" || parsed.selectedMission === "ashfall"
+          ? parsed.selectedMission
+          : "ashfall",
+      stimReady: Boolean(parsed.stimReady),
     };
   } catch {
     return defaults;

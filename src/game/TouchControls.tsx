@@ -5,6 +5,7 @@ type Props = {
   handle: GameHandle | null;
   visible: boolean;
   deckOnly?: boolean;
+  extractReady?: boolean;
 };
 
 function Pill({
@@ -41,7 +42,7 @@ function Pill({
   );
 }
 
-export function TouchControls({ handle, visible, deckOnly }: Props) {
+export function TouchControls({ handle, visible, deckOnly, extractReady }: Props) {
   const moveId = useRef<number | null>(null);
   const lookId = useRef<number | null>(null);
   const origin = useRef({ x: 0, y: 0 });
@@ -150,6 +151,14 @@ export function TouchControls({ handle, visible, deckOnly }: Props) {
             <Pill label="Frag" onDown={() => handle?.pulse("frag")} />
             <Pill label="Drive" onDown={() => handle?.pulse("overdrive")} />
             <Pill label="Cleave" onDown={() => handle?.pulse("cleave")} />
+            <Pill label="Scan" onDown={() => handle?.pulse("scan")} />
+            {extractReady ? (
+              <Pill
+                label="Extract"
+                onDown={() => handle?.setAction("extract", true)}
+                onUp={() => handle?.setAction("extract", false)}
+              />
+            ) : null}
           </div>
           <div className="flex items-end gap-2 short:flex-col-reverse short:items-end">
             <Pill label="Reload" onDown={() => handle?.pulse("reload")} />

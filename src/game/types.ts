@@ -1,6 +1,9 @@
-export type WeaponId = "ar" | "shotgun" | "smg" | "dmr" | "cannon" | "lmg" | "rail" | "gl";
+export type WeaponId = "ar" | "shotgun" | "smg" | "dmr" | "cannon" | "lmg" | "rail" | "gl" | "pulse";
 export type AmmoId = "rifle" | "shell" | "compact" | "heavy" | "cell";
-export type EnemyKind = "husk" | "stalker" | "brute" | "harbinger";
+export type EnemyKind = "husk" | "stalker" | "brute" | "harbinger" | "spitter" | "wraith";
+export type MissionId = "ashfall" | "ember" | "spire";
+export type LevelTheme = "ash" | "rail" | "spire";
+export type RunOutcome = "none" | "wipe" | "extract" | "clear";
 export type Rarity = "common" | "magic" | "rare" | "legendary";
 export type Phase = "boot" | "title" | "playing" | "paused" | "dead" | "victory" | "ship";
 export type ArmorSlot = "helm" | "chest" | "arms" | "legs";
@@ -38,7 +41,7 @@ export type Recipe = {
 
 export type EquippedArmor = Record<ArmorSlot, string | null>;
 
-export type SkillId = "frag" | "overdrive" | "cleave";
+export type SkillId = "frag" | "overdrive" | "cleave" | "scan";
 
 export type HudSkill = {
   id: SkillId;
@@ -137,6 +140,18 @@ export type HudSnapshot = {
   equippedArmor: EquippedArmor;
   nearCnc: boolean;
   nearPad: boolean;
+  nearOps: boolean;
+  nearMed: boolean;
+  nearExtract: boolean;
+  extractReady: boolean;
+  extractHold: number;
+  scanT: number;
+  stimReady: boolean;
+  missionId: MissionId;
+  missionName: string;
+  missionBlurb: string;
+  clearedMissions: MissionId[];
+  outcome: RunOutcome;
 };
 
 export type ControlsProbe = {

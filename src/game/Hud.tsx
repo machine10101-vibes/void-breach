@@ -96,6 +96,11 @@ export function Hud({
       <div className="absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-2 px-3 pt-[max(0.4rem,env(safe-area-inset-top))] desk:hidden">
         <div className="min-w-0 flex-1">
           <p className="truncate font-mono text-[10px] uppercase tracking-[0.22em] text-accent">{hud.objective}</p>
+          {hud.extractReady && hud.phase === "playing" ? (
+            <p className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.18em] text-void">
+              {hud.nearExtract ? `Hold Extract ${Math.round(hud.extractHold * 100)}%` : "Extract pad at drop"}
+            </p>
+          ) : null}
           {hud.boss ? (
             <div className="mt-1 max-w-[11rem] short:max-w-[9rem]">
               <Bar value={hud.boss.hp} max={hud.boss.max} color="bg-void" height="h-1.5" />
@@ -328,16 +333,36 @@ export function Hud({
 
       {atShip ? (
         <p className="absolute bottom-[max(8.6rem,calc(env(safe-area-inset-bottom)+7.6rem))] left-1/2 z-20 w-[min(28rem,92vw)] -translate-x-1/2 text-center font-mono text-[10px] uppercase tracking-[0.2em] text-faint">
-          {hud.nearCnc
-            ? "E · use the hull CNC"
-            : hud.nearPad
-              ? "Hold the Walk stick · E deploys from the pad"
-              : "Hold the Walk stick · teal gantry prints"}
+          {hud.nearOps
+            ? "E · open the ops holotable"
+            : hud.nearMed
+              ? hud.stimReady
+                ? "Stim already loaded for the next drop"
+                : "E · buy medbay stim · 45 scrap"
+              : hud.nearCnc
+                ? "E · use the hull CNC"
+                : hud.nearPad
+                  ? "Hold the Walk stick · E deploys from the pad"
+                  : "Walk aft to OPS · starboard MEDBAY · teal gantry prints"}
         </p>
       ) : (
-        <p className="absolute bottom-4 left-1/2 hidden -translate-x-1/2 font-mono text-[10px] uppercase tracking-[0.2em] text-faint desk:block">
-          {hud.hint}
-        </p>
+        <>
+          <p className="absolute bottom-4 left-1/2 hidden -translate-x-1/2 font-mono text-[10px] uppercase tracking-[0.2em] text-faint desk:block">
+            {hud.hint}
+          </p>
+          {hud.extractReady && hud.phase === "playing" ? (
+            <p className="absolute bottom-10 left-1/2 hidden -translate-x-1/2 font-mono text-[10px] uppercase tracking-[0.22em] text-accent desk:block">
+              {hud.nearExtract
+                ? `Hold X to extract · ${Math.round(hud.extractHold * 100)}%`
+                : "Extract pad live at drop · hold X"}
+            </p>
+          ) : null}
+          {hud.scanT > 0 && hud.phase === "playing" ? (
+            <p className="absolute left-1/2 top-[28%] hidden -translate-x-1/2 font-mono text-[10px] uppercase tracking-[0.28em] text-void desk:block">
+              Scan live
+            </p>
+          ) : null}
+        </>
       )}
     </div>
   );

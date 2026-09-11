@@ -19,6 +19,7 @@ export const WEAPON_AMMO: Record<WeaponId, AmmoId> = {
   lmg: "heavy",
   rail: "cell",
   gl: "cell",
+  pulse: "cell",
 };
 
 const WEAPON_BASE: Record<
@@ -33,6 +34,7 @@ const WEAPON_BASE: Record<
   lmg: { name: "Ashfall SAW", dmg: 16, pellets: 1, rpm: 760, mag: 80, reserve: 240, spread: 0.044, range: 72, reload: 2.55 },
   rail: { name: "Null Lance", dmg: 96, pellets: 1, rpm: 46, mag: 4, reserve: 16, spread: 0.002, range: 146, reload: 2.15 },
   gl: { name: "Helios GL", dmg: 88, pellets: 1, rpm: 52, mag: 4, reserve: 12, spread: 0.028, range: 42, reload: 2.05 },
+  pulse: { name: "Pulse Carbine", dmg: 28, pellets: 1, rpm: 640, mag: 24, reserve: 96, spread: 0.012, range: 78, reload: 1.55 },
 };
 
 export function newUid() {
@@ -153,7 +155,7 @@ export function makeArmor(
 }
 
 export function rollLootWeapon(rarity: Rarity): InvItem {
-  const pool: WeaponId[] = ["ar", "shotgun", "smg", "dmr", "cannon", "lmg", "rail", "gl"];
+  const pool: WeaponId[] = ["ar", "shotgun", "smg", "dmr", "cannon", "lmg", "rail", "gl", "pulse"];
   const id = pool[Math.floor(Math.random() * pool.length)];
   const prefix = rarity === "legendary" ? "Mythic " : rarity === "rare" ? "Rare " : rarity === "magic" ? "Tuned " : "";
   const mult = rarity === "legendary" ? 1.7 : rarity === "rare" ? 1.35 : rarity === "magic" ? 1.15 : 1;
@@ -236,6 +238,24 @@ export const RECIPES: Recipe[] = [
     name: "Cinder SMG",
     cost: 100,
     output: { kind: "weapon", rarity: "common", weaponId: "smg", ...WEAPON_BASE.smg, name: "Cinder SMG" },
+  },
+  {
+    id: "pulse",
+    name: "Pulse Carbine",
+    cost: 180,
+    output: { kind: "weapon", rarity: "rare", weaponId: "pulse", ...WEAPON_BASE.pulse, name: "Pulse Carbine" },
+  },
+  {
+    id: "helm-ember",
+    name: "Ember visor",
+    cost: 95,
+    output: { kind: "armor", name: "Ember visor", rarity: "rare", slot: "helm", hpBonus: 22, shieldBonus: 16, dmgBonus: 4 },
+  },
+  {
+    id: "legs-rail",
+    name: "Rail greaves",
+    cost: 100,
+    output: { kind: "armor", name: "Rail greaves", rarity: "rare", slot: "legs", hpBonus: 20, shieldBonus: 22, dmgBonus: 0 },
   },
   {
     id: "ammo-rifle",

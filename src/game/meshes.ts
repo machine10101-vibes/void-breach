@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { bindPbr } from "./textures";
-import type { AABB, AmmoId, ArmorSlot, EnemyKind, InvItem, Rarity, WeaponId } from "./types";
+import type { AABB, AmmoId, ArmorSlot, EnemyKind, InvItem, LevelTheme, Rarity, WeaponId } from "./types";
 
 export type Materials = {
   concrete: THREE.MeshStandardMaterial;
@@ -917,7 +917,25 @@ export function createWeaponMesh(id: WeaponId, mat: Materials) {
   if (id === "lmg") return createLmg(mat);
   if (id === "rail") return createRail(mat);
   if (id === "gl") return createGrenadeLauncher(mat);
+  if (id === "pulse") return createPulse(mat);
   return createRifle(mat);
+}
+
+export function createPulse(mat: Materials) {
+  const g = new THREE.Group();
+  box(mat.dark, 0.07, 0.08, 0.36, 0, 0.02, 0, g);
+  barrel(mat.voidCore, 0.02, 0.42, 0, 0.03, 0.34, g);
+  barrel(mat.metal, 0.028, 0.1, 0, 0.03, 0.54, g);
+  box(mat.dark, 0.05, 0.18, 0.09, 0, -0.12, -0.04, g);
+  box(mat.neon, 0.018, 0.018, 0.22, 0, 0.07, 0.08, g);
+  sph(mat.voidCore, 0.028, 0, 0.1, -0.06, g, 8);
+  box(mat.armor, 0.12, 0.04, 0.2, 0, -0.04, 0.06, g);
+  box(mat.metal, 0.04, 0.04, 0.14, 0, 0.08, 0.22, g);
+  box(mat.dark, 0.06, 0.06, 0.12, 0, 0.02, -0.22, g);
+  box(mat.rubber, 0.05, 0.08, 0.05, 0, -0.02, -0.28, g);
+  box(mat.voidCore, 0.03, 0.03, 0.08, 0.04, 0.06, 0.16, g);
+  for (let i = 0; i < 4; i++) box(mat.neon, 0.012, 0.012, 0.03, 0.04, 0.05, 0.08 + i * 0.05, g);
+  return g;
 }
 
 export function createAmmoMesh(id: AmmoId, mat: Materials) {
@@ -1097,7 +1115,64 @@ export function createShade(kind: EnemyKind, mat: Materials): EnemyRig {
   if (kind === "harbinger") return createHarbinger(mat);
   if (kind === "brute") return createBrute(mat);
   if (kind === "stalker") return createStalker(mat);
+  if (kind === "spitter") return createSpitter(mat);
+  if (kind === "wraith") return createWraith(mat);
   return createHusk(mat);
+}
+
+function createSpitter(mat: Materials): EnemyRig {
+  const group = new THREE.Group();
+  const glow: THREE.Mesh[] = [];
+  const gMat = cloneGlow(mat.shadeGlow);
+  cap(mat.shade, 0.16, 0.4, 0, 1.12, 0.04, group);
+  box(mat.shade, 0.36, 0.48, 0.3, 0, 1.16, 0.08, group, 0.2);
+  box(mat.rust, 0.28, 0.2, 0.22, 0, 1.28, 0.2, group);
+  sph(mat.shade, 0.16, 0, 1.52, 0.1, group, 10);
+  glow.push(box(gMat, 0.16, 0.04, 0.05, 0, 1.52, 0.24, group));
+  glow.push(box(mat.ember, 0.1, 0.08, 0.1, 0, 1.22, 0.26, group));
+  const leftArm = new THREE.Group();
+  leftArm.position.set(-0.26, 1.3, 0.04);
+  leftArm.rotation.z = -0.4;
+  group.add(leftArm);
+  cap(mat.shade, 0.05, 0.42, -0.04, -0.22, 0.04, leftArm);
+  glow.push(box(gMat, 0.03, 0.03, 0.14, -0.04, -0.52, 0.1, leftArm));
+  const rightArm = new THREE.Group();
+  rightArm.position.set(0.26, 1.28, 0.08);
+  group.add(rightArm);
+  cap(mat.shade, 0.055, 0.3, 0.04, -0.06, 0.16, rightArm, Math.PI / 2);
+  box(mat.rust, 0.1, 0.1, 0.2, 0.04, -0.08, 0.34, rightArm);
+  glow.push(box(mat.ember, 0.08, 0.08, 0.1, 0.04, -0.1, 0.48, rightArm));
+  cap(mat.shade, 0.055, 0.46, -0.1, 0.46, 0.02, group);
+  cap(mat.shade, 0.055, 0.46, 0.1, 0.46, 0.02, group);
+  group.scale.setScalar(1.12);
+  return { group, kind: "spitter", leftArm, rightArm, glow };
+}
+
+function createWraith(mat: Materials): EnemyRig {
+  const group = new THREE.Group();
+  const glow: THREE.Mesh[] = [];
+  const gMat = cloneGlow(mat.shadeGlow);
+  const ghost = mat.shade.clone();
+  ghost.transparent = true;
+  ghost.opacity = 0.72;
+  cap(ghost, 0.12, 0.5, 0, 1.28, 0, group);
+  box(ghost, 0.24, 0.58, 0.18, 0, 1.32, 0, group, 0.35);
+  sph(ghost, 0.13, 0, 1.78, 0.06, group, 10);
+  glow.push(box(gMat, 0.12, 0.03, 0.04, 0, 1.8, 0.18, group));
+  glow.push(box(mat.voidCore, 0.04, 0.22, 0.04, 0, 1.4, 0.12, group));
+  const mkArm = (side: number) => {
+    const root = new THREE.Group();
+    root.position.set(0.22 * side, 1.48, 0);
+    root.rotation.z = 0.55 * side;
+    group.add(root);
+    cap(ghost, 0.04, 0.7, 0.03 * side, -0.38, 0.04, root);
+    glow.push(box(gMat, 0.02, 0.02, 0.2, 0.03 * side, -0.82, 0.14, root));
+    return root;
+  };
+  cap(ghost, 0.045, 0.62, -0.08, 0.5, 0, group);
+  cap(ghost, 0.045, 0.62, 0.08, 0.5, 0, group);
+  group.scale.setScalar(1.05);
+  return { group, kind: "wraith", leftArm: mkArm(-1), rightArm: mkArm(1), glow };
 }
 
 function createHusk(mat: Materials): EnemyRig {
@@ -1521,8 +1596,9 @@ export function addWorldFromBoxes(scene: THREE.Object3D, boxes: AABB[], mat: Mat
   }
 }
 
-export function dressWorld(scene: THREE.Object3D, mat: Materials) {
-  const road = new THREE.Mesh(new THREE.PlaneGeometry(5.6, 132), mat.asphalt);
+export function dressWorld(scene: THREE.Object3D, mat: Materials, theme: LevelTheme = "ash") {
+  const roadMat = theme === "spire" ? mat.dark : theme === "rail" ? mat.rust : mat.asphalt;
+  const road = new THREE.Mesh(new THREE.PlaneGeometry(5.6, 132), roadMat);
   road.rotation.x = -Math.PI / 2;
   road.position.set(0, 0.02, -48);
   road.receiveShadow = true;
@@ -1595,8 +1671,8 @@ export function dressWorld(scene: THREE.Object3D, mat: Materials) {
   const recessGeo = new THREE.BoxGeometry(0.86, 1.18, 0.08);
   const winMatA = new THREE.MeshStandardMaterial({
     color: 0x1a0c04,
-    emissive: 0xe85d04,
-    emissiveIntensity: 1.85,
+    emissive: theme === "spire" ? 0x22d3ee : theme === "rail" ? 0xfb923c : 0xe85d04,
+    emissiveIntensity: theme === "spire" ? 1.4 : 1.85,
     roughness: 1,
     toneMapped: false,
   });
@@ -1929,6 +2005,46 @@ export function createWalkMark() {
   );
   pin.position.y = 0.28;
   g.add(pin);
+  g.visible = false;
+  return g;
+}
+
+export function createExtractPad() {
+  const g = new THREE.Group();
+  g.name = "extractPad";
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(1.05, 1.55, 36),
+    new THREE.MeshBasicMaterial({
+      color: 0x5eead4,
+      transparent: true,
+      opacity: 0.9,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      toneMapped: false,
+    }),
+  );
+  ring.rotation.x = -Math.PI / 2;
+  g.add(ring);
+  const inner = new THREE.Mesh(
+    new THREE.RingGeometry(0.32, 0.52, 24),
+    new THREE.MeshBasicMaterial({
+      color: 0xe85d04,
+      transparent: true,
+      opacity: 0.82,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      toneMapped: false,
+    }),
+  );
+  inner.rotation.x = -Math.PI / 2;
+  inner.position.y = 0.02;
+  g.add(inner);
+  const gem = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.12, 0),
+    new THREE.MeshBasicMaterial({ color: 0x5eead4, toneMapped: false }),
+  );
+  gem.position.y = 0.42;
+  g.add(gem);
   g.visible = false;
   return g;
 }
@@ -2831,7 +2947,48 @@ export function createShipInterior(mat: Materials) {
   viewFill.position.set(0, 3.4, -7.4);
   root.add(viewFill);
 
+  const ops = new THREE.Group();
+  ops.position.set(0, 0, -6.2);
+  ops.name = "ops";
+  box(plate, 2.4, 0.12, 1.6, 0, 0.86, 0, ops);
+  box(hull, 0.1, 0.86, 0.1, -1.0, 0.43, 0.6, ops);
+  box(hull, 0.1, 0.86, 0.1, 1.0, 0.43, 0.6, ops);
+  box(hull, 0.1, 0.86, 0.1, -1.0, 0.43, -0.6, ops);
+  box(hull, 0.1, 0.86, 0.1, 1.0, 0.43, -0.6, ops);
+  box(mat.voidCore, 1.1, 0.04, 0.8, 0, 0.94, 0, ops);
+  const opsHolo = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.28, 0),
+    new THREE.MeshBasicMaterial({ color: 0x5eead4, transparent: true, opacity: 0.78, toneMapped: false }),
+  );
+  opsHolo.position.set(0, 1.28, 0);
+  opsHolo.name = "opsHolo";
+  ops.add(opsHolo);
+  box(mat.neon, 0.5, 0.04, 0.04, 0, 0.98, 0.7, ops);
+  box(mat.warning, 1.6, 0.03, 0.06, 0, 0.9, 0.82, ops);
+  mark(deckMark("OPS  ·  DISTRICTS", "#5eead4"), 0, -5.1, 2.4);
+  const opsLamp = new THREE.PointLight(0x5eead4, 2.6, 8, 1.5);
+  opsLamp.position.set(0, 1.7, -6.2);
+  root.add(opsLamp);
+  root.add(ops);
+
+  const med = new THREE.Group();
+  med.position.set(6.2, 0, 3.8);
+  med.name = "medbay";
+  box(plate, 1.8, 1.7, 0.7, 0, 0.95, 0, med);
+  box(mat.ember, 0.7, 0.5, 0.08, 0, 1.2, 0.38, med);
+  box(mat.dark, 0.55, 0.18, 0.08, 0, 0.7, 0.38, med);
+  box(mat.warning, 1.6, 0.04, 0.08, 0, 0.18, 0.32, med);
+  sph(mat.ember, 0.08, 0.55, 1.45, 0.28, med, 8);
+  box(mat.metal, 0.2, 0.2, 0.2, -0.55, 1.35, 0.28, med);
+  mark(deckMark("MEDBAY  ·  STIM", "#e85d04"), 6.2, 2.7, 1.8);
+  const medLamp = new THREE.PointLight(0xe85d04, 2.2, 7, 1.5);
+  medLamp.position.set(6.2, 1.8, 3.8);
+  root.add(medLamp);
+  root.add(med);
+
   root.userData.cnc = { x: 5.4, z: -4.4 };
+  root.userData.ops = { x: 0, z: -6.2 };
+  root.userData.med = { x: 6.2, z: 3.8 };
   root.userData.holo = hologram;
   return root;
 }
