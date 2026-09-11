@@ -55,14 +55,13 @@ export function makeMaterials(tex: {
     metalness: 0.04,
   });
   const lot = new THREE.MeshStandardMaterial({
-    color: 0x3a342e,
-    map: tex.ground ?? null,
+    color: 0x2a2622,
     roughness: 0.96,
     metalness: 0.03,
   });
   const sidewalk = new THREE.MeshStandardMaterial({
-    color: 0xa8a096,
-    roughness: 0.92,
+    color: 0x6a645c,
+    roughness: 0.9,
     metalness: 0.05,
   });
   const metal = new THREE.MeshStandardMaterial({
@@ -88,7 +87,7 @@ export function makeMaterials(tex: {
   bindPbr(concrete, tex.ground, { repeat: 1, bump: 1.15 });
   bindPbr(wall, tex.wall, { repeat: 1, bump: 0.62 });
   bindPbr(brick, tex.wall, { repeat: 1, bump: 0.85 });
-  bindPbr(lot, tex.ground, { bump: 1.35 });
+  bindPbr(lot, undefined, { bump: 1.15 });
   bindPbr(sidewalk, undefined, { bump: 1.05 });
   bindPbr(metal, tex.metal, { metal: true, repeat: 1 });
   bindPbr(armor, undefined, { metal: true, repeat: 1.4, bump: 0.95 });
@@ -108,12 +107,11 @@ export function makeMaterials(tex: {
   });
   bindPbr(rust, tex.metal, { metal: true, bump: 1.15 });
   const asphalt = new THREE.MeshStandardMaterial({
-    color: 0x2a2927,
-    map: tex.ground ?? null,
-    roughness: 0.94,
-    metalness: 0.08,
+    color: 0x1c1b1a,
+    roughness: 0.92,
+    metalness: 0.06,
   });
-  bindPbr(asphalt, tex.ground, { bump: 1.25 });
+  bindPbr(asphalt, undefined, { bump: 0.85 });
   return {
     concrete,
     wall,

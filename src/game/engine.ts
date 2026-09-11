@@ -477,10 +477,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       const g = textures.ground.clone();
       g.repeat.set(22, 26);
       g.needsUpdate = true;
-      mat.lot.map = g;
-      mat.lot.needsUpdate = true;
-      mat.asphalt.map = g;
-      mat.asphalt.needsUpdate = true;
+      mat.concrete.map = g;
+      mat.concrete.needsUpdate = true;
     }
     addWorldFromBoxes(missionGroup, level.boxes, mat);
     dressWorld(missionGroup, mat, level.theme);
@@ -604,10 +602,6 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   ]).then(() => {
     if (!mat) return;
     if (textures.ground) {
-      mat.lot.map = textures.ground;
-      mat.lot.needsUpdate = true;
-      mat.asphalt.map = textures.ground;
-      mat.asphalt.needsUpdate = true;
       mat.concrete.map = textures.ground;
       mat.concrete.needsUpdate = true;
     }
