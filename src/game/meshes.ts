@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { addRarityStripe } from "./armorKits";
-import { dressThemeGround, placeStreetFurniture } from "./cityKit";
+import { createWaterTower, dressThemeGround, paintStreetSurfaces, placeStreetFurniture } from "./cityKit";
 import { bindPbr } from "./textures";
 import type { AABB, AmmoId, EnemyKind, LevelTheme, Rarity, WeaponId } from "./types";
 
@@ -9,6 +9,9 @@ export { applyArmorKits, createArmorMesh } from "./armorKits";
 export type Materials = {
   concrete: THREE.MeshStandardMaterial;
   wall: THREE.MeshStandardMaterial;
+  brick: THREE.MeshStandardMaterial;
+  lot: THREE.MeshStandardMaterial;
+  sidewalk: THREE.MeshStandardMaterial;
   metal: THREE.MeshStandardMaterial;
   dark: THREE.MeshStandardMaterial;
   armor: THREE.MeshStandardMaterial;
@@ -34,16 +37,33 @@ export function makeMaterials(tex: {
   shade?: THREE.Texture;
 }): Materials {
   const concrete = new THREE.MeshStandardMaterial({
-    color: 0xb8b0a4,
+    color: 0x8a8278,
     map: tex.ground ?? null,
     roughness: 0.9,
     metalness: 0.04,
   });
   const wall = new THREE.MeshStandardMaterial({
-    color: 0xc4b9aa,
+    color: 0xe6d4be,
     map: tex.wall ?? null,
-    roughness: 0.86,
-    metalness: 0.06,
+    roughness: 0.82,
+    metalness: 0.03,
+  });
+  const brick = new THREE.MeshStandardMaterial({
+    color: 0x8a5344,
+    map: tex.wall ?? null,
+    roughness: 0.88,
+    metalness: 0.04,
+  });
+  const lot = new THREE.MeshStandardMaterial({
+    color: 0x3a342e,
+    map: tex.ground ?? null,
+    roughness: 0.96,
+    metalness: 0.03,
+  });
+  const sidewalk = new THREE.MeshStandardMaterial({
+    color: 0xa8a096,
+    roughness: 0.92,
+    metalness: 0.05,
   });
   const metal = new THREE.MeshStandardMaterial({
     color: 0x6a655c,
@@ -65,8 +85,11 @@ export function makeMaterials(tex: {
     emissive: 0x06332f,
     emissiveIntensity: 0.35,
   });
-  bindPbr(concrete, tex.ground, { repeat: 1, bump: 1.35 });
-  bindPbr(wall, tex.wall, { repeat: 1, bump: 1.05 });
+  bindPbr(concrete, tex.ground, { repeat: 1, bump: 1.15 });
+  bindPbr(wall, tex.wall, { repeat: 1, bump: 0.62 });
+  bindPbr(brick, tex.wall, { repeat: 1, bump: 0.85 });
+  bindPbr(lot, tex.ground, { bump: 1.35 });
+  bindPbr(sidewalk, undefined, { bump: 1.05 });
   bindPbr(metal, tex.metal, { metal: true, repeat: 1 });
   bindPbr(armor, undefined, { metal: true, repeat: 1.4, bump: 0.95 });
   bindPbr(shade, tex.shade, { glow: true, repeat: 1.2 });
@@ -85,15 +108,18 @@ export function makeMaterials(tex: {
   });
   bindPbr(rust, tex.metal, { metal: true, bump: 1.15 });
   const asphalt = new THREE.MeshStandardMaterial({
-    color: 0x6a655c,
+    color: 0x2a2927,
     map: tex.ground ?? null,
-    roughness: 0.92,
-    metalness: 0.1,
+    roughness: 0.94,
+    metalness: 0.08,
   });
-  bindPbr(asphalt, tex.ground, { bump: 1.55 });
+  bindPbr(asphalt, tex.ground, { bump: 1.25 });
   return {
     concrete,
     wall,
+    brick,
+    lot,
+    sidewalk,
     metal,
     armor,
     shade,
@@ -123,7 +149,7 @@ export function makeMaterials(tex: {
       metalness: 0.18,
       toneMapped: false,
     }),
-    rubber: new THREE.MeshStandardMaterial({ color: 0x141416, roughness: 0.96, metalness: 0.02 }),
+    rubber: new THREE.MeshStandardMaterial({ color: 0x2a2e34, roughness: 0.94, metalness: 0.04 }),
     glass: new THREE.MeshStandardMaterial({
       color: 0x6aa8c4,
       roughness: 0.04,
@@ -323,31 +349,35 @@ export function createExoSuit(mat: Materials): PlayerRig {
   locInner.position.y = 0.035;
   group.add(locInner);
 
-  box(suit, 0.4, 0.16, 0.24, 0, 0.94, 0.02, group);
-  box(dark, 0.16, 0.07, 0.12, 0, 0.96, 0.14, group);
-  box(metal, 0.07, 0.05, 0.08, 0.14, 0.9, 0.08, group);
-  box(metal, 0.07, 0.05, 0.08, -0.14, 0.9, 0.08, group);
-  box(dark, 0.1, 0.08, 0.08, 0.12, 0.88, 0.12, group);
-  box(dark, 0.1, 0.08, 0.08, -0.12, 0.88, 0.12, group);
-  cyl(metal, 0.012, 0.012, 0.14, 0.1, 1.02, 0.1, group, 1.1);
+  box(suit, 0.5, 0.2, 0.3, 0, 0.94, 0.02, group);
+  box(dark, 0.2, 0.08, 0.14, 0, 0.96, 0.16, group);
+  box(metal, 0.09, 0.06, 0.1, 0.16, 0.9, 0.1, group);
+  box(metal, 0.09, 0.06, 0.1, -0.16, 0.9, 0.1, group);
+  box(dark, 0.12, 0.1, 0.1, 0.14, 0.88, 0.14, group);
+  box(dark, 0.12, 0.1, 0.1, -0.14, 0.88, 0.14, group);
+  cyl(metal, 0.014, 0.014, 0.16, 0.12, 1.02, 0.12, group, 1.1);
+  box(mat.warning, 0.22, 0.03, 0.04, 0, 1.02, 0.16, group);
 
   const torso = new THREE.Group();
   torso.position.set(0, 1.2, 0);
   group.add(torso);
-  cap(suit, 0.13, 0.26, 0, 0.08, -0.02, torso);
-  box(suit, 0.34, 0.36, 0.2, 0, 0.14, 0.02, torso);
-  box(dark, 0.24, 0.05, 0.06, 0, 0.22, 0.12, torso);
-  box(dark, 0.2, 0.035, 0.05, 0, 0.12, 0.13, torso);
-  box(dark, 0.2, 0.035, 0.05, 0, 0.04, 0.13, torso);
-  box(dark, 0.035, 0.3, 0.03, 0.1, 0.16, 0.11, torso);
-  box(dark, 0.035, 0.3, 0.03, -0.1, 0.16, 0.11, torso);
-  box(metal, 0.05, 0.16, 0.05, 0.14, 0.1, -0.04, torso);
-  box(metal, 0.05, 0.16, 0.05, -0.14, 0.1, -0.04, torso);
-  cap(suit, 0.045, 0.08, 0, 0.4, 0.0, torso);
-  box(dark, 0.08, 0.1, 0.06, 0.12, 0.22, 0.12, torso);
-  box(dark, 0.08, 0.1, 0.06, -0.12, 0.22, 0.12, torso);
-  box(metal, 0.04, 0.08, 0.03, 0.16, 0.08, 0.12, torso);
-  cyl(dark, 0.01, 0.01, 0.16, 0.08, 0.28, -0.12, torso, 0.9);
+  cap(suit, 0.15, 0.3, 0, 0.08, -0.02, torso);
+  box(suit, 0.42, 0.4, 0.26, 0, 0.14, 0.02, torso);
+  box(dark, 0.3, 0.06, 0.08, 0, 0.24, 0.14, torso);
+  box(dark, 0.26, 0.04, 0.06, 0, 0.14, 0.15, torso);
+  box(dark, 0.26, 0.04, 0.06, 0, 0.04, 0.15, torso);
+  box(dark, 0.045, 0.34, 0.04, 0.12, 0.16, 0.13, torso);
+  box(dark, 0.045, 0.34, 0.04, -0.12, 0.16, 0.13, torso);
+  box(metal, 0.07, 0.2, 0.07, 0.18, 0.1, -0.04, torso);
+  box(metal, 0.07, 0.2, 0.07, -0.18, 0.1, -0.04, torso);
+  cap(suit, 0.055, 0.1, 0, 0.42, 0.0, torso);
+  box(dark, 0.1, 0.12, 0.08, 0.16, 0.24, 0.14, torso);
+  box(dark, 0.1, 0.12, 0.08, -0.16, 0.24, 0.14, torso);
+  box(metal, 0.05, 0.1, 0.04, 0.2, 0.08, 0.14, torso);
+  cyl(dark, 0.012, 0.012, 0.2, 0.1, 0.3, -0.14, torso, 0.9);
+  sph(suit, 0.09, 0.22, 0.28, 0.02, torso, 8);
+  sph(suit, 0.09, -0.22, 0.28, 0.02, torso, 8);
+  box(mat.ember, 0.08, 0.03, 0.04, 0, 0.2, 0.16, torso);
 
   const backpack = new THREE.Group();
   backpack.position.set(0, 0.16, -0.32);
@@ -365,28 +395,30 @@ export function createExoSuit(mat: Materials): PlayerRig {
   const head = new THREE.Group();
   head.position.set(0, 1.66, 0.04);
   group.add(head);
-  sph(bone, 0.12, 0, 0.1, 0, head, 12);
-  box(suit, 0.2, 0.14, 0.18, 0, 0.08, 0.02, head);
-  const visor = box(mat.visor, 0.16, 0.028, 0.036, 0, 0.1, 0.14, head);
-  box(dark, 0.18, 0.018, 0.028, 0, 0.13, 0.15, head);
-  box(dark, 0.1, 0.08, 0.08, 0, -0.02, 0.04, head);
-  box(bone, 0.08, 0.04, 0.05, 0, 0.02, 0.12, head);
+  sph(bone, 0.135, 0, 0.1, 0, head, 12);
+  box(suit, 0.24, 0.16, 0.22, 0, 0.08, 0.02, head);
+  const visor = box(mat.visor, 0.2, 0.04, 0.05, 0, 0.1, 0.16, head);
+  box(dark, 0.22, 0.022, 0.036, 0, 0.14, 0.17, head);
+  box(dark, 0.12, 0.1, 0.1, 0, -0.02, 0.05, head);
+  box(bone, 0.1, 0.05, 0.06, 0, 0.02, 0.14, head);
+  box(mat.ember, 0.06, 0.02, 0.03, 0, 0.08, 0.18, head);
 
   const mkArm = (side: number) => {
     const root = new THREE.Group();
     root.position.set(0.44 * side, 1.48, 0);
     root.rotation.z = 0.14 * side;
     group.add(root);
-    sph(suit, 0.075, 0.04 * side, 0.02, 0, root, 10);
-    cap(suit, 0.055, 0.2, 0.06 * side, -0.16, 0.02, root);
-    box(dark, 0.07, 0.05, 0.07, 0.08 * side, -0.02, 0.06, root);
+    sph(suit, 0.09, 0.04 * side, 0.02, 0, root, 10);
+    cap(suit, 0.065, 0.22, 0.06 * side, -0.16, 0.02, root);
+    box(dark, 0.09, 0.06, 0.09, 0.08 * side, -0.02, 0.07, root);
     const forearm = new THREE.Group();
     forearm.position.set(0.02 * side, -0.38, 0.04);
     root.add(forearm);
-    cap(suit, 0.05, 0.18, 0.04 * side, -0.1, 0.02, forearm);
-    box(dark, 0.07, 0.055, 0.09, 0.04 * side, -0.28, 0.06, forearm);
-    box(metal, 0.04, 0.03, 0.05, 0.06 * side, -0.22, 0.1, forearm);
-    box(dark, 0.03, 0.04, 0.06, 0.02 * side, -0.34, 0.1, forearm);
+    cap(suit, 0.058, 0.2, 0.04 * side, -0.1, 0.02, forearm);
+    box(dark, 0.09, 0.065, 0.11, 0.04 * side, -0.28, 0.07, forearm);
+    box(metal, 0.05, 0.04, 0.06, 0.06 * side, -0.22, 0.12, forearm);
+    box(dark, 0.045, 0.05, 0.08, 0.02 * side, -0.36, 0.12, forearm);
+    box(suit, 0.08, 0.06, 0.1, 0.03 * side, -0.4, 0.08, forearm);
     return { root, forearm };
   };
   const left = mkArm(-1);
@@ -407,16 +439,17 @@ export function createExoSuit(mat: Materials): PlayerRig {
     const thigh = new THREE.Group();
     thigh.position.set(0.17 * side, 0.9, 0);
     group.add(thigh);
-    cap(suit, 0.08, 0.26, 0, -0.16, 0.02, thigh);
-    box(dark, 0.09, 0.05, 0.09, 0, -0.3, 0.06, thigh);
+    cap(suit, 0.095, 0.28, 0, -0.16, 0.02, thigh);
+    box(dark, 0.12, 0.06, 0.12, 0, -0.3, 0.08, thigh);
     const shin = new THREE.Group();
     shin.position.set(0, -0.38, 0.02);
     thigh.add(shin);
-    cap(suit, 0.06, 0.24, 0, -0.14, 0, shin);
-    box(mat.rubber, 0.16, 0.055, 0.22, 0, -0.36, 0.04, shin);
-    box(dark, 0.1, 0.03, 0.08, 0, -0.38, -0.08, shin);
-    box(metal, 0.04, 0.03, 0.08, 0.06 * side, -0.34, 0.12, shin);
-    box(dark, 0.12, 0.02, 0.04, 0, -0.4, 0.12, shin);
+    cap(suit, 0.072, 0.26, 0, -0.14, 0, shin);
+    box(mat.rubber, 0.2, 0.07, 0.28, 0, -0.36, 0.06, shin);
+    box(dark, 0.14, 0.04, 0.1, 0, -0.38, -0.1, shin);
+    box(metal, 0.055, 0.04, 0.1, 0.07 * side, -0.34, 0.14, shin);
+    box(dark, 0.16, 0.03, 0.05, 0, -0.42, 0.14, shin);
+    box(mat.warning, 0.08, 0.02, 0.04, 0, -0.3, 0.14, shin);
     return { thigh, shin };
   };
 
@@ -926,8 +959,8 @@ function createSpitter(mat: Materials): EnemyRig {
   const group = new THREE.Group();
   const glow: THREE.Mesh[] = [];
   const gMat = cloneGlow(mat.shadeGlow);
-  cap(mat.shade, 0.16, 0.4, 0, 1.12, 0.04, group);
-  box(mat.shade, 0.36, 0.48, 0.3, 0, 1.16, 0.08, group, 0.2);
+  cap(mat.shade, 0.2, 0.46, 0, 1.12, 0.04, group);
+  box(mat.shade, 0.46, 0.56, 0.36, 0, 1.16, 0.08, group, 0.2);
   box(mat.rust, 0.28, 0.2, 0.22, 0, 1.28, 0.2, group);
   sph(mat.shade, 0.16, 0, 1.52, 0.1, group, 10);
   glow.push(box(gMat, 0.16, 0.04, 0.05, 0, 1.52, 0.24, group));
@@ -946,7 +979,7 @@ function createSpitter(mat: Materials): EnemyRig {
   glow.push(box(mat.ember, 0.08, 0.08, 0.1, 0.04, -0.1, 0.48, rightArm));
   cap(mat.shade, 0.055, 0.46, -0.1, 0.46, 0.02, group);
   cap(mat.shade, 0.055, 0.46, 0.1, 0.46, 0.02, group);
-  group.scale.setScalar(1.12);
+  group.scale.setScalar(1.22);
   return { group, kind: "spitter", leftArm, rightArm, glow };
 }
 
@@ -957,10 +990,10 @@ function createWraith(mat: Materials): EnemyRig {
   const ghost = mat.shade.clone();
   ghost.transparent = true;
   ghost.opacity = 0.72;
-  cap(ghost, 0.12, 0.5, 0, 1.28, 0, group);
-  box(ghost, 0.24, 0.58, 0.18, 0, 1.32, 0, group, 0.35);
-  sph(ghost, 0.13, 0, 1.78, 0.06, group, 10);
-  glow.push(box(gMat, 0.12, 0.03, 0.04, 0, 1.8, 0.18, group));
+  cap(ghost, 0.16, 0.56, 0, 1.28, 0, group);
+  box(ghost, 0.34, 0.68, 0.24, 0, 1.32, 0, group, 0.35);
+  sph(ghost, 0.16, 0, 1.8, 0.06, group, 10);
+  glow.push(box(gMat, 0.18, 0.045, 0.06, 0, 1.82, 0.22, group));
   glow.push(box(mat.voidCore, 0.04, 0.22, 0.04, 0, 1.4, 0.12, group));
   const mkArm = (side: number) => {
     const root = new THREE.Group();
@@ -971,9 +1004,9 @@ function createWraith(mat: Materials): EnemyRig {
     glow.push(box(gMat, 0.02, 0.02, 0.2, 0.03 * side, -0.82, 0.14, root));
     return root;
   };
-  cap(ghost, 0.045, 0.62, -0.08, 0.5, 0, group);
-  cap(ghost, 0.045, 0.62, 0.08, 0.5, 0, group);
-  group.scale.setScalar(1.05);
+  cap(ghost, 0.055, 0.68, -0.1, 0.5, 0, group);
+  cap(ghost, 0.055, 0.68, 0.1, 0.5, 0, group);
+  group.scale.setScalar(1.16);
   return { group, kind: "wraith", leftArm: mkArm(-1), rightArm: mkArm(1), glow };
 }
 
@@ -981,14 +1014,14 @@ function createHusk(mat: Materials): EnemyRig {
   const group = new THREE.Group();
   const glow: THREE.Mesh[] = [];
   const gMat = cloneGlow(mat.shadeGlow);
-  cap(mat.shade, 0.15, 0.44, 0, 1.16, 0.03, group);
-  box(mat.shade, 0.32, 0.52, 0.26, 0, 1.2, 0.05, group, 0.32);
-  box(mat.shade, 0.38, 0.16, 0.2, 0, 1.38, -0.08, group, 0.45);
-  sph(mat.shade, 0.17, 0, 1.6, 0.08, group, 12);
-  box(mat.shade, 0.2, 0.14, 0.16, 0, 1.62, 0.1, group, 0.2);
+  cap(mat.shade, 0.2, 0.5, 0, 1.16, 0.03, group);
+  box(mat.shade, 0.44, 0.62, 0.34, 0, 1.2, 0.05, group, 0.32);
+  box(mat.shade, 0.5, 0.2, 0.26, 0, 1.38, -0.08, group, 0.45);
+  sph(mat.shade, 0.2, 0, 1.64, 0.08, group, 12);
+  box(mat.shade, 0.26, 0.18, 0.2, 0, 1.64, 0.12, group, 0.2);
   box(mat.rust, 0.14, 0.1, 0.1, 0.16, 1.28, 0.12, group);
   box(mat.metal, 0.1, 0.18, 0.06, -0.16, 1.22, 0.1, group, 0.2);
-  const eye = box(gMat, 0.18, 0.035, 0.05, 0, 1.6, 0.22, group);
+  const eye = box(gMat, 0.26, 0.055, 0.08, 0, 1.64, 0.26, group);
   glow.push(eye);
   glow.push(box(gMat, 0.022, 0.5, 0.02, 0.08, 1.18, 0.17, group));
   glow.push(box(gMat, 0.2, 0.018, 0.02, 0, 1.06, 0.16, group));
@@ -1013,12 +1046,13 @@ function createHusk(mat: Materials): EnemyRig {
     box(gMat, 0.016, 0.016, 0.1, 0, -0.88, 0.14, root, 0.5);
     return root;
   };
-  cap(mat.shade, 0.058, 0.5, -0.1, 0.48, 0.02, group);
-  cap(mat.shade, 0.058, 0.5, 0.1, 0.48, 0.02, group);
-  box(mat.shade, 0.13, 0.06, 0.28, -0.1, 0.08, 0.05, group);
-  box(mat.shade, 0.13, 0.06, 0.28, 0.1, 0.08, 0.05, group);
-  box(mat.shade, 0.08, 0.04, 0.18, -0.1, 0.06, 0.16, group);
-  box(mat.shade, 0.08, 0.04, 0.18, 0.1, 0.06, 0.16, group);
+  cap(mat.shade, 0.075, 0.56, -0.12, 0.48, 0.02, group);
+  cap(mat.shade, 0.075, 0.56, 0.12, 0.48, 0.02, group);
+  box(mat.shade, 0.18, 0.08, 0.34, -0.12, 0.1, 0.06, group);
+  box(mat.shade, 0.18, 0.08, 0.34, 0.12, 0.1, 0.06, group);
+  box(mat.shade, 0.12, 0.06, 0.22, -0.12, 0.08, 0.18, group);
+  box(mat.shade, 0.12, 0.06, 0.22, 0.12, 0.08, 0.18, group);
+  group.scale.setScalar(1.18);
   return { group, kind: "husk", leftArm: mkArm(-1, 0.1), rightArm: mkArm(1), glow };
 }
 
@@ -1026,12 +1060,12 @@ function createStalker(mat: Materials): EnemyRig {
   const group = new THREE.Group();
   const glow: THREE.Mesh[] = [];
   const gMat = cloneGlow(mat.shadeGlow);
-  cap(mat.shade, 0.11, 0.52, 0, 1.32, 0, group);
-  box(mat.shade, 0.26, 0.62, 0.22, 0, 1.38, 0, group, 0.28);
+  cap(mat.shade, 0.14, 0.56, 0, 1.32, 0, group);
+  box(mat.shade, 0.34, 0.7, 0.28, 0, 1.38, 0, group, 0.28);
   box(mat.shade, 0.18, 0.4, 0.16, 0, 1.2, -0.12, group, 0.55);
   sph(mat.shade, 0.14, 0, 1.86, 0.08, group, 10);
   box(mat.shade, 0.16, 0.12, 0.18, 0, 1.84, 0.12, group, 0.25);
-  glow.push(box(gMat, 0.14, 0.035, 0.04, 0, 1.88, 0.2, group));
+  glow.push(box(gMat, 0.2, 0.05, 0.06, 0, 1.88, 0.24, group));
   glow.push(box(gMat, 0.012, 0.22, 0.012, 0.06, 1.5, 0.12, group));
   for (let i = 0; i < 4; i++) {
     box(mat.shade, 0.05, 0.08, 0.06, 0, 1.1 + i * 0.12, -0.14, group);
@@ -1060,7 +1094,7 @@ function createStalker(mat: Materials): EnemyRig {
   box(mat.shade, 0.12, 0.05, 0.3, 0.09, 0.08, 0.05, group);
   box(mat.shade, 0.06, 0.04, 0.16, -0.09, 0.06, 0.18, group);
   box(mat.shade, 0.06, 0.04, 0.16, 0.09, 0.06, 0.18, group);
-  group.scale.setScalar(1.1);
+  group.scale.setScalar(1.22);
   return { group, kind: "stalker", leftArm, rightArm, glow };
 }
 
@@ -1168,10 +1202,13 @@ function createHarbinger(mat: Materials): EnemyRig {
 
 export function createCar(mat: Materials) {
   const g = new THREE.Group();
-  box(mat.rust, 2.55, 0.42, 1.16, 0, 0.46, 0, g);
-  box(mat.dark, 1.35, 0.46, 1.06, -0.12, 0.9, 0, g);
-  box(mat.glass, 0.72, 0.28, 1.0, 0.22, 0.94, 0, g);
-  box(mat.warning, 0.07, 0.06, 1.1, 1.22, 0.48, 0, g);
+  box(mat.rust, 2.7, 0.48, 1.22, 0, 0.48, 0, g);
+  box(mat.dark, 1.45, 0.5, 1.12, -0.12, 0.94, 0, g);
+  box(mat.glass, 0.82, 0.32, 1.08, 0.22, 0.98, 0, g);
+  box(mat.warning, 0.1, 0.08, 1.16, 1.28, 0.5, 0, g);
+  box(mat.ember, 0.12, 0.08, 0.18, 1.32, 0.52, 0.42, g);
+  box(mat.ember, 0.12, 0.08, 0.18, 1.32, 0.52, -0.42, g);
+  box(mat.dark, 0.28, 0.08, 0.5, -1.28, 0.42, 0, g);
   box(mat.metal, 0.18, 0.08, 0.92, -1.18, 0.5, 0, g);
   box(mat.rust, 0.55, 0.12, 0.42, 0.74, 0.7, 0.42, g, 0.45, 0.18, 0.12);
   box(mat.dark, 0.9, 0.08, 1.08, 0.5, 0.7, 0, g);
@@ -1351,8 +1388,20 @@ export function createWreck(mat: Materials) {
   return g;
 }
 
+const WALL_TINTS = [0xe8d6be, 0xd2c0aa, 0xc4b09a, 0xeee0cc, 0xb8a088, 0xd8c8b4];
+
 export function addWorldFromBoxes(scene: THREE.Object3D, boxes: AABB[], mat: Materials) {
   const geoCache = new Map<string, THREE.BoxGeometry>();
+  const shopGlass = new THREE.MeshStandardMaterial({
+    color: 0x1a2832,
+    roughness: 0.1,
+    metalness: 0.22,
+    transparent: true,
+    opacity: 0.78,
+    emissive: 0x243844,
+    emissiveIntensity: 0.45,
+  });
+  let building = 0;
   for (const b of boxes) {
     const w = b.maxx - b.minx;
     const h = b.maxy - b.miny;
@@ -1363,7 +1412,8 @@ export function addWorldFromBoxes(scene: THREE.Object3D, boxes: AABB[], mat: Mat
       geo = new THREE.BoxGeometry(w, h, d);
       geoCache.set(key, geo);
     }
-    const use =
+    const isBuilding = !b.cover && h > 2.3 && w > 1.2 && d > 1.2;
+    let use: THREE.Material =
       b.deco === "car" || b.deco === "pillar"
         ? mat.metal
         : b.deco === "crate"
@@ -1371,6 +1421,13 @@ export function addWorldFromBoxes(scene: THREE.Object3D, boxes: AABB[], mat: Mat
           : b.cover
             ? mat.rust
             : mat.wall;
+    if (isBuilding) {
+      const tinted = (building % 3 === 1 ? mat.brick : mat.wall).clone();
+      tinted.color = tinted.color.clone();
+      if (building % 3 !== 1) tinted.color.setHex(WALL_TINTS[building % WALL_TINTS.length]);
+      use = tinted;
+      building += 1;
+    }
     const m = new THREE.Mesh(geo, use);
     const cx = (b.minx + b.maxx) / 2;
     const cy = (b.miny + b.maxy) / 2;
@@ -1379,212 +1436,120 @@ export function addWorldFromBoxes(scene: THREE.Object3D, boxes: AABB[], mat: Mat
     m.castShadow = true;
     m.receiveShadow = true;
     scene.add(m);
-    if (!b.cover && h > 2.3 && w > 1.2 && d > 1.2) {
-      const ledge = new THREE.Mesh(new THREE.BoxGeometry(w + 0.18, 0.16, d + 0.18), mat.metal);
-      ledge.position.set(cx, b.maxy - 0.04, cz);
-      ledge.castShadow = true;
-      scene.add(ledge);
-      const belt = new THREE.Mesh(new THREE.BoxGeometry(w + 0.08, 0.1, d + 0.08), mat.rust);
-      belt.position.set(cx, b.miny + h * 0.45, cz);
-      scene.add(belt);
-      const base = new THREE.Mesh(new THREE.BoxGeometry(w + 0.1, 0.22, d + 0.1), mat.dark);
-      base.position.set(cx, b.miny + 0.11, cz);
-      scene.add(base);
-      const face = cx < 0 ? 1 : -1;
-      const fx = cx < 0 ? b.maxx + 0.02 : b.minx - 0.02;
-      const door = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.7, 0.9), mat.dark);
-      door.position.set(fx, b.miny + 0.85, cz);
-      scene.add(door);
-      const lintel = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.12, 1.15), mat.metal);
-      lintel.position.set(fx, b.miny + 1.78, cz);
-      scene.add(lintel);
-      const ac = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.35, 0.55), mat.metal);
-      ac.position.set(cx + face * (w * 0.22), b.maxy + 0.22, cz + d * 0.15);
-      ac.castShadow = true;
-      scene.add(ac);
-      const vent = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.08, 0.45), mat.dark);
-      vent.position.set(cx - face * (w * 0.18), b.maxy + 0.08, cz - d * 0.12);
-      scene.add(vent);
-      const awning = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.06, Math.min(d * 0.55, 3.4)), mat.rust);
-      awning.position.set(fx + face * 0.32, b.miny + 2.15, cz);
-      awning.rotation.z = face * 0.18;
-      awning.castShadow = true;
-      scene.add(awning);
-      const stoop = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.16, 1.3), mat.concrete);
-      stoop.position.set(fx + face * 0.28, b.miny + 0.08, cz);
-      stoop.receiveShadow = true;
-      scene.add(stoop);
-      if (d > 8) {
-        const escape = new THREE.Group();
-        for (let r = 0; r < 3; r++) {
-          const land = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.06, 1.1), mat.metal);
-          land.position.set(fx + face * 0.4, b.miny + 2.4 + r * 1.35, cz + d * 0.18);
-          land.castShadow = true;
-          escape.add(land);
-          const rail = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.7, 1.1), mat.dark);
-          rail.position.set(fx + face * 0.72, b.miny + 2.75 + r * 1.35, cz + d * 0.18);
-          escape.add(rail);
-        }
-        scene.add(escape);
+    if (!isBuilding) continue;
+
+    const face = cx < 0 ? 1 : -1;
+    const fx = cx < 0 ? b.maxx + 0.04 : b.minx - 0.04;
+    const shopW = Math.min(d * 0.72, 6.4);
+
+    const ledge = new THREE.Mesh(new THREE.BoxGeometry(w + 0.22, 0.2, d + 0.22), mat.concrete);
+    ledge.position.set(cx, b.maxy + 0.02, cz);
+    ledge.castShadow = true;
+    scene.add(ledge);
+    const cornice = new THREE.Mesh(new THREE.BoxGeometry(w + 0.28, 0.14, d + 0.28), mat.metal);
+    cornice.position.set(cx, b.maxy + 0.16, cz);
+    scene.add(cornice);
+    const belt = new THREE.Mesh(new THREE.BoxGeometry(w + 0.1, 0.14, d + 0.1), mat.rust);
+    belt.position.set(cx, b.miny + 2.28, cz);
+    scene.add(belt);
+    const base = new THREE.Mesh(new THREE.BoxGeometry(w + 0.12, 0.28, d + 0.12), mat.dark);
+    base.position.set(cx, b.miny + 0.14, cz);
+    scene.add(base);
+
+    const glass = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.85, shopW), shopGlass);
+    glass.position.set(fx, b.miny + 1.12, cz);
+    scene.add(glass);
+    const shopFrame = new THREE.Mesh(new THREE.BoxGeometry(0.14, 2.05, shopW + 0.2), mat.dark);
+    shopFrame.position.set(fx - face * 0.04, b.miny + 1.12, cz);
+    scene.add(shopFrame);
+    const door = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.85, 0.95), mat.dark);
+    door.position.set(fx + face * 0.02, b.miny + 0.95, cz);
+    scene.add(door);
+    const lintel = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.16, 1.2), mat.metal);
+    lintel.position.set(fx + face * 0.02, b.miny + 1.95, cz);
+    scene.add(lintel);
+
+    const awning = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.08, shopW + 0.15), building % 2 ? mat.rust : mat.ember);
+    awning.position.set(fx + face * 0.48, b.miny + 2.22, cz);
+    awning.rotation.z = face * 0.16;
+    awning.castShadow = true;
+    scene.add(awning);
+    const stoop = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.18, 1.5), mat.concrete);
+    stoop.position.set(fx + face * 0.32, b.miny + 0.09, cz);
+    stoop.receiveShadow = true;
+    scene.add(stoop);
+
+    const signNames = ["NOX", "ASH", "GATE", "VISTA", "RED SUN", "MART", "RAIL", "SPIRE", "REPAIR", "VOID"];
+    const signCols = ["#e85d04", "#5eead4", "#e8b423", "#f4d4b0"];
+    const sign = new THREE.Mesh(
+      new THREE.PlaneGeometry(Math.min(shopW, 3.4), 0.62),
+      new THREE.MeshBasicMaterial({
+        map: deckMark(signNames[building % signNames.length], signCols[building % signCols.length], 512, 96),
+        transparent: true,
+        toneMapped: false,
+      }),
+    );
+    sign.position.set(fx + face * 0.08, b.miny + 2.55, cz);
+    sign.rotation.y = face > 0 ? -Math.PI / 2 : Math.PI / 2;
+    scene.add(sign);
+    const signBack = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.7, Math.min(shopW, 3.5)), mat.metal);
+    signBack.position.set(fx, b.miny + 2.55, cz);
+    scene.add(signBack);
+
+    const rows = Math.max(1, Math.floor((h - 2.8) / 1.55));
+    const cols = Math.max(2, Math.floor(d / 2.05));
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const wy = b.miny + 3.15 + row * 1.55;
+        if (wy > b.maxy - 0.7) continue;
+        const wz = b.minz + 1.15 + col * ((d - 2.3) / Math.max(cols - 1, 1));
+        const lit = (row + col + building) % 4 !== 0;
+        const pane = new THREE.Mesh(
+          new THREE.BoxGeometry(0.08, 1.15, 0.85),
+          lit ? ((row + building) % 2 ? mat.ember : mat.neon) : mat.dark,
+        );
+        pane.position.set(fx + face * 0.02, wy, wz);
+        scene.add(pane);
+        const frame = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.28, 0.98), mat.dark);
+        frame.position.set(fx - face * 0.02, wy, wz);
+        scene.add(frame);
       }
-      for (let row = 0; row < 2; row++) {
-        for (let col = 0; col < Math.min(4, Math.floor(d / 3.2)); col++) {
-          const wy = b.miny + 2.6 + row * 1.7;
-          const wz = b.minz + 1.6 + col * 3.0;
-          if (wz > b.maxz - 1.2) continue;
-          const pane = new THREE.Mesh(
-            new THREE.BoxGeometry(0.05, 1.05, 0.72),
-            row + col === 2 ? mat.ember : mat.dark,
-          );
-          pane.position.set(fx + face * 0.03, wy, wz);
-          scene.add(pane);
-        }
+    }
+
+    const ac = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.42, 0.7), mat.metal);
+    ac.position.set(cx + face * (w * 0.18), b.maxy + 0.36, cz + d * 0.18);
+    ac.castShadow = true;
+    scene.add(ac);
+    const vent = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.12, 0.55), mat.dark);
+    vent.position.set(cx - face * (w * 0.2), b.maxy + 0.16, cz - d * 0.16);
+    scene.add(vent);
+    if (h > 7.2) {
+      const tower = createWaterTower(mat);
+      tower.position.set(cx - face * (w * 0.12), b.maxy + 0.12, cz);
+      scene.add(tower);
+    }
+    if (d > 8) {
+      for (let r = 0; r < 3; r++) {
+        const land = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.07, 1.25), mat.metal);
+        land.position.set(fx + face * 0.48, b.miny + 2.55 + r * 1.4, cz + d * 0.28);
+        land.castShadow = true;
+        scene.add(land);
+        const rail = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.75, 1.25), mat.dark);
+        rail.position.set(fx + face * 0.86, b.miny + 2.9 + r * 1.4, cz + d * 0.28);
+        scene.add(rail);
       }
     }
   }
 }
 
 export function dressWorld(scene: THREE.Object3D, mat: Materials, theme: LevelTheme = "ash") {
-  const roadMat = theme === "spire" ? mat.dark : theme === "rail" ? mat.rust : mat.asphalt;
-  const road = new THREE.Mesh(new THREE.PlaneGeometry(5.6, 132), roadMat);
-  road.rotation.x = -Math.PI / 2;
-  road.position.set(0, 0.02, -48);
-  road.receiveShadow = true;
-  scene.add(road);
-
-  for (const x of [-2.92, 2.92]) {
-    const curb = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.1, 132), mat.concrete);
-    curb.position.set(x, 0.06, -48);
-    curb.castShadow = true;
-    curb.receiveShadow = true;
-    scene.add(curb);
-  }
-  const walkMat = new THREE.MeshStandardMaterial({
-    color: 0x8a8074,
-    roughness: 0.92,
-    metalness: 0.06,
-  });
-  bindPbr(walkMat, undefined, { bump: 1.2 });
-  const ashMat = new THREE.MeshStandardMaterial({
-    color: 0x4a3c30,
-    roughness: 0.96,
-    metalness: 0.04,
-  });
-  bindPbr(ashMat, undefined, { bump: 1.45 });
-  for (const x of [-4.35, 4.35]) {
-    const walk = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.06, 132), walkMat);
-    walk.position.set(x, 0.03, -48);
-    walk.receiveShadow = true;
-    scene.add(walk);
-  }
-  for (const x of [-6.4, 6.4]) {
-    const dirt = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.04, 132), ashMat);
-    dirt.position.set(x, 0.02, -48);
-    dirt.receiveShadow = true;
-    scene.add(dirt);
-  }
-
-  const dashGeo = new THREE.PlaneGeometry(0.14, 1.5);
-  dashGeo.rotateX(-Math.PI / 2);
-  const dashes = new THREE.InstancedMesh(dashGeo, mat.warning, 42);
+  paintStreetSurfaces(scene, mat, theme);
   const dummy = new THREE.Object3D();
-  for (let i = 0; i < 42; i++) {
-    dummy.position.set(0, 0.035, 10 - i * 3.1);
-    dummy.updateMatrix();
-    dashes.setMatrixAt(i, dummy.matrix);
-  }
-  scene.add(dashes);
-
-  const stainGeo = new THREE.CircleGeometry(0.85, 10);
-  stainGeo.rotateX(-Math.PI / 2);
-  const stainMat = new THREE.MeshStandardMaterial({
-    color: 0x1a1410,
-    roughness: 0.98,
-    metalness: 0.02,
-    transparent: true,
-    opacity: 0.45,
-  });
-  const stains = new THREE.InstancedMesh(stainGeo, stainMat, 18);
-  for (let i = 0; i < 18; i++) {
-    dummy.position.set((irand(i) - 0.5) * 3.2, 0.03, 8 - i * 6.8);
-    dummy.scale.setScalar(0.55 + irand(i + 4) * 1.1);
-    dummy.updateMatrix();
-    stains.setMatrixAt(i, dummy.matrix);
-    dummy.scale.setScalar(1);
-  }
-  scene.add(stains);
-
-  const winGeo = new THREE.PlaneGeometry(0.7, 1.02);
-  const frameGeo = new THREE.BoxGeometry(1.02, 1.38, 0.14);
-  const recessGeo = new THREE.BoxGeometry(0.86, 1.18, 0.08);
-  const winMatA = new THREE.MeshStandardMaterial({
-    color: 0x1a0c04,
-    emissive: theme === "spire" ? 0x22d3ee : theme === "rail" ? 0xfb923c : 0xe85d04,
-    emissiveIntensity: theme === "spire" ? 1.4 : 1.85,
-    roughness: 1,
-    toneMapped: false,
-  });
-  const winMatB = new THREE.MeshStandardMaterial({
-    color: 0x041014,
-    emissive: 0x22d3ee,
-    emissiveIntensity: 1.55,
-    roughness: 1,
-    toneMapped: false,
-  });
-  const spots: { x: number; y: number; z: number; ry: number }[] = [];
-  const strips: [number, number, number, number][] = [
-    [-17.98, 10, -22, Math.PI / 2],
-    [17.98, 10, -22, -Math.PI / 2],
-    [-8.02, 12, -44, Math.PI / 2],
-    [8.02, 12, -44, -Math.PI / 2],
-    [-8.02, -40, -62, Math.PI / 2],
-    [8.02, -40, -62, -Math.PI / 2],
-    [-13.05, -62, -86, Math.PI / 2],
-    [13.05, -62, -86, -Math.PI / 2],
-    [-16.02, -86, -110, Math.PI / 2],
-    [16.02, -86, -110, -Math.PI / 2],
-  ];
-  for (const [x, z0, z1, ry] of strips) {
-    for (let z = z0; z > z1; z -= 4.2) {
-      spots.push({ x, y: 2.15, z, ry });
-      if (Math.abs(z) % 8 > 3) spots.push({ x, y: 3.7, z: z - 1.1, ry });
-    }
-  }
-  const frames = new THREE.InstancedMesh(frameGeo, mat.dark, spots.length);
-  const recesses = new THREE.InstancedMesh(recessGeo, mat.asphalt, spots.length);
-  const meshA = new THREE.InstancedMesh(winGeo, winMatA, spots.length);
-  const meshB = new THREE.InstancedMesh(winGeo, winMatB, spots.length);
-  let ia = 0;
-  let ib = 0;
-  spots.forEach((s, i) => {
-    dummy.position.set(s.x, s.y, s.z);
-    dummy.rotation.set(0, s.ry, 0);
-    dummy.updateMatrix();
-    frames.setMatrixAt(i, dummy.matrix);
-    const into = s.x < 0 ? -0.02 : 0.02;
-    dummy.position.set(s.x + into, s.y, s.z);
-    dummy.updateMatrix();
-    recesses.setMatrixAt(i, dummy.matrix);
-    const glass = s.x < 0 ? 0.06 : -0.06;
-    dummy.position.set(s.x + glass, s.y, s.z);
-    dummy.updateMatrix();
-    if (i % 5 === 0) {
-      meshB.setMatrixAt(ib++, dummy.matrix);
-    } else {
-      meshA.setMatrixAt(ia++, dummy.matrix);
-    }
-  });
-  meshA.count = ia;
-  meshB.count = ib;
-  scene.add(frames);
-  scene.add(recesses);
-  scene.add(meshA);
-  scene.add(meshB);
 
   for (let i = 0; i < 10; i++) {
     const side = i % 2 === 0 ? -1 : 1;
     const z = 4 - i * 11;
-    const x = side * (Math.abs(z) > 70 ? 15.6 : Math.abs(z) > 40 ? 7.7 : 7.7);
+    const x = side * 8.4;
     box(mat.metal, 0.08, 3.4, 0.08, x, 2.2, z, scene);
     box(mat.metal, 0.7, 0.06, 0.7, x + side * 0.32, 3.8, z, scene);
     box(mat.metal, 0.7, 0.06, 0.7, x + side * 0.32, 2.6, z, scene);
@@ -1667,39 +1632,11 @@ export function dressWorld(scene: THREE.Object3D, mat: Materials, theme: LevelTh
 
   for (let i = 0; i < 14; i++) {
     const mound = new THREE.Mesh(new THREE.SphereGeometry(0.55 + irand(i) * 0.45, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2), mat.rust);
-    mound.position.set((irand(i + 2) - 0.5) * 10, 0.02, 6 - i * 8.2);
+    const side = i % 2 === 0 ? -1 : 1;
+    mound.position.set(side * (5.4 + irand(i) * 1.6), 0.02, 6 - i * 8.2);
     mound.scale.set(1.4, 0.35, 1.1);
     mound.receiveShadow = true;
     scene.add(mound);
-  }
-
-  for (let i = 0; i < 9; i++) {
-    const z = 6 - i * 14;
-    const hole = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.05, 12), mat.metal);
-    hole.position.set((i % 2 ? -1.1 : 1.15), 0.04, z);
-    scene.add(hole);
-    const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.03, 12), mat.dark);
-    lid.position.set((i % 2 ? -1.1 : 1.15), 0.07, z);
-    scene.add(lid);
-  }
-  for (let i = 0; i < 8; i++) {
-    const side = i % 2 === 0 ? -1 : 1;
-    const z = 2 - i * 15;
-    box(mat.ember, 0.16, 0.55, 0.16, side * 3.35, 0.32, z, scene);
-    box(mat.metal, 0.2, 0.08, 0.2, side * 3.35, 0.62, z, scene);
-    box(mat.dark, 0.06, 0.22, 0.06, side * 3.35, 0.78, z, scene);
-  }
-  for (let i = 0; i < 6; i++) {
-    const z = -8 - i * 18;
-    for (const x of [-1.6, -0.55, 0.55, 1.6]) {
-      const bar = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.7, 0.12),
-        new THREE.MeshBasicMaterial({ color: 0xe8dcc4, transparent: true, opacity: 0.55, toneMapped: false }),
-      );
-      bar.rotation.x = -Math.PI / 2;
-      bar.position.set(x, 0.036, z);
-      scene.add(bar);
-    }
   }
   for (let i = 0; i < 10; i++) {
     const side = i % 2 === 0 ? -1 : 1;
@@ -1714,7 +1651,7 @@ export function dressWorld(scene: THREE.Object3D, mat: Materials, theme: LevelTh
   for (let i = 0; i < 12; i++) {
     const side = i % 2 === 0 ? -1 : 1;
     const z = 8 - i * 10.5;
-    const x = side * (Math.abs(z) > 70 ? 15.2 : 7.35);
+    const x = side * 8.55;
     box(mat.metal, 0.08, 0.9, 2.2, x, 2.55, z, scene);
     const sign = new THREE.Mesh(
       new THREE.PlaneGeometry(1.9, 0.42),

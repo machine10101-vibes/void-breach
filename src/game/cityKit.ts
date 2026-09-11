@@ -154,6 +154,193 @@ export function createAntennaDish(mat: Materials) {
   return g;
 }
 
+export function createStreetTree(mat: Materials) {
+  const g = new THREE.Group();
+  cyl(mat.concrete, 0.55, 0.55, 0.18, 0, 0.1, 0, g, 0, 12);
+  box(mat.dark, 0.95, 0.08, 0.95, 0, 0.04, 0, g);
+  cyl(mat.dark, 0.1, 0.16, 1.35, 0, 0.82, 0, g, 0, 8);
+  box(mat.rust, 1.15, 0.22, 0.85, 0, 1.62, 0.08, g, 0.15);
+  box(mat.dark, 0.7, 0.55, 0.55, -0.15, 1.95, -0.05, g, 0.25, 0.4);
+  box(mat.rust, 0.45, 0.35, 0.4, 0.28, 1.85, 0.18, g, -0.2, -0.3);
+  return g;
+}
+
+export function createJersey(mat: Materials) {
+  const g = new THREE.Group();
+  box(mat.concrete, 1.7, 0.72, 0.42, 0, 0.36, 0, g);
+  box(mat.concrete, 1.5, 0.28, 0.28, 0, 0.82, 0, g);
+  box(mat.warning, 1.55, 0.06, 0.06, 0, 0.55, 0.2, g);
+  return g;
+}
+
+export function createMeter(mat: Materials) {
+  const g = new THREE.Group();
+  cyl(mat.dark, 0.03, 0.04, 1.15, 0, 0.58, 0, g);
+  box(mat.metal, 0.16, 0.28, 0.12, 0, 1.22, 0.02, g);
+  box(mat.ember, 0.08, 0.06, 0.04, 0, 1.28, 0.08, g);
+  box(mat.dark, 0.12, 0.04, 0.12, 0, 0.04, 0, g);
+  return g;
+}
+
+export function createMonument(mat: Materials) {
+  const g = new THREE.Group();
+  box(mat.concrete, 2.4, 0.22, 2.4, 0, 0.12, 0, g);
+  box(mat.dark, 1.1, 2.6, 1.1, 0, 1.45, 0, g);
+  box(mat.metal, 1.25, 0.12, 1.25, 0, 2.78, 0, g);
+  box(mat.warning, 0.7, 0.08, 0.08, 0, 1.6, 0.58, g);
+  cyl(mat.ember, 0.06, 0.06, 0.35, 0, 2.98, 0, g);
+  return g;
+}
+
+export function createWaterTower(mat: Materials) {
+  const g = new THREE.Group();
+  for (const [x, z] of [
+    [-0.35, -0.35],
+    [0.35, -0.35],
+    [-0.35, 0.35],
+    [0.35, 0.35],
+  ] as const) {
+    cyl(mat.metal, 0.04, 0.04, 1.4, x, 0.7, z, g);
+  }
+  cyl(mat.rust, 0.55, 0.48, 0.85, 0, 1.7, 0, g, 0, 12);
+  cyl(mat.dark, 0.18, 0.22, 0.22, 0, 2.2, 0, g);
+  return g;
+}
+
+export function createBillboard(mat: Materials) {
+  const g = new THREE.Group();
+  box(mat.metal, 0.12, 3.6, 0.12, -1.1, 1.8, 0, g);
+  box(mat.metal, 0.12, 3.6, 0.12, 1.1, 1.8, 0, g);
+  box(mat.dark, 2.6, 1.35, 0.1, 0, 3.15, 0, g);
+  box(mat.ember, 2.4, 1.15, 0.04, 0, 3.15, 0.06, g);
+  box(mat.warning, 2.5, 0.08, 0.08, 0, 3.85, 0.04, g);
+  return g;
+}
+
+export function createNewsbox(mat: Materials) {
+  const g = new THREE.Group();
+  box(mat.metal, 0.42, 0.7, 0.36, 0, 0.36, 0, g);
+  box(mat.dark, 0.36, 0.28, 0.04, 0, 0.48, 0.18, g);
+  box(mat.ember, 0.2, 0.05, 0.03, 0, 0.62, 0.2, g);
+  return g;
+}
+
+function paintCrosswalk(scene: THREE.Object3D, z: number, mat: Materials) {
+  const stripe = new THREE.MeshStandardMaterial({
+    color: 0xe8dcc4,
+    roughness: 0.7,
+    metalness: 0.04,
+    emissive: 0x3a3428,
+    emissiveIntensity: 0.12,
+  });
+  for (const x of [-2.15, -1.3, -0.45, 0.45, 1.3, 2.15]) {
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.03, 2.4), stripe);
+    bar.position.set(x, 0.04, z);
+    bar.receiveShadow = true;
+    scene.add(bar);
+  }
+  const stop = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.025, 0.18), stripe);
+  stop.position.set(0, 0.038, z + 1.45);
+  scene.add(stop);
+}
+
+export function paintStreetSurfaces(scene: THREE.Object3D, mat: Materials, theme: LevelTheme) {
+  const roadMat = theme === "spire" ? mat.dark : theme === "rail" ? mat.asphalt : mat.asphalt;
+  const road = new THREE.Mesh(new THREE.BoxGeometry(6.4, 0.06, 136), roadMat);
+  road.position.set(0, 0.02, -48);
+  road.receiveShadow = true;
+  scene.add(road);
+
+  const cross = new THREE.Mesh(new THREE.BoxGeometry(28, 0.055, 7.2), roadMat);
+  cross.position.set(0, 0.018, 8.2);
+  cross.receiveShadow = true;
+  scene.add(cross);
+
+  for (const x of [-3.28, 3.28]) {
+    const curb = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.16, 136), mat.concrete);
+    curb.position.set(x, 0.08, -48);
+    curb.castShadow = true;
+    curb.receiveShadow = true;
+    scene.add(curb);
+  }
+
+  for (const x of [-5.05, 5.05]) {
+    const walk = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.08, 136), mat.sidewalk);
+    walk.position.set(x, 0.04, -48);
+    walk.receiveShadow = true;
+    scene.add(walk);
+    for (let i = 0; i < 34; i++) {
+      const joint = new THREE.Mesh(new THREE.BoxGeometry(3.15, 0.01, 0.04), mat.dark);
+      joint.position.set(x, 0.085, 16 - i * 4);
+      scene.add(joint);
+    }
+  }
+
+  for (const x of [-7.7, 7.7]) {
+    const dirt = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.05, 136), mat.lot);
+    dirt.position.set(x, 0.02, -48);
+    dirt.receiveShadow = true;
+    scene.add(dirt);
+  }
+
+  const dashGeo = new THREE.BoxGeometry(0.16, 0.02, 1.7);
+  const dashMat = new THREE.MeshStandardMaterial({
+    color: 0xd8c89a,
+    roughness: 0.55,
+    emissive: 0x4a4030,
+    emissiveIntensity: 0.18,
+  });
+  const dashes = new THREE.InstancedMesh(dashGeo, dashMat, 44);
+  const dummy = new THREE.Object3D();
+  for (let i = 0; i < 44; i++) {
+    dummy.position.set(0, 0.055, 14 - i * 3.05);
+    dummy.updateMatrix();
+    dashes.setMatrixAt(i, dummy.matrix);
+  }
+  scene.add(dashes);
+
+  for (const z of [8.2, -16.5, -50.5, -96]) paintCrosswalk(scene, z, mat);
+
+  const stainGeo = new THREE.CircleGeometry(0.95, 10);
+  stainGeo.rotateX(-Math.PI / 2);
+  const stainMat = new THREE.MeshStandardMaterial({
+    color: 0x12100e,
+    roughness: 0.98,
+    metalness: 0.02,
+    transparent: true,
+    opacity: 0.5,
+  });
+  const stains = new THREE.InstancedMesh(stainGeo, stainMat, 20);
+  for (let i = 0; i < 20; i++) {
+    dummy.position.set((irand(i) - 0.5) * 3.4, 0.045, 10 - i * 6.2);
+    dummy.scale.setScalar(0.6 + irand(i + 4) * 1.15);
+    dummy.updateMatrix();
+    stains.setMatrixAt(i, dummy.matrix);
+    dummy.scale.setScalar(1);
+  }
+  scene.add(stains);
+
+  for (let i = 0; i < 12; i++) {
+    const hole = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.06, 12), mat.metal);
+    hole.position.set(i % 2 ? -1.35 : 1.4, 0.05, 10 - i * 10.5);
+    scene.add(hole);
+    const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.03, 12), mat.dark);
+    lid.position.set(i % 2 ? -1.35 : 1.4, 0.085, 10 - i * 10.5);
+    scene.add(lid);
+  }
+  for (let i = 0; i < 14; i++) {
+    const side = i % 2 === 0 ? -1 : 1;
+    const grate = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.04, 0.85), mat.dark);
+    grate.position.set(side * 2.95, 0.06, 12 - i * 9.2);
+    scene.add(grate);
+    for (let k = 0; k < 4; k++) {
+      const slat = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.02, 0.06), mat.metal);
+      slat.position.set(side * 2.95, 0.08, 12 - i * 9.2 - 0.28 + k * 0.18);
+      scene.add(slat);
+    }
+  }
+}
+
 export function placeStreetFurniture(scene: THREE.Object3D, mat: Materials, theme: LevelTheme) {
   const add = (mesh: THREE.Object3D, x: number, z: number, ry = 0) => {
     mesh.position.set(x, 0, z);
@@ -204,6 +391,41 @@ export function placeStreetFurniture(scene: THREE.Object3D, mat: Materials, them
   add(createKiosk(mat), 5.15, -62, -0.15);
   add(createSignal(mat), -3.2, 7.4, 0.1);
   add(createSignal(mat), 3.2, -15, Math.PI);
+  add(createSignal(mat), -3.15, -50, 0.08);
+  add(createSignal(mat), 3.15, -96, Math.PI);
+
+  for (const [x, z] of [
+    [-4.8, 9.2],
+    [4.9, 6.4],
+    [-5.0, -20.5],
+    [5.1, -32.2],
+    [-4.9, -66.5],
+    [5.0, -84.2],
+  ] as const) {
+    add(createStreetTree(mat), x, z);
+  }
+  for (const [x, z] of [
+    [-3.55, 5.2],
+    [3.55, 3.8],
+    [-3.5, -18],
+    [3.55, -40],
+    [-3.5, -72],
+  ] as const) {
+    add(createMeter(mat), x, z);
+  }
+  for (const [x, z, ry] of [
+    [-2.6, 5.4, 0.08],
+    [2.7, 4.8, -0.1],
+    [-2.5, -48.5, 0],
+    [2.6, -49.2, 0.05],
+  ] as const) {
+    add(createJersey(mat), x, z, ry);
+  }
+  add(createNewsbox(mat), -4.4, 1.6, 0.2);
+  add(createNewsbox(mat), 4.5, -8.4, -0.15);
+  add(createBillboard(mat), -8.4, 16.5, Math.PI / 2);
+  add(createBillboard(mat), 8.6, -30, -Math.PI / 2);
+  add(createMonument(mat), 0, 10.6);
 
   for (const [x, z, ry] of [
     [-6.2, -2, 0.08] as const,
@@ -283,17 +505,23 @@ export function dressThemeGround(scene: THREE.Object3D, mat: Materials, theme: L
   }
 
   if (theme === "ash") {
-    const median = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.12, 18), mat.concrete);
-    median.position.set(0, 0.08, 4);
+    const plaza = new THREE.Mesh(new THREE.BoxGeometry(16, 0.07, 16), mat.sidewalk);
+    plaza.position.set(0, 0.03, 6);
+    plaza.receiveShadow = true;
+    scene.add(plaza);
+    const median = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.16, 10), mat.concrete);
+    median.position.set(0, 0.1, 2.4);
     median.receiveShadow = true;
     scene.add(median);
-    for (const z of [8, 2, -2]) {
-      const tree = new THREE.Group();
-      cyl(mat.dark, 0.08, 0.12, 0.7, 0, 0.4, 0, tree);
-      box(mat.rust, 0.7, 0.16, 0.7, 0, 0.82, 0, tree);
-      box(mat.dark, 0.45, 0.35, 0.45, 0, 1.05, 0, tree);
+    for (const z of [6.5, 1.2, -3.2]) {
+      const tree = createStreetTree(mat);
       tree.position.set(0, 0, z);
+      tree.scale.setScalar(0.72);
       scene.add(tree);
     }
+    const gatePlaza = new THREE.Mesh(new THREE.BoxGeometry(16, 0.07, 18), mat.concrete);
+    gatePlaza.position.set(0, 0.03, -104);
+    gatePlaza.receiveShadow = true;
+    scene.add(gatePlaza);
   }
 }

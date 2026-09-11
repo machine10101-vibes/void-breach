@@ -215,8 +215,8 @@ function glowBox(
 export function buildHelmKit(mat: Materials, style: ArmorStyle, rarity: Rarity, glows: THREE.Mesh[] = []) {
   const p = stylePalette(mat, style, rarity);
   const g = kitGroup();
-  sph(p.plate, 0.22, 0, 0.14, 0.0, g, 14);
-  box(p.plate, 0.4, 0.2, 0.36, 0, 0.12, 0.04, g);
+  sph(p.plate, 0.24, 0, 0.14, 0.0, g, 14);
+  box(p.plate, 0.44, 0.22, 0.4, 0, 0.12, 0.04, g);
   box(p.dark, 0.42, 0.1, 0.38, 0, 0.26, 0.0, g);
   box(p.plate, 0.36, 0.12, 0.24, 0, 0.22, -0.12, g);
   box(p.plate, 0.16, 0.18, 0.2, 0.2, 0.12, 0.02, g);
@@ -271,12 +271,12 @@ export function buildHelmKit(mat: Materials, style: ArmorStyle, rarity: Rarity, 
 export function buildChestKit(mat: Materials, style: ArmorStyle, rarity: Rarity, glows: THREE.Mesh[] = []) {
   const p = stylePalette(mat, style, rarity);
   const g = kitGroup();
-  box(p.plate, 0.68, 0.46, 0.32, 0, 0.16, 0.08, g);
-  box(p.plate, 0.58, 0.16, 0.26, 0, 0.4, 0.04, g);
-  box(p.plate, 0.5, 0.12, 0.22, 0, 0.46, -0.08, g);
-  box(p.dark, 0.4, 0.18, 0.12, 0, 0.18, 0.22, g);
-  box(p.plate, 0.26, 0.22, 0.2, 0.34, 0.26, 0.12, g);
-  box(p.plate, 0.26, 0.22, 0.2, -0.34, 0.26, 0.12, g);
+  box(p.plate, 0.74, 0.5, 0.36, 0, 0.16, 0.08, g);
+  box(p.plate, 0.64, 0.18, 0.3, 0, 0.42, 0.04, g);
+  box(p.plate, 0.54, 0.14, 0.24, 0, 0.48, -0.08, g);
+  box(p.dark, 0.44, 0.2, 0.14, 0, 0.18, 0.24, g);
+  box(p.plate, 0.3, 0.26, 0.24, 0.36, 0.28, 0.12, g);
+  box(p.plate, 0.3, 0.26, 0.24, -0.36, 0.28, 0.12, g);
   box(p.metal, 0.22, 0.1, 0.16, 0.38, 0.36, 0.02, g);
   box(p.metal, 0.22, 0.1, 0.16, -0.38, 0.36, 0.02, g);
   for (let i = 0; i < 3; i++) box(p.dark, 0.44, 0.03, 0.06, 0, 0.02 + i * 0.07, 0.22, g);
