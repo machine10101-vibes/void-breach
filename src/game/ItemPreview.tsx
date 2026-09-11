@@ -37,7 +37,7 @@ function ensureHost() {
 }
 
 function buildMesh(item: InvItem) {
-  if (item.kind === "weapon") return createWeaponMesh(item.weaponId ?? "ar", mat);
+  if (item.kind === "weapon") return createWeaponMesh(item.weaponId ?? "ar", mat, item.rarity);
   if (item.kind === "ammo") return createAmmoMesh(item.ammoId ?? "rifle", mat);
   return createArmorMesh(item.slot ?? "chest", mat, item.rarity, item.name);
 }
@@ -89,6 +89,6 @@ export function ItemPreview({ item }: { item: InvItem }) {
     const canvas = ref.current;
     if (!canvas) return;
     return attachItemPreview(canvas, item);
-  }, [item.uid, item.kind, item.weaponId, item.ammoId, item.slot, item.rarity]);
+  }, [item.uid, item.kind, item.weaponId, item.ammoId, item.slot, item.rarity, item.name]);
   return <canvas ref={ref} width={160} height={128} className="h-16 w-20 shrink-0 rounded-md bg-bg/60" aria-hidden />;
 }

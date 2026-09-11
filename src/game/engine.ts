@@ -960,7 +960,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     const kindDrop: Drop["kind"] = item ? (item.kind === "armor" ? "armor" : "weapon") : Math.random() > 0.5 ? "health" : "gold";
     let mesh: THREE.Object3D;
     if (item?.kind === "weapon") {
-      mesh = createWeaponMesh(item.weaponId ?? "ar", mat);
+      mesh = createWeaponMesh(item.weaponId ?? "ar", mat, item.rarity);
       mesh.scale.setScalar(0.85);
     } else if (item?.kind === "armor") {
       mesh = createArmorMesh(item.slot ?? "chest", mat, item.rarity, item.name);
@@ -1586,8 +1586,13 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       playerRig.gunGrip.position.z = THREE.MathUtils.lerp(0.0, 0.22, aim) - kick * 0.05;
     }
 
+    const visorPulse = 2.35 + breath * 14 + kick * 1.4;
     const visorMat = playerRig.visor.material as THREE.MeshStandardMaterial;
-    visorMat.emissiveIntensity = 2.35 + breath * 14 + kick * 1.4;
+    visorMat.emissiveIntensity = visorPulse;
+    for (const glow of playerRig.kitGlows) {
+      const gm = glow.material as THREE.MeshStandardMaterial;
+      if (gm.emissiveIntensity !== undefined) gm.emissiveIntensity = visorPulse * 0.55 + 1.2;
+    }
 
     playerRig.group.position.set(px, args.lift + hop, pz);
     playerRig.group.rotation.set(
@@ -1602,7 +1607,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     playerRig.gunGrip.remove(playerRig.gun);
     const armed = isArmed();
     const id = armed ? currentWeapon()?.id ?? "ar" : "ar";
-    const g = createWeaponMesh(id, mat);
+    const g = createWeaponMesh(id, mat, armed ? currentWeapon().rarity : "common");
     mountGunInRightHand(g);
     g.visible = armed;
     playerRig.gunGrip.add(g);
