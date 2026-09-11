@@ -23,17 +23,20 @@ function ensureHost() {
   renderer.setSize(160, 128, false);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   scene = new THREE.Scene();
-  scene.add(new THREE.HemisphereLight(0xfff0dc, 0x2a2218, 1.45));
-  scene.add(new THREE.AmbientLight(0xc8b8a4, 0.55));
-  const key = new THREE.DirectionalLight(0xffe2c0, 2.6);
-  key.position.set(2.2, 3.2, 2.4);
+  scene.add(new THREE.HemisphereLight(0xfff4e6, 0x1a2430, 1.7));
+  scene.add(new THREE.AmbientLight(0xd8c8b4, 0.85));
+  const key = new THREE.DirectionalLight(0xffe8cc, 3.4);
+  key.position.set(1.8, 2.6, 2.2);
   scene.add(key);
-  const fill = new THREE.DirectionalLight(0x8ef0e6, 0.85);
-  fill.position.set(-2, 1.4, -1.6);
+  const fill = new THREE.DirectionalLight(0x7eeae0, 1.35);
+  fill.position.set(-2.2, 1.2, -1.2);
   scene.add(fill);
-  camera = new THREE.PerspectiveCamera(32, 160 / 128, 0.08, 20);
-  camera.position.set(0.55, 0.32, 0.95);
-  camera.lookAt(0, 0.04, 0);
+  const rim = new THREE.DirectionalLight(0xff8a3a, 0.9);
+  rim.position.set(0.2, 1.8, -2.4);
+  scene.add(rim);
+  camera = new THREE.PerspectiveCamera(28, 160 / 128, 0.08, 20);
+  camera.position.set(0.62, 0.38, 1.05);
+  camera.lookAt(0, 0.02, 0);
 }
 
 function buildMesh(item: InvItem) {

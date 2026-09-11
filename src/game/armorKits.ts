@@ -169,7 +169,9 @@ function stylePalette(mat: Materials, style: ArmorStyle, rarity: Rarity): Palett
     accent = mat.rust;
     light = mat.ember;
   } else {
-    plate.color.setHex(0x8a7a62);
+    plate.color.setHex(0x5c6168);
+    plate.metalness = 0.72;
+    plate.roughness = 0.34;
     visor.emissiveIntensity = 3.4;
     accent = mat.metal;
     light = mat.neon;
@@ -213,21 +215,23 @@ function glowBox(
 export function buildHelmKit(mat: Materials, style: ArmorStyle, rarity: Rarity, glows: THREE.Mesh[] = []) {
   const p = stylePalette(mat, style, rarity);
   const g = kitGroup();
-  sph(p.plate, 0.2, 0, 0.12, 0.0, g, 14);
-  box(p.plate, 0.36, 0.16, 0.32, 0, 0.1, 0.04, g);
-  box(p.dark, 0.38, 0.08, 0.34, 0, 0.22, 0.0, g);
-  box(p.plate, 0.32, 0.08, 0.2, 0, 0.2, -0.1, g);
-  box(p.plate, 0.14, 0.16, 0.18, 0.18, 0.1, 0.02, g);
-  box(p.plate, 0.14, 0.16, 0.18, -0.18, 0.1, 0.02, g);
-  box(p.dark, 0.22, 0.06, 0.16, 0, 0.0, 0.1, g);
-  glowBox(p.glow, 0.12, 0.03, 0.04, 0, 0.06, 0.2, g, glows);
+  sph(p.plate, 0.22, 0, 0.14, 0.0, g, 14);
+  box(p.plate, 0.4, 0.2, 0.36, 0, 0.12, 0.04, g);
+  box(p.dark, 0.42, 0.1, 0.38, 0, 0.26, 0.0, g);
+  box(p.plate, 0.36, 0.12, 0.24, 0, 0.22, -0.12, g);
+  box(p.plate, 0.16, 0.18, 0.2, 0.2, 0.12, 0.02, g);
+  box(p.plate, 0.16, 0.18, 0.2, -0.2, 0.12, 0.02, g);
+  box(p.dark, 0.24, 0.08, 0.18, 0, 0.0, 0.12, g);
+  box(p.metal, 0.2, 0.06, 0.16, 0, 0.08, -0.2, g);
+  cyl(p.dark, 0.016, 0.012, 0.22, 0.14, 0.36, -0.06, g, 0.35);
+  glowBox(p.glow, 0.12, 0.03, 0.04, 0, 0.06, 0.22, g, glows);
 
   if (style === "ember") {
     glowBox(p.visor, 0.3, 0.07, 0.08, 0, 0.11, 0.2, g, glows);
-    box(p.accent, 0.08, 0.18, 0.08, 0, 0.32, -0.02, g);
-    sph(p.accent, 0.024, 0.16, 0.2, 0.12, g, 6);
-    sph(p.accent, 0.024, -0.16, 0.2, 0.12, g, 6);
-    box(p.dark, 0.1, 0.14, 0.1, 0.2, 0.16, -0.04, g);
+    box(p.accent, 0.1, 0.26, 0.1, 0, 0.4, -0.04, g);
+    sph(p.accent, 0.03, 0.16, 0.22, 0.12, g, 6);
+    sph(p.accent, 0.03, -0.16, 0.22, 0.12, g, 6);
+    box(p.dark, 0.12, 0.16, 0.12, 0.22, 0.18, -0.06, g);
   } else if (style === "sealed") {
     box(p.dark, 0.32, 0.16, 0.12, 0, 0.1, 0.18, g);
     box(p.metal, 0.2, 0.04, 0.08, 0, 0.16, 0.24, g);
@@ -267,21 +271,24 @@ export function buildHelmKit(mat: Materials, style: ArmorStyle, rarity: Rarity, 
 export function buildChestKit(mat: Materials, style: ArmorStyle, rarity: Rarity, glows: THREE.Mesh[] = []) {
   const p = stylePalette(mat, style, rarity);
   const g = kitGroup();
-  box(p.plate, 0.62, 0.42, 0.28, 0, 0.14, 0.08, g);
-  box(p.plate, 0.54, 0.14, 0.22, 0, 0.36, 0.04, g);
-  box(p.dark, 0.36, 0.16, 0.1, 0, 0.18, 0.2, g);
-  box(p.plate, 0.2, 0.18, 0.16, 0.28, 0.22, 0.16, g);
-  box(p.plate, 0.2, 0.18, 0.16, -0.28, 0.22, 0.16, g);
-  for (let i = 0; i < 3; i++) box(p.dark, 0.4, 0.025, 0.05, 0, 0.02 + i * 0.07, 0.2, g);
-  glowBox(p.glow, 0.16, 0.04, 0.05, 0, 0.3, 0.22, g, glows);
+  box(p.plate, 0.68, 0.46, 0.32, 0, 0.16, 0.08, g);
+  box(p.plate, 0.58, 0.16, 0.26, 0, 0.4, 0.04, g);
+  box(p.plate, 0.5, 0.12, 0.22, 0, 0.46, -0.08, g);
+  box(p.dark, 0.4, 0.18, 0.12, 0, 0.18, 0.22, g);
+  box(p.plate, 0.26, 0.22, 0.2, 0.34, 0.26, 0.12, g);
+  box(p.plate, 0.26, 0.22, 0.2, -0.34, 0.26, 0.12, g);
+  box(p.metal, 0.22, 0.1, 0.16, 0.38, 0.36, 0.02, g);
+  box(p.metal, 0.22, 0.1, 0.16, -0.38, 0.36, 0.02, g);
+  for (let i = 0; i < 3; i++) box(p.dark, 0.44, 0.03, 0.06, 0, 0.02 + i * 0.07, 0.22, g);
+  glowBox(p.glow, 0.18, 0.045, 0.05, 0, 0.32, 0.24, g, glows);
 
   if (style === "assault") {
-    box(p.metal, 0.78, 0.16, 0.22, 0, 0.44, 0.1, g);
-    box(p.plate, 0.28, 0.22, 0.2, 0.4, 0.3, 0.08, g);
-    box(p.plate, 0.28, 0.22, 0.2, -0.4, 0.3, 0.08, g);
-    box(p.accent, 0.14, 0.04, 0.16, 0.22, 0.4, 0.2, g);
-    box(p.accent, 0.14, 0.04, 0.16, -0.22, 0.4, 0.2, g);
-    box(p.glow, 0.28, 0.12, 0.1, 0, 0.16, 0.22, g);
+    box(p.metal, 0.86, 0.2, 0.26, 0, 0.5, 0.08, g);
+    box(p.plate, 0.32, 0.26, 0.24, 0.44, 0.32, 0.08, g);
+    box(p.plate, 0.32, 0.26, 0.24, -0.44, 0.32, 0.08, g);
+    box(p.accent, 0.16, 0.05, 0.18, 0.24, 0.46, 0.2, g);
+    box(p.accent, 0.16, 0.05, 0.18, -0.24, 0.46, 0.2, g);
+    box(p.glow, 0.3, 0.14, 0.12, 0, 0.16, 0.24, g);
   } else if (style === "ember") {
     glowBox(p.accent, 0.2, 0.06, 0.06, 0, 0.22, 0.24, g, glows);
     sph(p.accent, 0.045, 0, 0.16, 0.26, g, 8);
@@ -317,10 +324,11 @@ export function buildChestKit(mat: Materials, style: ArmorStyle, rarity: Rarity,
 export function buildUpperArmKit(mat: Materials, style: ArmorStyle, rarity: Rarity, side: number, glows: THREE.Mesh[] = []) {
   const p = stylePalette(mat, style, rarity);
   const g = kitGroup();
-  box(p.plate, 0.22, 0.16, 0.26, 0.08 * side, 0.06, 0.04, g);
-  box(p.plate, 0.28, 0.12, 0.3, 0.12 * side, 0.16, 0.02, g);
-  box(p.dark, 0.1, 0.1, 0.14, 0.16 * side, 0.04, 0.14, g);
-  glowBox(p.glow, 0.1, 0.04, 0.08, 0.12 * side, 0.18, 0.12, g, glows);
+  box(p.plate, 0.26, 0.18, 0.3, 0.1 * side, 0.08, 0.04, g);
+  box(p.plate, 0.34, 0.16, 0.36, 0.16 * side, 0.2, 0.02, g);
+  box(p.dark, 0.12, 0.12, 0.16, 0.18 * side, 0.04, 0.16, g);
+  box(p.metal, 0.1, 0.08, 0.14, 0.2 * side, 0.16, -0.1, g);
+  glowBox(p.glow, 0.1, 0.04, 0.08, 0.14 * side, 0.2, 0.14, g, glows);
 
   if (style === "servo") {
     cyl(p.metal, 0.02, 0.02, 0.16, 0.18 * side, -0.02, 0.14, g, 1.15);
@@ -389,10 +397,11 @@ export function buildThighKit(mat: Materials, style: ArmorStyle, rarity: Rarity,
 export function buildShinKit(mat: Materials, style: ArmorStyle, rarity: Rarity, side: number, glows: THREE.Mesh[] = []) {
   const p = stylePalette(mat, style, rarity);
   const g = kitGroup();
-  box(p.plate, 0.18, 0.16, 0.16, 0, -0.12, 0.08, g);
-  box(p.plate, 0.2, 0.1, 0.2, 0, -0.28, 0.14, g);
-  box(p.rubber, 0.22, 0.08, 0.3, 0, -0.38, 0.08, g);
-  box(p.dark, 0.16, 0.05, 0.1, 0, -0.4, -0.08, g);
+  box(p.plate, 0.22, 0.2, 0.2, 0, -0.12, 0.1, g);
+  box(p.plate, 0.24, 0.12, 0.24, 0, -0.28, 0.16, g);
+  box(p.rubber, 0.26, 0.1, 0.34, 0, -0.4, 0.1, g);
+  box(p.dark, 0.18, 0.06, 0.12, 0, -0.42, -0.1, g);
+  box(p.metal, 0.1, 0.14, 0.08, 0.1 * side, -0.16, -0.06, g);
 
   if (style === "rail") {
     box(p.accent, 0.045, 0.22, 0.045, 0.1 * side, -0.16, 0.16, g);
