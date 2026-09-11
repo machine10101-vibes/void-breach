@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { addRarityStripe } from "./armorKits";
+import { dressThemeGround, placeStreetFurniture } from "./cityKit";
 import { bindPbr } from "./textures";
 import type { AABB, AmmoId, EnemyKind, LevelTheme, Rarity, WeaponId } from "./types";
 
@@ -326,6 +327,9 @@ export function createExoSuit(mat: Materials): PlayerRig {
   box(dark, 0.16, 0.07, 0.12, 0, 0.96, 0.14, group);
   box(metal, 0.07, 0.05, 0.08, 0.14, 0.9, 0.08, group);
   box(metal, 0.07, 0.05, 0.08, -0.14, 0.9, 0.08, group);
+  box(dark, 0.1, 0.08, 0.08, 0.12, 0.88, 0.12, group);
+  box(dark, 0.1, 0.08, 0.08, -0.12, 0.88, 0.12, group);
+  cyl(metal, 0.012, 0.012, 0.14, 0.1, 1.02, 0.1, group, 1.1);
 
   const torso = new THREE.Group();
   torso.position.set(0, 1.2, 0);
@@ -340,6 +344,10 @@ export function createExoSuit(mat: Materials): PlayerRig {
   box(metal, 0.05, 0.16, 0.05, 0.14, 0.1, -0.04, torso);
   box(metal, 0.05, 0.16, 0.05, -0.14, 0.1, -0.04, torso);
   cap(suit, 0.045, 0.08, 0, 0.4, 0.0, torso);
+  box(dark, 0.08, 0.1, 0.06, 0.12, 0.22, 0.12, torso);
+  box(dark, 0.08, 0.1, 0.06, -0.12, 0.22, 0.12, torso);
+  box(metal, 0.04, 0.08, 0.03, 0.16, 0.08, 0.12, torso);
+  cyl(dark, 0.01, 0.01, 0.16, 0.08, 0.28, -0.12, torso, 0.9);
 
   const backpack = new THREE.Group();
   backpack.position.set(0, 0.16, -0.32);
@@ -377,6 +385,8 @@ export function createExoSuit(mat: Materials): PlayerRig {
     root.add(forearm);
     cap(suit, 0.05, 0.18, 0.04 * side, -0.1, 0.02, forearm);
     box(dark, 0.07, 0.055, 0.09, 0.04 * side, -0.28, 0.06, forearm);
+    box(metal, 0.04, 0.03, 0.05, 0.06 * side, -0.22, 0.1, forearm);
+    box(dark, 0.03, 0.04, 0.06, 0.02 * side, -0.34, 0.1, forearm);
     return { root, forearm };
   };
   const left = mkArm(-1);
@@ -405,6 +415,8 @@ export function createExoSuit(mat: Materials): PlayerRig {
     cap(suit, 0.06, 0.24, 0, -0.14, 0, shin);
     box(mat.rubber, 0.16, 0.055, 0.22, 0, -0.36, 0.04, shin);
     box(dark, 0.1, 0.03, 0.08, 0, -0.38, -0.08, shin);
+    box(metal, 0.04, 0.03, 0.08, 0.06 * side, -0.34, 0.12, shin);
+    box(dark, 0.12, 0.02, 0.04, 0, -0.4, 0.12, shin);
     return { thigh, shin };
   };
 
@@ -1194,6 +1206,11 @@ export function createCar(mat: Materials) {
   wheel(0.78, 0.58);
   wheel(-0.78, -0.58);
   wheel(0.78, -0.58, true);
+  box(mat.dark, 0.04, 0.1, 0.14, 0.55, 0.92, 0.56, g);
+  box(mat.dark, 0.04, 0.1, 0.14, 0.55, 0.92, -0.56, g);
+  box(mat.glass, 0.06, 0.08, 0.1, 0.58, 0.92, 0.56, g);
+  box(mat.metal, 0.22, 0.04, 0.08, -1.2, 0.62, 0, g);
+  box(mat.dark, 0.3, 0.04, 0.7, 0.1, 0.72, 0, g);
   g.rotation.z = 0.05;
   g.rotation.y = 0.04;
   return g;
@@ -1293,6 +1310,8 @@ export function createCrate(mat: Materials) {
   box(mat.neon, 0.12, 0.015, 0.015, 0, 0.72, 0.3, g);
   box(mat.warning, 0.06, 0.06, 0.72, 0.36, 0.35, 0, g);
   box(mat.metal, 0.2, 0.04, 0.12, -0.18, 0.72, -0.2, g);
+  box(mat.dark, 0.22, 0.08, 0.04, 0, 0.42, 0.36, g);
+  box(mat.metal, 0.08, 0.08, 0.08, 0.28, 0.52, 0.28, g);
   return g;
 }
 
@@ -1386,6 +1405,41 @@ export function addWorldFromBoxes(scene: THREE.Object3D, boxes: AABB[], mat: Mat
       const vent = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.08, 0.45), mat.dark);
       vent.position.set(cx - face * (w * 0.18), b.maxy + 0.08, cz - d * 0.12);
       scene.add(vent);
+      const awning = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.06, Math.min(d * 0.55, 3.4)), mat.rust);
+      awning.position.set(fx + face * 0.32, b.miny + 2.15, cz);
+      awning.rotation.z = face * 0.18;
+      awning.castShadow = true;
+      scene.add(awning);
+      const stoop = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.16, 1.3), mat.concrete);
+      stoop.position.set(fx + face * 0.28, b.miny + 0.08, cz);
+      stoop.receiveShadow = true;
+      scene.add(stoop);
+      if (d > 8) {
+        const escape = new THREE.Group();
+        for (let r = 0; r < 3; r++) {
+          const land = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.06, 1.1), mat.metal);
+          land.position.set(fx + face * 0.4, b.miny + 2.4 + r * 1.35, cz + d * 0.18);
+          land.castShadow = true;
+          escape.add(land);
+          const rail = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.7, 1.1), mat.dark);
+          rail.position.set(fx + face * 0.72, b.miny + 2.75 + r * 1.35, cz + d * 0.18);
+          escape.add(rail);
+        }
+        scene.add(escape);
+      }
+      for (let row = 0; row < 2; row++) {
+        for (let col = 0; col < Math.min(4, Math.floor(d / 3.2)); col++) {
+          const wy = b.miny + 2.6 + row * 1.7;
+          const wz = b.minz + 1.6 + col * 3.0;
+          if (wz > b.maxz - 1.2) continue;
+          const pane = new THREE.Mesh(
+            new THREE.BoxGeometry(0.05, 1.05, 0.72),
+            row + col === 2 ? mat.ember : mat.dark,
+          );
+          pane.position.set(fx + face * 0.03, wy, wz);
+          scene.add(pane);
+        }
+      }
     }
   }
 }
@@ -1729,6 +1783,9 @@ export function dressWorld(scene: THREE.Object3D, mat: Materials, theme: LevelTh
     box(mat.dark, 0.48, 0.95, 0.04, side * 5.82, 1.5, z + side * 0.05, scene);
     box(mat.ember, 0.12, 0.08, 0.04, side * 5.78, 1.95, z + side * 0.06, scene);
   }
+
+  dressThemeGround(scene, mat, theme);
+  placeStreetFurniture(scene, mat, theme);
 }
 
 export function createAimReticle() {
