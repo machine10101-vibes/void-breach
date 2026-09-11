@@ -280,6 +280,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   let hitMarker = 0;
   let freeze = 0;
   let adsT = 0;
+  let aimT = 0;
+  let aimHold = 0;
   let shots = 0;
   let hits = 0;
   let damageDealt = 0;
@@ -739,6 +741,10 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   }
 
   function restoreChamber() {
+    if (!isArmed()) {
+      mag = 0;
+      return;
+    }
     const w = currentWeapon();
     const it = save.inventory.find((i) => i.uid === save.equippedWeapon);
     mag = clamp(it?.loaded ?? w.mag, 0, w.mag);
@@ -768,15 +774,23 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
         reload: 1.4,
       });
       weapons = [fresh];
-      weaponIdx = 0;
+      weaponIdx = -1;
+      save.equippedWeapon = null;
       return;
     }
     weapons = list.map(itemToWeapon);
     let idx = list.findIndex((i) => i.uid === save.equippedWeapon);
-    if (idx < 0) idx = 0;
-    weaponIdx = idx;
-    save.equippedWeapon = list[idx].uid;
+    if (idx < 0) {
+      weaponIdx = -1;
+      save.equippedWeapon = null;
+    } else {
+      weaponIdx = idx;
+    }
     syncWeaponReserves();
+  }
+
+  function isArmed() {
+    return Boolean(save.equippedWeapon && save.inventory.some((i) => i.uid === save.equippedWeapon && i.kind === "weapon"));
   }
 
   function applyLoadoutVisuals() {
@@ -819,7 +833,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   }
 
   function currentWeapon() {
-    return weapons[weaponIdx] ?? weapons[0];
+    return (weaponIdx >= 0 ? weapons[weaponIdx] : undefined) ?? weapons[0];
   }
   function keySet() {
     return qaKeys.active ? new Set(qaKeys.codes) : keys;
@@ -1134,7 +1148,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     if (!it) return;
     if (it.kind === "weapon") {
       stashChamber();
-      save.equippedWeapon = it.uid;
+      save.equippedWeapon = save.equippedWeapon === it.uid ? null : it.uid;
       writeSave(save);
       applyLoadoutVisuals();
     } else if (it.slot) {
@@ -1244,8 +1258,9 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   }
 
   function fireWeapon() {
+    if (!isArmed()) return;
     const w = currentWeapon();
-    if (reloadT > 0) return;
+    if (!w || reloadT > 0) return;
     if (mag <= 0) {
       if (emptyCd <= 0) {
         audio.empty();
@@ -1344,7 +1359,9 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   }
 
   function startReload() {
+    if (!isArmed()) return;
     const w = currentWeapon();
+    if (!w) return;
     const reserve = ammoCount(save.inventory, WEAPON_AMMO[w.id]);
     if (reloadT > 0 || mag >= w.mag || reserve <= 0) return;
     reloadT = w.reload;
@@ -1488,29 +1505,31 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     dt: number;
     dodge: number;
     ads: number;
+    aim: number;
+    armed: boolean;
     reload: number;
   }) {
     if (!playerRig) return;
-    const rate = args.sprint ? 14.4 : 9.4;
+    const rate = args.sprint ? 13.2 : 8.8;
     gaitT += args.dt * (args.moving ? rate : 1.2);
     const step = args.moving ? Math.sin(gaitT) : 0;
     const opposite = args.moving ? Math.sin(gaitT + Math.PI) : 0;
     const idle = Math.sin(args.now * 0.0026) * 0.022;
     const breath = Math.sin(args.now * 0.0017) * 0.012;
-    const amp = args.moving ? (args.sprint ? 1.02 : 0.74) : 0;
+    const amp = args.moving ? (args.sprint ? 0.98 : 0.7) : 0;
     const knee = (ph: number) => {
       if (!args.moving) return 0.1;
       const swing = Math.sin(ph);
       const lift = Math.max(0, -swing);
       const crumple = Math.max(0, Math.cos(ph + 0.35));
-      return 0.18 + lift * (args.sprint ? 1.42 : 1.12) + crumple * 0.34;
+      return 0.18 + lift * (args.sprint ? 1.36 : 1.08) + crumple * 0.34;
     };
     const plant = args.moving ? Math.pow(Math.abs(Math.sin(gaitT)), 1.35) : 0;
-    const hop = args.moving ? plant * (args.sprint ? 0.078 : 0.052) : idle * 0.45;
+    const aim = THREE.MathUtils.clamp(args.aim, 0, 1);
+    const hop = (args.moving ? plant * (args.sprint ? 0.078 : 0.052) : idle * 0.45) * (0.55 + (1 - aim) * 0.45);
     const kick = recoil;
     const dodgeLean = Math.min(1, args.dodge * 3.4);
     const rel = Math.sin(args.reload * Math.PI);
-    const ads = args.ads;
 
     playerRig.leftThigh.rotation.x = step * amp + idle * 0.28 + dodgeLean * 0.42;
     playerRig.rightThigh.rotation.x = opposite * amp + idle * 0.28 - dodgeLean * 0.18;
@@ -1519,53 +1538,73 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
 
     playerRig.torso.position.y = 1.2 + breath * 1.4 + (args.moving ? plant * 0.012 : 0);
     playerRig.torso.rotation.x =
-      args.pitch * 0.16 + idle + (args.moving ? (args.sprint ? 0.16 : 0.08) : 0.035) + ads * 0.12 + rel * 0.1 + kick * 0.14 + dodgeLean * 0.22;
-    playerRig.torso.rotation.y = args.moving ? -step * 0.09 : 0;
-    playerRig.torso.rotation.z = (args.moving ? -step * 0.055 : 0) + dodgeLean * 0.16;
+      args.pitch * 0.16 +
+      idle +
+      (args.moving ? THREE.MathUtils.lerp(args.sprint ? 0.2 : 0.12, 0.06, aim) : 0.035) +
+      aim * 0.1 +
+      rel * 0.1 +
+      kick * 0.14 +
+      dodgeLean * 0.22;
+    playerRig.torso.rotation.y = args.moving ? -step * THREE.MathUtils.lerp(0.1, 0.04, aim) : 0;
+    playerRig.torso.rotation.z = (args.moving ? -step * 0.05 : 0) + dodgeLean * 0.16;
 
     playerRig.head.position.y = 1.66 + breath * 0.7 + hop * 0.15;
-    playerRig.head.rotation.x = args.pitch * 0.34 + idle * 0.6 - ads * 0.06 - kick * 0.1 + rel * 0.08;
-    playerRig.head.rotation.y = args.moving ? step * 0.055 : 0;
+    playerRig.head.rotation.x = args.pitch * 0.34 + idle * 0.6 - aim * 0.08 - kick * 0.1 + rel * 0.08;
+    playerRig.head.rotation.y = args.moving ? step * 0.05 : 0;
     playerRig.head.rotation.z = args.moving ? -step * 0.03 : dodgeLean * 0.08;
 
     playerRig.backpack.rotation.x = (args.moving ? -step * 0.07 : idle * 0.4) - kick * 0.18;
     playerRig.backpack.rotation.z = args.moving ? step * 0.04 : 0;
     playerRig.backpack.position.y = 0.16 + hop * 0.28 + breath * 0.4;
 
-    playerRig.leftArm.rotation.x = -0.62 - step * amp * (ads > 0.4 ? 0.08 : 0.34) - ads * 0.18 - kick * 0.1 + rel * 0.22;
-    playerRig.leftArm.rotation.y = ads * 0.12 + rel * 0.18;
-    playerRig.leftArm.rotation.z = 0.3 + Math.abs(step) * amp * 0.1;
-    playerRig.leftForearm.rotation.x =
-      0.2 + (args.moving ? 0.16 + Math.max(0, -step) * 0.62 + Math.abs(step) * 0.18 : 0) + ads * 0.2 + rel * 0.28;
-
-    playerRig.rightArm.rotation.x = -0.86 + opposite * amp * (ads > 0.4 ? 0.04 : 0.12) - kick * 0.62 - rel * 0.55 - ads * 0.14;
-    playerRig.rightArm.rotation.y = -0.06 + rel * 0.38;
-    playerRig.rightArm.rotation.z = kick * 0.14 + dodgeLean * 0.08;
-    playerRig.rightForearm.rotation.x =
-      0.1 + kick * 0.32 + rel * 0.62 + ads * 0.12 + (args.moving ? Math.max(0, -opposite) * 0.18 : 0);
-
-    playerRig.gunGrip.rotation.x = 0.86 + kick * 0.62 + rel * 0.28;
-    playerRig.gunGrip.rotation.y = 0.04 + rel * 0.16;
-    playerRig.gunGrip.position.z = 0.12 - kick * 0.07 - ads * 0.03;
-    playerRig.gunGrip.position.y = -0.28 + rel * 0.04;
+    if (!args.armed) {
+      if (playerRig.gun) playerRig.gun.visible = false;
+      playerRig.leftArm.rotation.x = -0.16 - step * amp * 0.64 + idle;
+      playerRig.leftArm.rotation.y = 0.02;
+      playerRig.leftArm.rotation.z = 0.14;
+      playerRig.leftForearm.rotation.x = 0.14 + (args.moving ? Math.max(0, -step) * 0.32 : 0);
+      playerRig.rightArm.rotation.x = -0.16 + opposite * amp * 0.64 + idle;
+      playerRig.rightArm.rotation.y = -0.02;
+      playerRig.rightArm.rotation.z = -0.1 + dodgeLean * 0.08;
+      playerRig.rightForearm.rotation.x = 0.14 + (args.moving ? Math.max(0, -opposite) * 0.32 : 0);
+    } else {
+      if (playerRig.gun) playerRig.gun.visible = true;
+      const pump = THREE.MathUtils.lerp(0.08, 0.02, aim);
+      playerRig.leftArm.rotation.x = THREE.MathUtils.lerp(-0.32, -1.05, aim) - step * amp * pump - kick * 0.08 + rel * 0.22;
+      playerRig.leftArm.rotation.y = THREE.MathUtils.lerp(0.32, 0.1, aim) + rel * 0.18;
+      playerRig.leftArm.rotation.z = THREE.MathUtils.lerp(0.48, 0.16, aim) + Math.abs(step) * amp * 0.03;
+      playerRig.leftForearm.rotation.x = THREE.MathUtils.lerp(0.55, 0.16, aim) + rel * 0.28;
+      playerRig.rightArm.rotation.x =
+        THREE.MathUtils.lerp(-0.18, -1.18, aim) + opposite * amp * pump * 0.45 - kick * 0.38 - rel * 0.55;
+      playerRig.rightArm.rotation.y = THREE.MathUtils.lerp(0.22, -0.08, aim) + rel * 0.38;
+      playerRig.rightArm.rotation.z = THREE.MathUtils.lerp(0.16, 0.0, aim) + kick * 0.1 + dodgeLean * 0.08;
+      playerRig.rightForearm.rotation.x = THREE.MathUtils.lerp(0.52, 0.02, aim) + kick * 0.22 + rel * 0.62;
+      playerRig.gunGrip.rotation.x = THREE.MathUtils.lerp(1.42, 0.52, aim) + kick * 0.22 + rel * 0.28;
+      playerRig.gunGrip.rotation.y = THREE.MathUtils.lerp(0.22, 0.0, aim) + rel * 0.16;
+      playerRig.gunGrip.rotation.z = THREE.MathUtils.lerp(-0.14, 0.02, aim);
+      playerRig.gunGrip.position.y = THREE.MathUtils.lerp(-0.4, -0.16, aim) + rel * 0.04;
+      playerRig.gunGrip.position.z = THREE.MathUtils.lerp(0.0, 0.22, aim) - kick * 0.05;
+    }
 
     const visorMat = playerRig.visor.material as THREE.MeshStandardMaterial;
     visorMat.emissiveIntensity = 2.35 + breath * 14 + kick * 1.4;
 
     playerRig.group.position.set(px, args.lift + hop, pz);
     playerRig.group.rotation.set(
-      dodgeLean * 0.12 + kick * 0.04,
+      dodgeLean * 0.12 + kick * 0.04 + (args.moving ? THREE.MathUtils.lerp(0.04, 0, aim) : 0),
       args.yaw + Math.PI,
-      args.moving ? step * 0.038 : dodgeLean * 0.1,
+      args.moving ? step * THREE.MathUtils.lerp(0.042, 0.02, aim) : dodgeLean * 0.1,
     );
   }
 
   function swapGunMesh() {
     if (!playerRig || !mat) return;
     playerRig.gunGrip.remove(playerRig.gun);
-    const id = currentWeapon().id;
+    const armed = isArmed();
+    const id = armed ? currentWeapon()?.id ?? "ar" : "ar";
     const g = createWeaponMesh(id, mat);
     mountGunInRightHand(g);
+    g.visible = armed;
     playerRig.gunGrip.add(g);
     playerRig.gun = g;
   }
@@ -1914,6 +1953,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   }
 
   function snapshot(): HudSnapshot {
+    const armed = isArmed();
     const w = currentWeapon();
     const boss = enemies.find((e) => e.kind === "harbinger" && (e.alive || e.dying > 0));
     return {
@@ -1922,13 +1962,13 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       maxHealth: maxHp,
       shield,
       maxShield,
-      ammo: mag,
-      magSize: w.mag,
-      reserve: w.reserve,
-      ammoName: AMMO_META[WEAPON_AMMO[w.id]].name,
+      ammo: armed ? mag : 0,
+      magSize: armed ? w.mag : 0,
+      reserve: armed ? w.reserve : 0,
+      ammoName: armed ? AMMO_META[WEAPON_AMMO[w.id]].name : "Unarmed",
       weapon: w.id,
-      weaponName: w.name,
-      rarity: w.rarity,
+      weaponName: armed ? w.name : "Unarmed",
+      rarity: armed ? w.rarity : "common",
       gold,
       kills,
       objective,
@@ -1943,7 +1983,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       reloading: reloadT > 0,
       overdrive: overdriveT > 0,
       sprinting: held.sprint || keySet().has("ShiftLeft") || keySet().has("ShiftRight"),
-      ads: adsT > 0.4,
+      ads: adsT > 0.4 || aimT > 0.45,
       boss: boss ? { name: level.bossName, hp: Math.max(0, boss.hp), max: boss.max } : bossAlive ? { name: level.bossName, hp: 0, max: 1 } : null,
       hitFlash,
       xp,
@@ -1953,11 +1993,11 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       missionTime,
       hitMarker,
       floating: floaters,
-      slots: weapons.map((wp, i) => ({ id: wp.id, name: wp.name, rarity: wp.rarity, active: i === weaponIdx })),
+      slots: weapons.map((wp, i) => ({ id: wp.id, name: wp.name, rarity: wp.rarity, active: armed && i === weaponIdx })),
       lockLost: lockLost && phase === "playing" && !isMobile,
       compass: yaw,
       muted: save.mute,
-      lowAmmo: mag <= Math.ceil(w.mag * 0.25),
+      lowAmmo: armed && mag <= Math.ceil(w.mag * 0.25),
       wave: objective,
       stats: { time: missionTime, kills, gold, xp, shots, hits, damageDealt },
       best: save.runs ? { kills: save.bestKills, time: save.bestTime, gold: save.bestGold, runs: save.runs } : null,
@@ -2058,6 +2098,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     hitMarker = 0;
     freeze = 0;
     adsT = 0;
+    aimT = 0;
+    aimHold = 0;
     camSnap = true;
     shots = 0;
     hits = 0;
@@ -2221,6 +2263,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
           dt,
           dodge: 0,
           ads: 0,
+          aim: 0,
+          armed: isArmed(),
           reload: 0,
         });
       }
@@ -2273,6 +2317,11 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     if (justPressed("KeyG") || (held.scan && skillCd.scan <= 0)) triggerScan();
     const wantAds = held.ads || k.has("ControlLeft") || pad.ads;
     adsT = THREE.MathUtils.damp(adsT, wantAds ? 1 : 0, 12, dt);
+    const firing = held.fire || k.has("Mouse0") || pad.fire;
+    if (isArmed() && (firing || wantAds || reloadT > 0)) aimHold = 0.42;
+    aimHold = Math.max(0, aimHold - dt);
+    const wantAim = isArmed() && (firing || wantAds || reloadT > 0 || aimHold > 0);
+    aimT = THREE.MathUtils.damp(aimT, wantAim ? 1 : 0, wantAim ? 16 : 7, dt);
 
     fireCd = Math.max(0, fireCd - dt);
     recoil = Math.max(0, recoil - dt * 7.6);
@@ -2294,8 +2343,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
 
     if (sim > 0) {
       const mv = inputMove();
-      const sprint = held.sprint || k.has("ShiftLeft") || k.has("ShiftRight") || pad.sprint;
-      const speed = (sprint ? SPRINT : WALK) * (overdriveT > 0 ? 1.22 : 1) * (wantAds ? 0.72 : 1);
+      const sprint = (held.sprint || k.has("ShiftLeft") || k.has("ShiftRight") || pad.sprint) && aimT < 0.35;
+      const speed = (sprint ? SPRINT : WALK) * (overdriveT > 0 ? 1.22 : 1) * (wantAds || aimT > 0.45 ? 0.72 : 1);
       const basis = camBasis();
       let wishX = basis.f.x * mv.y + basis.r.x * mv.x;
       let wishZ = basis.f.z * mv.y + basis.r.z * mv.x;
@@ -2398,7 +2447,9 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
         dt,
         dodge: dodgeT,
         ads: adsT,
-        reload: reloadT > 0 ? Math.min(1, 1 - reloadT / Math.max(0.4, currentWeapon().reload)) : 0,
+        aim: aimT,
+        armed: isArmed(),
+        reload: reloadT > 0 ? Math.min(1, 1 - reloadT / Math.max(0.4, currentWeapon()?.reload ?? 1)) : 0,
       });
       if (overdriveT > 0) {
         (playerRig.visor.material as THREE.MeshStandardMaterial).emissiveIntensity = 5;

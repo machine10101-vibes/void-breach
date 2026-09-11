@@ -256,7 +256,15 @@ export function Hud({
           <div>
             <p className={`font-display text-xl font-semibold ${rarityClass[hud.rarity]}`}>{hud.weaponName}</p>
             <p className="font-mono text-xs uppercase tracking-widest text-muted">
-              {hud.reloading ? "Reloading" : hud.overdrive ? "Overdrive" : hud.ads ? "Aimed" : hud.ammoName}
+              {hud.reloading
+                ? "Reloading"
+                : hud.overdrive
+                  ? "Overdrive"
+                  : !hud.equippedWeapon
+                    ? "Holstered"
+                    : hud.ads
+                      ? "Aimed"
+                      : "At the ready"}
             </p>
           </div>
           <p
