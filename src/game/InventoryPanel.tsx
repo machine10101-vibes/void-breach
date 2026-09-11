@@ -1,3 +1,4 @@
+import { armorStyle } from "./armorKits";
 import { RECIPES, scrapValue } from "./items";
 import { ItemPreview } from "./ItemPreview";
 import type { ArmorSlot, InvItem, Rarity } from "./types";
@@ -20,6 +21,7 @@ function bonusLine(it: InvItem) {
   if (it.kind === "weapon") return `${it.dmg} dmg · ${it.mag} mag`;
   if (it.kind === "ammo") return `${it.qty ?? 0} rounds`;
   const bits = [
+    `${armorStyle(it.name)} mesh`,
     it.hpBonus ? `+${it.hpBonus} HP` : "",
     it.shieldBonus ? `+${it.shieldBonus} shield` : "",
     it.dmgBonus ? `+${it.dmgBonus}% dmg` : "",
@@ -59,7 +61,7 @@ export function InventoryPanel({
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="font-display text-3xl font-semibold">Loadout</h2>
-            <p className="text-sm text-muted">Wear plates or stow them. Holster the rifle to run unarmed.</p>
+            <p className="text-sm text-muted">Wear plates or stow them. The operator mesh wears the same kit you see here.</p>
             <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-faint">
               Bank {scrapBank} scrap · {inventory.length} items
             </p>
