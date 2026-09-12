@@ -372,7 +372,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   envGround.position.y = -2.2;
   envScene.add(envGround);
   scene.environment = pmrem.fromScene(envScene, 0.02).texture;
-  scene.environmentIntensity = 1.08;
+  scene.environmentIntensity = 0.92;
   pmrem.dispose();
   const playerKey = new THREE.PointLight(0xffd0a8, 3.1, 16, 1.55);
   scene.add(playerKey);
@@ -896,9 +896,9 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     const mesh = createSpawnRift(mat);
     mesh.position.set(x, 0.05, z);
     scene.add(mesh);
-    rifts.push({ mesh, life: 0.9 });
+    rifts.push({ mesh, life: 0.55 });
     audio.spawn();
-    particles.burst(x, 0.4, z, 16, 0x22d3ee, 3.2, 0.5, 0.12, 1);
+    particles.burst(x, 0.4, z, 10, 0xe85d04, 2.2, 0.38, 0.08, 1);
   }
 
   function spawnEnemy(kind: EnemyKind, x: number, z: number, rift = true) {
@@ -1147,10 +1147,10 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       hemi.groundColor.setHex(0x12100c);
       hemi.intensity = 0.68;
       sun.color.setHex(0xff9a5c);
-      sun.intensity = 2.05;
+      sun.intensity = 2.22;
       sun.position.set(-42, 14, -18);
       fill.color.setHex(0x4aa8bc);
-      fill.intensity = 0.42;
+      fill.intensity = 0.48;
       bounce.color.setHex(0x8a6040);
       bounce.intensity = 0.22;
       ambient.color.setHex(0x2a221c);
@@ -2222,16 +2222,21 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       if (ring2) ring2.rotation.z += dt * 0.8;
       particles.mote(level.gate.x + (Math.random() - 0.5) * 3, 2 + Math.random() * 3, level.gate.z + (Math.random() - 0.5) * 2, 0x22d3ee);
     }
-    particles.mote(px + (Math.random() - 0.5) * 18, 1 + Math.random() * 4, pz - 4 + (Math.random() - 0.5) * 18, Math.random() > 0.6 ? 0xe85d04 : 0x5eead4);
-    if (Math.random() > 0.35) {
-      particles.mote(px + (Math.random() - 0.5) * 10, 0.4 + Math.random() * 2.2, pz + (Math.random() - 0.5) * 10, 0xb8a898);
+    particles.mote(
+      px + (Math.random() - 0.5) * 22,
+      0.8 + Math.random() * 5.5,
+      pz - 2 + (Math.random() - 0.5) * 22,
+      Math.random() > 0.72 ? 0xe85d04 : Math.random() > 0.5 ? 0xc4a078 : 0x8a7a68,
+    );
+    if (Math.random() > 0.22) {
+      particles.mote(px + (Math.random() - 0.5) * 14, 0.25 + Math.random() * 1.8, pz + (Math.random() - 0.5) * 14, 0x9a8a78);
     }
     particles.update(dt);
     scorch.update(dt);
     for (let i = rifts.length - 1; i >= 0; i--) {
       rifts[i].life -= dt;
       rifts[i].mesh.rotation.y += dt * 4;
-      rifts[i].mesh.scale.setScalar(Math.max(0.1, rifts[i].life / 0.9));
+      rifts[i].mesh.scale.setScalar(Math.max(0.1, rifts[i].life / 0.55));
       if (rifts[i].life <= 0) {
         scene.remove(rifts[i].mesh);
         rifts.splice(i, 1);
