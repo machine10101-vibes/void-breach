@@ -43,16 +43,16 @@ export function makeMaterials(tex: {
     metalness: 0.04,
   });
   const wall = new THREE.MeshStandardMaterial({
-    color: 0xe6d4be,
-    map: tex.wall ?? null,
-    roughness: 0.82,
-    metalness: 0.03,
-  });
-  const brick = new THREE.MeshStandardMaterial({
-    color: 0x8a5344,
+    color: 0x4a443c,
     map: tex.wall ?? null,
     roughness: 0.88,
-    metalness: 0.04,
+    metalness: 0.06,
+  });
+  const brick = new THREE.MeshStandardMaterial({
+    color: 0x4a2a22,
+    map: tex.wall ?? null,
+    roughness: 0.9,
+    metalness: 0.05,
   });
   const lot = new THREE.MeshStandardMaterial({
     color: 0x161412,
@@ -1501,7 +1501,7 @@ export function createWreck(mat: Materials) {
   return g;
 }
 
-const WALL_TINTS = [0xe8d6be, 0xd2c0aa, 0xc4b09a, 0xeee0cc, 0xb8a088, 0xd8c8b4];
+const WALL_TINTS = [0x4a443c, 0x3e3832, 0x52483e, 0x3a322c, 0x5a4a40, 0x2e2a26];
 
 export function addWorldFromBoxes(scene: THREE.Object3D, boxes: AABB[], mat: Materials) {
   const geoCache = new Map<string, THREE.BoxGeometry>();
