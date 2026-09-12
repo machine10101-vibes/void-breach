@@ -241,8 +241,8 @@ function paintCrosswalk(scene: THREE.Object3D, z: number, _mat: Materials) {
 }
 
 export function paintStreetSurfaces(scene: THREE.Object3D, mat: Materials, theme: LevelTheme) {
-  const roadCol = theme === "spire" ? 0x1a1e24 : theme === "rail" ? 0x241c18 : 0x2a2826;
-  const walkCol = theme === "spire" ? 0x4a5058 : 0x5c564e;
+  const roadCol = theme === "spire" ? 0x14181e : theme === "rail" ? 0x1c1614 : 0x1c1b1a;
+  const walkCol = theme === "spire" ? 0x2e343c : 0x322e2a;
   const roadMat = new THREE.MeshBasicMaterial({ color: roadCol });
   const walkLit = new THREE.MeshLambertMaterial({ color: walkCol });
   const road = new THREE.Mesh(new THREE.BoxGeometry(6.4, 0.06, 136), roadMat);
@@ -275,8 +275,9 @@ export function paintStreetSurfaces(scene: THREE.Object3D, mat: Materials, theme
     }
   }
 
+  const dirtMat = new THREE.MeshBasicMaterial({ color: 0x141210 });
   for (const x of [-7.7, 7.7]) {
-    const dirt = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.05, 136), mat.lot);
+    const dirt = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.05, 136), dirtMat);
     dirt.position.set(x, 0.02, -48);
     dirt.receiveShadow = true;
     scene.add(dirt);
@@ -335,6 +336,20 @@ export function paintStreetSurfaces(scene: THREE.Object3D, mat: Materials, theme
       slat.position.set(side * 2.95, 0.08, 12 - i * 9.2 - 0.28 + k * 0.18);
       scene.add(slat);
     }
+  }
+
+  const slick = new THREE.MeshStandardMaterial({
+    color: 0x0c0c0e,
+    roughness: 0.18,
+    metalness: 0.55,
+    transparent: true,
+    opacity: 0.42,
+  });
+  for (let i = 0; i < 10; i++) {
+    const puddle = new THREE.Mesh(new THREE.CircleGeometry(0.7 + irand(i + 8) * 1.1, 12), slick);
+    puddle.rotation.x = -Math.PI / 2;
+    puddle.position.set((irand(i + 2) - 0.5) * 2.8, 0.048, 8 - i * 11.5);
+    scene.add(puddle);
   }
 }
 

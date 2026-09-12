@@ -71,6 +71,7 @@ import type {
   FloatNum,
   HudSnapshot,
   InvItem,
+  LevelTheme,
   MissionId,
   Phase,
   Rarity,
@@ -332,9 +333,10 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   let lmgHeat = 0;
 
   const camera = new THREE.PerspectiveCamera(CAM_FOV, 1, 0.22, 280);
-  scene.add(new THREE.HemisphereLight(0xffd8b4, 0x241810, 1.22));
-  const sun = new THREE.DirectionalLight(0xffd4a8, 2.85);
-  sun.position.set(-28, 34, 18);
+  const hemi = new THREE.HemisphereLight(0xffd8b4, 0x241810, 0.74);
+  scene.add(hemi);
+  const sun = new THREE.DirectionalLight(0xff9a5c, 2.05);
+  sun.position.set(-42, 14, -18);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
   sun.shadow.camera.near = 2;
@@ -347,13 +349,15 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   sun.shadow.normalBias = 0.04;
   scene.add(sun);
   scene.add(sun.target);
-  const fill = new THREE.DirectionalLight(0x7aeee6, 0.55);
+  const fill = new THREE.DirectionalLight(0x4aa8bc, 0.42);
   fill.position.set(22, 16, -28);
   scene.add(fill);
-  const bounce = new THREE.DirectionalLight(0xc4a078, 0.38);
+  const bounce = new THREE.DirectionalLight(0x8a6040, 0.22);
   bounce.position.set(4, 2, 10);
   scene.add(bounce);
-  scene.add(new THREE.AmbientLight(0x564840, 0.64));
+  const ambient = new THREE.AmbientLight(0x2a221c, 0.36);
+  scene.add(ambient);
+  let bloomPass: UnrealBloomPass | null = null;
   const pmrem = new THREE.PMREMGenerator(renderer);
   const envScene = new THREE.Scene();
   envScene.add(new THREE.HemisphereLight(0xffc89a, 0x1a120c, 1.35));
@@ -469,7 +473,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   function fillMissionDecor() {
     if (!mat) return;
     while (missionGroup.children.length) missionGroup.remove(missionGroup.children[0]);
-    const ground = new THREE.Mesh(groundGeo, mat.lot);
+    const ground = new THREE.Mesh(groundGeo, new THREE.MeshBasicMaterial({ color: 0x12100e }));
     ground.receiveShadow = true;
     ground.position.set(0, 0, -48);
     missionGroup.add(ground);
@@ -536,6 +540,19 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       sky.userData.sky = true;
       missionGroup.add(sky);
     }
+    const sunGlow = new THREE.Mesh(
+      new THREE.SphereGeometry(18, 16, 12),
+      new THREE.MeshBasicMaterial({
+        color: level.theme === "spire" ? 0x22d3ee : 0xff7a28,
+        transparent: true,
+        opacity: 0.22,
+        depthWrite: false,
+        toneMapped: false,
+        fog: false,
+      }),
+    );
+    sunGlow.position.set(level.theme === "spire" ? 40 : -55, 22, -90);
+    missionGroup.add(sunGlow);
   }
 
   function applyMission(id: MissionId) {
@@ -580,7 +597,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     if (!isMobile) {
       composer = new EffectComposer(renderer);
       composer.addPass(new RenderPass(scene, camera));
-      composer.addPass(new UnrealBloomPass(new THREE.Vector2(1, 1), 0.28, 0.52, 0.84));
+      bloomPass = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.24, 0.48, 0.86);
+      composer.addPass(bloomPass);
       composer.addPass(new OutputPass());
       useComposer = true;
     }
@@ -606,9 +624,11 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       mat.concrete.needsUpdate = true;
     }
     if (textures.wall) {
-      mat.wall.map = textures.wall;
+      mat.wall.bumpMap = textures.wall;
+      mat.brick.bumpMap = textures.wall;
+      mat.wall.bumpScale = 0.35;
+      mat.brick.bumpScale = 0.42;
       mat.wall.needsUpdate = true;
-      mat.brick.map = textures.wall;
       mat.brick.needsUpdate = true;
     }
     if (textures.metal) {
@@ -1079,12 +1099,77 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     emitHud(true);
   }
 
+  function applyDistrictLook(theme: LevelTheme) {
+    if (theme === "spire") {
+      scene.background = new THREE.Color(0x0c1016);
+      scene.fog = new THREE.FogExp2(0x10141c, 0.0115);
+      hemi.color.setHex(0x88b4c8);
+      hemi.groundColor.setHex(0x0a1016);
+      hemi.intensity = 0.7;
+      sun.color.setHex(0xc8dce8);
+      sun.intensity = 1.85;
+      sun.position.set(-18, 22, 8);
+      fill.color.setHex(0x22d3ee);
+      fill.intensity = 0.62;
+      bounce.color.setHex(0x3a4a58);
+      bounce.intensity = 0.26;
+      ambient.color.setHex(0x243040);
+      ambient.intensity = 0.36;
+      renderer.toneMappingExposure = 1.04;
+      if (bloomPass) {
+        bloomPass.strength = 0.28;
+        bloomPass.threshold = 0.82;
+      }
+    } else if (theme === "rail") {
+      scene.background = new THREE.Color(0x140c08);
+      scene.fog = new THREE.FogExp2(0x1a100c, 0.011);
+      hemi.color.setHex(0xffa070);
+      hemi.groundColor.setHex(0x180c08);
+      hemi.intensity = 0.74;
+      sun.color.setHex(0xff7a3a);
+      sun.intensity = 2.15;
+      sun.position.set(-36, 16, -22);
+      fill.color.setHex(0xff5533);
+      fill.intensity = 0.45;
+      bounce.color.setHex(0x8a4020);
+      bounce.intensity = 0.3;
+      ambient.color.setHex(0x3a2018);
+      ambient.intensity = 0.38;
+      renderer.toneMappingExposure = 1.08;
+      if (bloomPass) {
+        bloomPass.strength = 0.3;
+        bloomPass.threshold = 0.8;
+      }
+    } else {
+      scene.background = new THREE.Color(0x14100c);
+      scene.fog = new THREE.FogExp2(0x1c1410, 0.0105);
+      hemi.color.setHex(0xffc090);
+      hemi.groundColor.setHex(0x12100c);
+      hemi.intensity = 0.68;
+      sun.color.setHex(0xff9a5c);
+      sun.intensity = 2.05;
+      sun.position.set(-42, 14, -18);
+      fill.color.setHex(0x4aa8bc);
+      fill.intensity = 0.42;
+      bounce.color.setHex(0x8a6040);
+      bounce.intensity = 0.22;
+      ambient.color.setHex(0x2a221c);
+      ambient.intensity = 0.34;
+      renderer.toneMappingExposure = 1.06;
+      if (bloomPass) {
+        bloomPass.strength = 0.24;
+        bloomPass.threshold = 0.86;
+      }
+    }
+  }
+
   function showShip() {
     if (!worldBuilt) setupWorld();
     missionGroup.visible = false;
     shipRoot.visible = true;
     scene.fog = null;
     scene.background = new THREE.Color(0x151c26);
+    renderer.toneMappingExposure = 1.18;
     hangarKey.visible = true;
     hangarFill.visible = true;
     hangarAmbient.visible = true;
@@ -1128,8 +1213,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   function showMission() {
     missionGroup.visible = true;
     shipRoot.visible = false;
-    scene.fog = new THREE.FogExp2(level.fog, 0.0068);
-    scene.background = new THREE.Color(level.sky);
+    applyDistrictLook(level.theme);
     hangarKey.visible = false;
     hangarFill.visible = false;
     hangarAmbient.visible = false;

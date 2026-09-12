@@ -43,26 +43,24 @@ export function makeMaterials(tex: {
     metalness: 0.04,
   });
   const wall = new THREE.MeshStandardMaterial({
-    color: 0xe6d4be,
-    map: tex.wall ?? null,
-    roughness: 0.82,
-    metalness: 0.03,
+    color: 0x4a443c,
+    roughness: 0.88,
+    metalness: 0.06,
   });
   const brick = new THREE.MeshStandardMaterial({
-    color: 0x8a5344,
-    map: tex.wall ?? null,
-    roughness: 0.88,
-    metalness: 0.04,
-  });
-  const lot = new THREE.MeshStandardMaterial({
-    color: 0x2a2622,
-    roughness: 0.96,
-    metalness: 0.03,
-  });
-  const sidewalk = new THREE.MeshStandardMaterial({
-    color: 0x6a645c,
+    color: 0x4a2a22,
     roughness: 0.9,
     metalness: 0.05,
+  });
+  const lot = new THREE.MeshStandardMaterial({
+    color: 0x161412,
+    roughness: 0.98,
+    metalness: 0.02,
+  });
+  const sidewalk = new THREE.MeshStandardMaterial({
+    color: 0x3e3a36,
+    roughness: 0.92,
+    metalness: 0.04,
   });
   const metal = new THREE.MeshStandardMaterial({
     color: 0x6a655c,
@@ -85,8 +83,8 @@ export function makeMaterials(tex: {
     emissiveIntensity: 0.35,
   });
   bindPbr(concrete, tex.ground, { repeat: 1, bump: 1.15 });
-  bindPbr(wall, tex.wall, { repeat: 1, bump: 0.62 });
-  bindPbr(brick, tex.wall, { repeat: 1, bump: 0.85 });
+  bindPbr(wall, undefined, { bump: 0.72 });
+  bindPbr(brick, undefined, { bump: 0.9 });
   bindPbr(lot, undefined, { bump: 1.15 });
   bindPbr(sidewalk, undefined, { bump: 1.05 });
   bindPbr(metal, tex.metal, { metal: true, repeat: 1 });
@@ -1120,45 +1118,48 @@ function createHusk(mat: Materials): EnemyRig {
   const group = new THREE.Group();
   const glow: THREE.Mesh[] = [];
   const gMat = cloneGlow(mat.shadeGlow);
-  cap(mat.shade, 0.2, 0.5, 0, 1.16, 0.03, group);
-  box(mat.shade, 0.44, 0.62, 0.34, 0, 1.2, 0.05, group, 0.32);
-  box(mat.shade, 0.5, 0.2, 0.26, 0, 1.38, -0.08, group, 0.45);
-  sph(mat.shade, 0.2, 0, 1.64, 0.08, group, 12);
-  box(mat.shade, 0.26, 0.18, 0.2, 0, 1.64, 0.12, group, 0.2);
-  box(mat.rust, 0.14, 0.1, 0.1, 0.16, 1.28, 0.12, group);
-  box(mat.metal, 0.1, 0.18, 0.06, -0.16, 1.22, 0.1, group, 0.2);
-  const eye = box(gMat, 0.26, 0.055, 0.08, 0, 1.64, 0.26, group);
+  lathe(
+    mat.shade,
+    [
+      [0.06, 0.34],
+      [0.18, 0.26],
+      [0.2, 0.08],
+      [0.16, -0.08],
+      [0.1, -0.2],
+    ],
+    0,
+    1.18,
+    0.04,
+    group,
+  );
+  const pec = sph(mat.shade, 0.16, 0, 1.32, 0.12, group, 14);
+  pec.scale.set(1.35, 0.7, 0.9);
+  sph(mat.shade, 0.2, 0, 1.68, 0.08, group, 14);
+  cap(mat.shade, 0.1, 0.08, 0, 1.58, 0.14, group);
+  sph(mat.rust, 0.06, 0.16, 1.28, 0.12, group, 8);
+  sph(mat.metal, 0.05, -0.16, 1.22, 0.1, group, 8);
+  const eye = new THREE.Mesh(new THREE.SphereGeometry(0.16, 14, 10, 0, Math.PI * 2, 0.85, 0.5), gMat);
+  eye.position.set(0, 1.66, 0.1);
+  group.add(eye);
   glow.push(eye);
-  glow.push(box(gMat, 0.022, 0.5, 0.02, 0.08, 1.18, 0.17, group));
-  glow.push(box(gMat, 0.2, 0.018, 0.02, 0, 1.06, 0.16, group));
-  glow.push(box(gMat, 0.016, 0.28, 0.016, -0.1, 1.28, 0.16, group));
-  box(mat.shade, 0.12, 0.36, 0.04, 0.16, 1.1, -0.12, group, 0.2, 0, 0.4);
-  box(mat.shade, 0.1, 0.28, 0.04, -0.14, 0.92, -0.1, group, 0.3, 0, -0.35);
-  box(mat.shade, 0.06, 0.22, 0.05, 0.1, 0.78, 0.08, group, 0.5, 0, 0.2);
-  sph(mat.shade, 0.05, 0.12, 0.68, 0.1, group, 6);
-  glow.push(box(gMat, 0.04, 0.04, 0.04, 0, 1.42, 0.18, group));
-  box(mat.shade, 0.18, 0.08, 0.12, 0, 1.48, 0.16, group);
-  box(mat.shade, 0.08, 0.16, 0.08, 0.14, 1.32, 0.12, group);
-  glow.push(box(gMat, 0.03, 0.03, 0.08, 0.12, 1.5, 0.18, group));
+  glow.push(sph(gMat, 0.035, 0, 1.42, 0.2, group, 8));
+  cap(mat.shade, 0.04, 0.22, 0.14, 1.1, -0.1, group, 0.4);
+  cap(mat.shade, 0.035, 0.18, -0.12, 0.96, -0.08, group, 0.5);
   const mkArm = (side: number, extra = 0) => {
     const root = new THREE.Group();
     root.position.set(0.27 * side, 1.36, 0.04);
     root.rotation.z = 0.5 * side;
     group.add(root);
-    cap(mat.shade, 0.048, 0.64 + extra, 0.04 * side, -0.36, 0.06, root);
-    glow.push(box(gMat, 0.032, 0.032, 0.26, 0.04 * side, -0.8, 0.17, root));
-    box(mat.shade, 0.028, 0.028, 0.16, 0.02 * side, -0.84, 0.24, root, 0.4);
-    box(gMat, 0.02, 0.02, 0.12, 0.06 * side, -0.86, 0.2, root, -0.3);
-    box(gMat, 0.016, 0.016, 0.1, 0, -0.88, 0.14, root, 0.5);
+    cap(mat.shade, 0.055, 0.64 + extra, 0.04 * side, -0.36, 0.06, root);
+    glow.push(sph(gMat, 0.028, 0.04 * side, -0.8, 0.17, root, 8));
+    cap(mat.shade, 0.02, 0.1, 0.02 * side, -0.84, 0.22, root, 0.4);
     return root;
   };
-  cap(mat.shade, 0.075, 0.56, -0.12, 0.48, 0.02, group);
-  cap(mat.shade, 0.075, 0.56, 0.12, 0.48, 0.02, group);
-  box(mat.shade, 0.18, 0.08, 0.34, -0.12, 0.1, 0.06, group);
-  box(mat.shade, 0.18, 0.08, 0.34, 0.12, 0.1, 0.06, group);
-  box(mat.shade, 0.12, 0.06, 0.22, -0.12, 0.08, 0.18, group);
-  box(mat.shade, 0.12, 0.06, 0.22, 0.12, 0.08, 0.18, group);
-  group.scale.setScalar(1.18);
+  cap(mat.shade, 0.082, 0.56, -0.12, 0.48, 0.02, group);
+  cap(mat.shade, 0.082, 0.56, 0.12, 0.48, 0.02, group);
+  sph(mat.shade, 0.08, -0.12, 0.12, 0.1, group, 8);
+  sph(mat.shade, 0.08, 0.12, 0.12, 0.1, group, 8);
+  group.scale.setScalar(1.26);
   return { group, kind: "husk", leftArm: mkArm(-1, 0.1), rightArm: mkArm(1), glow };
 }
 
@@ -1166,13 +1167,15 @@ function createStalker(mat: Materials): EnemyRig {
   const group = new THREE.Group();
   const glow: THREE.Mesh[] = [];
   const gMat = cloneGlow(mat.shadeGlow);
-  cap(mat.shade, 0.14, 0.56, 0, 1.32, 0, group);
-  box(mat.shade, 0.34, 0.7, 0.28, 0, 1.38, 0, group, 0.28);
-  box(mat.shade, 0.18, 0.4, 0.16, 0, 1.2, -0.12, group, 0.55);
-  sph(mat.shade, 0.14, 0, 1.86, 0.08, group, 10);
-  box(mat.shade, 0.16, 0.12, 0.18, 0, 1.84, 0.12, group, 0.25);
-  glow.push(box(gMat, 0.2, 0.05, 0.06, 0, 1.88, 0.24, group));
-  glow.push(box(gMat, 0.012, 0.22, 0.012, 0.06, 1.5, 0.12, group));
+  cap(mat.shade, 0.16, 0.58, 0, 1.32, 0, group);
+  lathe(mat.shade, [[0.05, 0.28], [0.14, 0.2], [0.15, 0.02], [0.1, -0.16]], 0, 1.36, 0.02, group);
+  sph(mat.shade, 0.15, 0, 1.88, 0.08, group, 12);
+  cap(mat.shade, 0.08, 0.08, 0, 1.8, 0.12, group);
+  const stalkEye = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 10, 0, Math.PI * 2, 0.85, 0.5), gMat);
+  stalkEye.position.set(0, 1.88, 0.1);
+  group.add(stalkEye);
+  glow.push(stalkEye);
+  glow.push(sph(gMat, 0.02, 0.06, 1.5, 0.12, group, 6));
   for (let i = 0; i < 4; i++) {
     box(mat.shade, 0.05, 0.08, 0.06, 0, 1.1 + i * 0.12, -0.14, group);
   }
@@ -1200,7 +1203,7 @@ function createStalker(mat: Materials): EnemyRig {
   box(mat.shade, 0.12, 0.05, 0.3, 0.09, 0.08, 0.05, group);
   box(mat.shade, 0.06, 0.04, 0.16, -0.09, 0.06, 0.18, group);
   box(mat.shade, 0.06, 0.04, 0.16, 0.09, 0.06, 0.18, group);
-  group.scale.setScalar(1.22);
+  group.scale.setScalar(1.3);
   return { group, kind: "stalker", leftArm, rightArm, glow };
 }
 
@@ -1310,6 +1313,8 @@ export function createCar(mat: Materials) {
   const g = new THREE.Group();
   box(mat.rust, 2.7, 0.48, 1.22, 0, 0.48, 0, g);
   box(mat.dark, 1.45, 0.5, 1.12, -0.12, 0.94, 0, g);
+  const cabin = sph(mat.dark, 0.42, -0.1, 1.02, 0, g, 12);
+  cabin.scale.set(1.7, 0.72, 1.25);
   box(mat.glass, 0.82, 0.32, 1.08, 0.22, 0.98, 0, g);
   box(mat.warning, 0.1, 0.08, 1.16, 1.28, 0.5, 0, g);
   box(mat.ember, 0.12, 0.08, 0.18, 1.32, 0.52, 0.42, g);
@@ -1494,7 +1499,7 @@ export function createWreck(mat: Materials) {
   return g;
 }
 
-const WALL_TINTS = [0xe8d6be, 0xd2c0aa, 0xc4b09a, 0xeee0cc, 0xb8a088, 0xd8c8b4];
+const WALL_TINTS = [0x2c2824, 0x241e1a, 0x322820, 0x1e1c1a, 0x2a221c, 0x181614];
 
 export function addWorldFromBoxes(scene: THREE.Object3D, boxes: AABB[], mat: Materials) {
   const geoCache = new Map<string, THREE.BoxGeometry>();
@@ -1530,7 +1535,9 @@ export function addWorldFromBoxes(scene: THREE.Object3D, boxes: AABB[], mat: Mat
     if (isBuilding) {
       const tinted = (building % 3 === 1 ? mat.brick : mat.wall).clone();
       tinted.color = tinted.color.clone();
-      if (building % 3 !== 1) tinted.color.setHex(WALL_TINTS[building % WALL_TINTS.length]);
+      tinted.color.setHex(building % 3 === 1 ? 0x3a241c : WALL_TINTS[building % WALL_TINTS.length]);
+      tinted.envMapIntensity = 0.18;
+      tinted.roughness = 0.92;
       use = tinted;
       building += 1;
     }
@@ -1645,6 +1652,32 @@ export function addWorldFromBoxes(scene: THREE.Object3D, boxes: AABB[], mat: Mat
         scene.add(rail);
       }
     }
+
+    if (building % 2 === 0) {
+      const neonCol = building % 4 === 0 ? 0xe85d04 : 0x5eead4;
+      const blade = new THREE.Mesh(
+        new THREE.BoxGeometry(0.1, 2.6, 0.16),
+        new THREE.MeshBasicMaterial({ color: neonCol, toneMapped: false }),
+      );
+      blade.position.set(fx + face * 0.14, b.miny + 4.1, cz + d * 0.34);
+      scene.add(blade);
+    }
+    if (building % 3 !== 0) {
+      const poster = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.85, 1.15),
+        new THREE.MeshBasicMaterial({
+          color: building % 2 ? 0x2a1810 : 0x102028,
+          toneMapped: false,
+        }),
+      );
+      poster.position.set(fx + face * 0.07, b.miny + 1.35, cz - d * 0.22);
+      poster.rotation.y = face > 0 ? -Math.PI / 2 : Math.PI / 2;
+      scene.add(poster);
+    }
+    const dish = new THREE.Mesh(new THREE.SphereGeometry(0.32, 10, 8, 0, Math.PI * 2, 0, 1.2), mat.metal);
+    dish.position.set(cx + face * (w * 0.22), b.maxy + 0.42, cz - d * 0.22);
+    dish.rotation.x = 0.7;
+    scene.add(dish);
   }
 }
 
