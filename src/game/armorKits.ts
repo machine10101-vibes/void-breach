@@ -231,10 +231,10 @@ function stylePalette(mat: Materials, style: ArmorStyle, rarity: Rarity): Palett
     accent = mat.rust;
     light = mat.ember;
   } else {
-    plate.color.setHex(0x6a7078);
-    plate.metalness = 0.78;
-    plate.roughness = 0.28;
-    visor.emissiveIntensity = 3.4;
+    plate.color.setHex(0x7c838c);
+    plate.metalness = 0.82;
+    plate.roughness = 0.24;
+    visor.emissiveIntensity = 3.8;
     accent = mat.metal;
     light = mat.neon;
   }
@@ -403,10 +403,10 @@ export function buildChestKit(mat: Materials, style: ArmorStyle, rarity: Rarity,
   pecL.scale.set(1.2, 0.7, 0.9);
   const pecR = sph(p.plate, 0.155, -0.13, 0.24, 0.12, g, 18);
   pecR.scale.set(1.2, 0.7, 0.9);
-  const pldL = sph(p.plate, 0.16, 0.34, 0.3, 0.06, g, 16);
-  pldL.scale.set(1.25, 0.72, 1.1);
-  const pldR = sph(p.plate, 0.16, -0.34, 0.3, 0.06, g, 16);
-  pldR.scale.set(1.25, 0.72, 1.1);
+  const pldL = sph(p.plate, 0.175, 0.38, 0.32, 0.06, g, 16);
+  pldL.scale.set(1.28, 0.7, 1.12);
+  const pldR = sph(p.plate, 0.175, -0.38, 0.32, 0.06, g, 16);
+  pldR.scale.set(1.28, 0.7, 1.12);
   cap(p.plate, 0.11, 0.12, 0, 0.44, 0.03, g);
   ring(p.metal, 0.15, 0.022, 0, 0.46, 0.03, g);
   cap(p.dark, 0.09, 0.16, 0, 0.16, 0.2, g);
