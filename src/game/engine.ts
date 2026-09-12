@@ -624,9 +624,11 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       mat.concrete.needsUpdate = true;
     }
     if (textures.wall) {
-      mat.wall.map = textures.wall;
+      mat.wall.bumpMap = textures.wall;
+      mat.brick.bumpMap = textures.wall;
+      mat.wall.bumpScale = 0.35;
+      mat.brick.bumpScale = 0.42;
       mat.wall.needsUpdate = true;
-      mat.brick.map = textures.wall;
       mat.brick.needsUpdate = true;
     }
     if (textures.metal) {

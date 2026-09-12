@@ -44,13 +44,11 @@ export function makeMaterials(tex: {
   });
   const wall = new THREE.MeshStandardMaterial({
     color: 0x4a443c,
-    map: tex.wall ?? null,
     roughness: 0.88,
     metalness: 0.06,
   });
   const brick = new THREE.MeshStandardMaterial({
     color: 0x4a2a22,
-    map: tex.wall ?? null,
     roughness: 0.9,
     metalness: 0.05,
   });
@@ -85,8 +83,8 @@ export function makeMaterials(tex: {
     emissiveIntensity: 0.35,
   });
   bindPbr(concrete, tex.ground, { repeat: 1, bump: 1.15 });
-  bindPbr(wall, tex.wall, { repeat: 1, bump: 0.62 });
-  bindPbr(brick, tex.wall, { repeat: 1, bump: 0.85 });
+  bindPbr(wall, undefined, { bump: 0.72 });
+  bindPbr(brick, undefined, { bump: 0.9 });
   bindPbr(lot, undefined, { bump: 1.15 });
   bindPbr(sidewalk, undefined, { bump: 1.05 });
   bindPbr(metal, tex.metal, { metal: true, repeat: 1 });
