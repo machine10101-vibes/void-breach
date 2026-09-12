@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { Materials } from "./meshes";
-import type { LevelTheme } from "./types";
+import type { AABB, LevelTheme } from "./types";
 
 function box(
   mat: THREE.Material,
@@ -351,6 +351,14 @@ export function paintStreetSurfaces(scene: THREE.Object3D, mat: Materials, theme
     puddle.position.set((irand(i + 2) - 0.5) * 2.8, 0.048, 8 - i * 11.5);
     scene.add(puddle);
   }
+
+  const tire = new THREE.MeshBasicMaterial({ color: 0x0a0908, transparent: true, opacity: 0.35 });
+  for (let i = 0; i < 16; i++) {
+    const skid = new THREE.Mesh(new THREE.BoxGeometry(0.12 + irand(i) * 0.08, 0.01, 2.4 + irand(i + 3) * 1.8), tire);
+    skid.position.set((irand(i + 7) - 0.5) * 2.4, 0.046, 12 - i * 8.4);
+    skid.rotation.y = (irand(i + 11) - 0.5) * 0.18;
+    scene.add(skid);
+  }
 }
 
 export function placeStreetFurniture(scene: THREE.Object3D, mat: Materials, theme: LevelTheme) {
@@ -538,6 +546,231 @@ export function dressThemeGround(scene: THREE.Object3D, mat: Materials, theme: L
       gateSide.position.set(x, 0.035, -104);
       gateSide.receiveShadow = true;
       scene.add(gateSide);
+    }
+  }
+}
+
+function hazeTex(theme: LevelTheme) {
+  const c = document.createElement("canvas");
+  c.width = 8;
+  c.height = 256;
+  const g = c.getContext("2d")!;
+  const grd = g.createLinearGradient(0, 0, 0, 256);
+  if (theme === "spire") {
+    grd.addColorStop(0, "rgba(18, 36, 52, 0)");
+    grd.addColorStop(0.42, "rgba(34, 70, 92, 0.42)");
+    grd.addColorStop(0.78, "rgba(12, 18, 28, 0.7)");
+    grd.addColorStop(1, "rgba(8, 10, 16, 0.88)");
+  } else if (theme === "rail") {
+    grd.addColorStop(0, "rgba(80, 22, 8, 0)");
+    grd.addColorStop(0.38, "rgba(180, 62, 18, 0.48)");
+    grd.addColorStop(0.72, "rgba(40, 14, 8, 0.72)");
+    grd.addColorStop(1, "rgba(12, 8, 6, 0.9)");
+  } else {
+    grd.addColorStop(0, "rgba(70, 28, 10, 0)");
+    grd.addColorStop(0.36, "rgba(210, 88, 28, 0.4)");
+    grd.addColorStop(0.7, "rgba(36, 18, 10, 0.68)");
+    grd.addColorStop(1, "rgba(10, 8, 6, 0.9)");
+  }
+  g.fillStyle = grd;
+  g.fillRect(0, 0, 8, 256);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.needsUpdate = true;
+  return t;
+}
+
+export function paintAtmosphere(scene: THREE.Object3D, mat: Materials, theme: LevelTheme) {
+  const haze = new THREE.Mesh(
+    new THREE.PlaneGeometry(220, 70),
+    new THREE.MeshBasicMaterial({
+      map: hazeTex(theme),
+      transparent: true,
+      depthWrite: false,
+      fog: false,
+      toneMapped: false,
+    }),
+  );
+  haze.position.set(0, 16, -128);
+  scene.add(haze);
+
+  const shaftCol = theme === "spire" ? 0x4aa8bc : 0xff7a28;
+  for (let i = 0; i < 5; i++) {
+    const shaft = new THREE.Mesh(
+      new THREE.PlaneGeometry(7 + i * 2.2, 52),
+      new THREE.MeshBasicMaterial({
+        color: shaftCol,
+        transparent: true,
+        opacity: 0.045 + i * 0.008,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        toneMapped: false,
+        fog: false,
+      }),
+    );
+    shaft.position.set(theme === "spire" ? 28 - i * 8 : -38 + i * 9, 18, -70 - i * 6);
+    shaft.rotation.z = theme === "spire" ? 0.42 : -0.55;
+    shaft.rotation.y = theme === "spire" ? -0.35 : 0.4;
+    scene.add(shaft);
+  }
+
+  const fogSheet = new THREE.Mesh(
+    new THREE.PlaneGeometry(28, 140),
+    new THREE.MeshBasicMaterial({
+      color: theme === "spire" ? 0x1a2834 : 0x2a1c14,
+      transparent: true,
+      opacity: 0.14,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    }),
+  );
+  fogSheet.rotation.x = -Math.PI / 2;
+  fogSheet.position.set(0, 0.22, -48);
+  scene.add(fogSheet);
+
+  const ridgeMat = new THREE.MeshBasicMaterial({ color: theme === "spire" ? 0x0c1016 : 0x0e0a08 });
+  for (const [x, z, w, h, d] of [
+    [-48, -40, 22, 18, 14],
+    [-52, -78, 18, 24, 12],
+    [50, -36, 20, 20, 13],
+    [54, -88, 24, 28, 15],
+    [0, -148, 80, 16, 18],
+  ] as const) {
+    const ridge = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), ridgeMat);
+    ridge.position.set(x, h * 0.28, z);
+    scene.add(ridge);
+  }
+
+  const bannerCols = theme === "spire" ? [0x22d3ee, 0x5eead4] : [0xe85d04, 0xc45a20];
+  for (let i = 0; i < 6; i++) {
+    const z = 6 - i * 22;
+    const cloth = new THREE.Mesh(
+      new THREE.PlaneGeometry(5.6, 0.85),
+      new THREE.MeshBasicMaterial({
+        color: bannerCols[i % 2],
+        transparent: true,
+        opacity: 0.38,
+        side: THREE.DoubleSide,
+        toneMapped: false,
+        depthWrite: false,
+      }),
+    );
+    cloth.position.set(0, 4.35, z);
+    cloth.rotation.y = 0.08 * (i % 2 ? -1 : 1);
+    scene.add(cloth);
+    box(mat.dark, 0.06, 0.06, 5.8, 0, 4.8, z, scene);
+  }
+}
+
+export function dressBuildingMass(
+  scene: THREE.Object3D,
+  b: AABB,
+  mat: Materials,
+  facade: THREE.Material,
+  building: number,
+) {
+  const w = b.maxx - b.minx;
+  const h = b.maxy - b.miny;
+  const d = b.maxz - b.minz;
+  const cx = (b.minx + b.maxx) / 2;
+  const cz = (b.minz + b.maxz) / 2;
+  const face = cx < 0 ? 1 : -1;
+  const fx = cx < 0 ? b.maxx + 0.05 : b.minx - 0.05;
+  const block = w > 16 || d > 16;
+
+  const parapetH = 0.42;
+  box(mat.dark, w + 0.18, parapetH, 0.12, cx, b.maxy + parapetH * 0.5, b.minz - 0.02, scene);
+  box(mat.dark, w + 0.18, parapetH, 0.12, cx, b.maxy + parapetH * 0.5, b.maxz + 0.02, scene);
+  box(mat.dark, 0.12, parapetH, d + 0.18, b.minx - 0.02, b.maxy + parapetH * 0.5, cz, scene);
+  box(mat.dark, 0.12, parapetH, d + 0.18, b.maxx + 0.02, b.maxy + parapetH * 0.5, cz, scene);
+
+  const pentW = Math.max(1.6, w * (block ? 0.22 : 0.48 + (building % 3) * 0.06));
+  const pentD = Math.max(1.4, d * (0.38 + (building % 2) * 0.1));
+  const pentH = 1.35 + (building % 4) * 0.55;
+  const pentX = cx + face * (block ? w * 0.18 : w * 0.08);
+  const pentZ = cz + (building % 2 ? d * 0.08 : -d * 0.1);
+  box(facade, pentW, pentH, pentD, pentX, b.maxy + pentH * 0.5, pentZ, scene);
+  box(mat.metal, pentW + 0.16, 0.1, pentD + 0.16, pentX, b.maxy + pentH + 0.04, pentZ, scene);
+
+  if (h > 7.4 || block) {
+    const towerW = Math.max(1.1, pentW * 0.42);
+    const towerH = 1.8 + (building % 3) * 0.7;
+    box(mat.dark, towerW, towerH, towerW, pentX - face * 0.4, b.maxy + pentH + towerH * 0.5, pentZ, scene);
+    cyl(mat.metal, 0.04, 0.04, 1.4, pentX - face * 0.4, b.maxy + pentH + towerH + 0.7, pentZ, scene);
+    box(mat.ember, 0.08, 0.08, 0.08, pentX - face * 0.4, b.maxy + pentH + towerH + 1.35, pentZ, scene);
+  }
+
+  cyl(mat.rust, 0.16, 0.2, 1.15, cx - face * (w * 0.22), b.maxy + 0.7, cz + d * 0.18, scene, 0, 8);
+  box(mat.dark, 0.22, 0.1, 0.22, cx - face * (w * 0.22), b.maxy + 1.3, cz + d * 0.18, scene);
+
+  const hvac = 1 + (building % 3);
+  for (let i = 0; i < hvac; i++) {
+    box(
+      mat.metal,
+      0.7,
+      0.32,
+      0.52,
+      cx + face * (w * 0.12) + i * 0.55,
+      b.maxy + 0.28,
+      cz - d * 0.22 + i * 0.15,
+      scene,
+    );
+  }
+
+  if (!block) {
+    const pilW = 0.22;
+    const pilD = 0.28;
+    for (const zOff of [-d * 0.42, 0, d * 0.42]) {
+      box(mat.dark, pilW, h * 0.92, pilD, fx + face * 0.06, b.miny + h * 0.48, cz + zOff, scene);
+    }
+    box(mat.rust, 0.07, h * 0.7, 0.07, fx + face * 0.1, b.miny + h * 0.42, cz + d * 0.18, scene);
+    box(mat.dark, 0.08, h * 0.85, 0.08, fx + face * 0.12, b.miny + h * 0.48, cz - d * 0.36, scene);
+  } else {
+    const bays = Math.max(4, Math.floor(w / 6.2));
+    for (let i = 0; i < bays; i++) {
+      const bx = b.minx + 3.2 + i * ((w - 6.4) / Math.max(bays - 1, 1));
+      box(mat.dark, 0.28, h * 0.95, 0.32, bx, b.miny + h * 0.5, cz + (cx < 0 ? d * 0.48 : -d * 0.48), scene);
+    }
+  }
+
+  const endRows = Math.max(1, Math.floor((h - 2.4) / 1.6));
+  const endCols = Math.max(2, Math.floor(w / 2.2));
+  for (const ez of [b.minz - 0.05, b.maxz + 0.05]) {
+    for (let row = 0; row < endRows; row++) {
+      for (let col = 0; col < endCols; col++) {
+        if ((row + col + building) % 3 === 0) continue;
+        const wy = b.miny + 2.6 + row * 1.55;
+        if (wy > b.maxy - 0.55) continue;
+        const wx = b.minx + 1.1 + col * ((w - 2.2) / Math.max(endCols - 1, 1));
+        const lit = (row + col + building) % 5 !== 0;
+        box(lit ? ((row + building) % 2 ? mat.ember : mat.neon) : mat.dark, 0.72, 0.95, 0.08, wx, wy, ez, scene);
+      }
+    }
+  }
+
+  if (building % 2) {
+    const tag = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.15, 0.7),
+      new THREE.MeshBasicMaterial({
+        color: building % 4 ? 0x5eead4 : 0xe85d04,
+        transparent: true,
+        opacity: 0.22,
+        toneMapped: false,
+        depthWrite: false,
+      }),
+    );
+    tag.position.set(fx + face * 0.08, b.miny + 1.55, cz + d * 0.28);
+    tag.rotation.y = face > 0 ? -Math.PI / 2 : Math.PI / 2;
+    scene.add(tag);
+  }
+
+  if (!block && d > 6.4) {
+    const landings = Math.min(4, Math.max(2, Math.floor((h - 2.4) / 1.7)));
+    const ez = cz + d * 0.38;
+    box(mat.dark, 0.08, h * 0.72, 0.08, fx + face * 0.62, b.miny + h * 0.42, ez, scene);
+    for (let r = 0; r < landings; r++) {
+      box(mat.metal, 0.95, 0.06, 1.15, fx + face * 0.55, b.miny + 2.5 + r * 1.55, ez, scene);
+      box(mat.dark, 0.04, 0.7, 1.15, fx + face * 0.98, b.miny + 2.85 + r * 1.55, ez, scene);
     }
   }
 }
