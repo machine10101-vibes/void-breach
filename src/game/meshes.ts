@@ -1499,7 +1499,7 @@ export function createWreck(mat: Materials) {
   return g;
 }
 
-const WALL_TINTS = [0x4a443c, 0x3e3832, 0x52483e, 0x3a322c, 0x5a4a40, 0x2e2a26];
+const WALL_TINTS = [0x2c2824, 0x241e1a, 0x322820, 0x1e1c1a, 0x2a221c, 0x181614];
 
 export function addWorldFromBoxes(scene: THREE.Object3D, boxes: AABB[], mat: Materials) {
   const geoCache = new Map<string, THREE.BoxGeometry>();
@@ -1535,7 +1535,9 @@ export function addWorldFromBoxes(scene: THREE.Object3D, boxes: AABB[], mat: Mat
     if (isBuilding) {
       const tinted = (building % 3 === 1 ? mat.brick : mat.wall).clone();
       tinted.color = tinted.color.clone();
-      if (building % 3 !== 1) tinted.color.setHex(WALL_TINTS[building % WALL_TINTS.length]);
+      tinted.color.setHex(building % 3 === 1 ? 0x3a241c : WALL_TINTS[building % WALL_TINTS.length]);
+      tinted.envMapIntensity = 0.18;
+      tinted.roughness = 0.92;
       use = tinted;
       building += 1;
     }

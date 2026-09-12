@@ -597,7 +597,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     if (!isMobile) {
       composer = new EffectComposer(renderer);
       composer.addPass(new RenderPass(scene, camera));
-      bloomPass = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.36, 0.55, 0.8);
+      bloomPass = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.24, 0.48, 0.86);
       composer.addPass(bloomPass);
       composer.addPass(new OutputPass());
       useComposer = true;
@@ -1117,8 +1117,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       ambient.intensity = 0.36;
       renderer.toneMappingExposure = 1.04;
       if (bloomPass) {
-        bloomPass.strength = 0.4;
-        bloomPass.threshold = 0.76;
+        bloomPass.strength = 0.28;
+        bloomPass.threshold = 0.82;
       }
     } else if (theme === "rail") {
       scene.background = new THREE.Color(0x140c08);
@@ -1137,8 +1137,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       ambient.intensity = 0.38;
       renderer.toneMappingExposure = 1.08;
       if (bloomPass) {
-        bloomPass.strength = 0.44;
-        bloomPass.threshold = 0.74;
+        bloomPass.strength = 0.3;
+        bloomPass.threshold = 0.8;
       }
     } else {
       scene.background = new THREE.Color(0x14100c);
@@ -1157,8 +1157,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       ambient.intensity = 0.34;
       renderer.toneMappingExposure = 1.06;
       if (bloomPass) {
-        bloomPass.strength = 0.36;
-        bloomPass.threshold = 0.8;
+        bloomPass.strength = 0.24;
+        bloomPass.threshold = 0.86;
       }
     }
   }
