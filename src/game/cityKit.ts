@@ -619,7 +619,7 @@ export function paintAtmosphere(scene: THREE.Object3D, mat: Materials, theme: Le
     new THREE.MeshBasicMaterial({
       color: theme === "spire" ? 0x1a2834 : 0x2a1c14,
       transparent: true,
-      opacity: 0.14,
+      opacity: 0.07,
       depthWrite: false,
       side: THREE.DoubleSide,
     }),
@@ -649,7 +649,7 @@ export function paintAtmosphere(scene: THREE.Object3D, mat: Materials, theme: Le
       new THREE.MeshBasicMaterial({
         color: bannerCols[i % 2],
         transparent: true,
-        opacity: 0.38,
+        opacity: 0.2,
         side: THREE.DoubleSide,
         toneMapped: false,
         depthWrite: false,
