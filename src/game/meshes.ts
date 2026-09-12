@@ -261,10 +261,33 @@ function cap(
   rx = 0,
   ry = 0,
 ) {
-  const m = new THREE.Mesh(new THREE.CapsuleGeometry(r, len, 8, 16), mat);
+  const m = new THREE.Mesh(new THREE.CapsuleGeometry(r, len, 10, 22), mat);
   m.position.set(x, y, z);
   m.rotation.x = rx;
   m.rotation.y = ry;
+  m.castShadow = true;
+  m.receiveShadow = true;
+  parent.add(m);
+  return m;
+}
+
+function lathe(
+  mat: THREE.Material,
+  pts: [number, number][],
+  x: number,
+  y: number,
+  z: number,
+  parent: THREE.Object3D,
+  segs = 24,
+) {
+  const m = new THREE.Mesh(
+    new THREE.LatheGeometry(
+      pts.map(([u, v]) => new THREE.Vector2(u, v)),
+      segs,
+    ),
+    mat,
+  );
+  m.position.set(x, y, z);
   m.castShadow = true;
   m.receiveShadow = true;
   parent.add(m);
@@ -310,7 +333,7 @@ function ring(
   parent: THREE.Object3D,
   rx = Math.PI / 2,
 ) {
-  const m = new THREE.Mesh(new THREE.TorusGeometry(r, tube, 10, 20), mat);
+  const m = new THREE.Mesh(new THREE.TorusGeometry(r, tube, 12, 24), mat);
   m.position.set(x, y, z);
   m.rotation.x = rx;
   m.castShadow = true;
@@ -365,91 +388,140 @@ export function createExoSuit(mat: Materials): PlayerRig {
   locInner.position.y = 0.035;
   group.add(locInner);
 
-  cap(suit, 0.15, 0.1, 0, 0.94, 0.02, group);
-  sph(suit, 0.12, 0.15, 0.92, 0.03, group, 14);
-  sph(suit, 0.12, -0.15, 0.92, 0.03, group, 14);
-  ring(dark, 0.16, 0.018, 0, 1.02, 0.04, group);
-  cyl(metal, 0.016, 0.016, 0.12, 0.14, 0.98, 0.12, group, 1.05);
-  cyl(metal, 0.016, 0.016, 0.12, -0.14, 0.98, 0.12, group, 1.05);
-  box(mat.warning, 0.18, 0.02, 0.03, 0, 1.02, 0.16, group);
-  cap(dark, 0.04, 0.08, 0.16, 0.88, 0.12, group);
-  cap(dark, 0.04, 0.08, -0.16, 0.88, 0.12, group);
+  lathe(suit, [[0.08, 0.08], [0.16, 0.05], [0.18, 0.0], [0.15, -0.06], [0.1, -0.1]], 0, 0.96, 0.02, group);
+  sph(suit, 0.13, 0.16, 0.92, 0.04, group, 16);
+  sph(suit, 0.13, -0.16, 0.92, 0.04, group, 16);
+  ring(dark, 0.17, 0.02, 0, 1.04, 0.04, group);
+  cyl(metal, 0.018, 0.018, 0.14, 0.15, 0.98, 0.13, group, 1.05);
+  cyl(metal, 0.018, 0.018, 0.14, -0.15, 0.98, 0.13, group, 1.05);
+  box(mat.warning, 0.2, 0.022, 0.034, 0, 1.03, 0.17, group);
+  cap(dark, 0.045, 0.09, 0.18, 0.88, 0.13, group);
+  cap(dark, 0.045, 0.09, -0.18, 0.88, 0.13, group);
+  sph(mat.ember, 0.016, 0, 1.04, 0.18, group, 8);
 
   const torso = new THREE.Group();
   torso.position.set(0, 1.2, 0);
   group.add(torso);
-  cap(suit, 0.145, 0.28, 0, 0.1, 0.0, torso);
-  sph(suit, 0.12, 0.1, 0.2, 0.07, torso, 14);
-  sph(suit, 0.12, -0.1, 0.2, 0.07, torso, 14);
-  sph(suit, 0.1, 0.2, 0.26, 0.0, torso, 12);
-  sph(suit, 0.1, -0.2, 0.26, 0.0, torso, 12);
-  cap(suit, 0.06, 0.1, 0, 0.4, 0.0, torso);
-  ring(metal, 0.09, 0.016, 0, 0.42, 0.0, torso);
-  for (let i = 0; i < 4; i++) {
-    cyl(dark, 0.11, 0.11, 0.018, 0, 0.02 + i * 0.07, 0.1, torso, 0, 0, 14);
+  lathe(
+    suit,
+    [
+      [0.08, 0.36],
+      [0.15, 0.3],
+      [0.17, 0.16],
+      [0.16, 0.02],
+      [0.13, -0.1],
+    ],
+    0,
+    0.08,
+    0.02,
+    torso,
+  );
+  const pecL = sph(suit, 0.13, 0.11, 0.22, 0.1, torso, 16);
+  pecL.scale.set(1.15, 0.72, 0.88);
+  const pecR = sph(suit, 0.13, -0.11, 0.22, 0.1, torso, 16);
+  pecR.scale.set(1.15, 0.72, 0.88);
+  const shL = sph(suit, 0.11, 0.22, 0.28, 0.02, torso, 16);
+  shL.scale.set(1.2, 0.78, 1.05);
+  const shR = sph(suit, 0.11, -0.22, 0.28, 0.02, torso, 16);
+  shR.scale.set(1.2, 0.78, 1.05);
+  cap(suit, 0.065, 0.11, 0, 0.42, 0.02, torso);
+  ring(metal, 0.1, 0.018, 0, 0.44, 0.02, torso);
+  for (let i = 0; i < 5; i++) {
+    cyl(dark, 0.13 - i * 0.006, 0.13 - i * 0.006, 0.016, 0, -0.02 + i * 0.065, 0.12, torso, 0, 0, 16);
   }
-  cyl(dark, 0.03, 0.03, 0.22, 0.12, 0.16, 0.12, torso);
-  cyl(dark, 0.03, 0.03, 0.22, -0.12, 0.16, 0.12, torso);
-  cap(metal, 0.035, 0.12, 0.18, 0.08, -0.06, torso);
-  cap(metal, 0.035, 0.12, -0.18, 0.08, -0.06, torso);
-  sph(mat.ember, 0.028, 0, 0.18, 0.16, torso, 10);
-  cyl(dark, 0.012, 0.012, 0.22, 0.08, 0.28, -0.14, torso, 0.85);
-  cyl(dark, 0.012, 0.012, 0.18, -0.08, 0.26, -0.14, torso, 0.95);
-  cap(dark, 0.035, 0.08, 0.14, 0.22, 0.12, torso);
-  cap(dark, 0.035, 0.08, -0.14, 0.22, 0.12, torso);
+  cyl(dark, 0.032, 0.032, 0.24, 0.13, 0.16, 0.14, torso);
+  cyl(dark, 0.032, 0.032, 0.24, -0.13, 0.16, 0.14, torso);
+  cap(metal, 0.04, 0.14, 0.2, 0.08, -0.08, torso);
+  cap(metal, 0.04, 0.14, -0.2, 0.08, -0.08, torso);
+  sph(mat.ember, 0.03, 0, 0.2, 0.18, torso, 10);
+  cyl(dark, 0.014, 0.014, 0.24, 0.09, 0.3, -0.16, torso, 0.85);
+  cyl(dark, 0.014, 0.014, 0.2, -0.09, 0.28, -0.16, torso, 0.95);
+  cap(dark, 0.04, 0.09, 0.16, 0.22, 0.14, torso);
+  cap(dark, 0.04, 0.09, -0.16, 0.22, 0.14, torso);
+  ring(dark, 0.15, 0.012, 0, 0.18, 0.08, torso);
 
   const backpack = new THREE.Group();
   backpack.position.set(0, 0.16, -0.32);
   torso.add(backpack);
-  cap(dark, 0.12, 0.22, 0, 0.02, 0.0, backpack);
-  cyl(metal, 0.065, 0.065, 0.32, 0.1, 0.02, -0.04, backpack, 0, 0, 12);
-  cyl(metal, 0.065, 0.065, 0.32, -0.1, 0.02, -0.04, backpack, 0, 0, 12);
-  sph(metal, 0.05, 0.1, 0.2, -0.04, backpack, 10);
-  sph(metal, 0.05, -0.1, 0.2, -0.04, backpack, 10);
-  cyl(mat.ember, 0.028, 0.02, 0.1, 0, -0.18, 0.02, backpack);
-  cyl(mat.neon, 0.012, 0.012, 0.14, 0.16, 0.06, 0.06, backpack);
-  ring(metal, 0.08, 0.012, 0, 0.16, 0.02, backpack);
-  sph(mat.voidCore, 0.03, 0, 0.08, 0.08, backpack, 8);
-  cap(metal, 0.03, 0.06, 0.14, -0.12, 0.06, backpack);
-  cap(metal, 0.03, 0.06, -0.14, -0.12, 0.06, backpack);
+  cap(dark, 0.13, 0.24, 0, 0.02, 0.02, backpack);
+  cyl(metal, 0.072, 0.072, 0.36, 0.11, 0.02, -0.05, backpack, 0, 0, 16);
+  cyl(metal, 0.072, 0.072, 0.36, -0.11, 0.02, -0.05, backpack, 0, 0, 16);
+  sph(metal, 0.055, 0.11, 0.22, -0.05, backpack, 12);
+  sph(metal, 0.055, -0.11, 0.22, -0.05, backpack, 12);
+  sph(metal, 0.05, 0.11, -0.18, -0.05, backpack, 12);
+  sph(metal, 0.05, -0.11, -0.18, -0.05, backpack, 12);
+  ring(metal, 0.09, 0.014, 0, 0.18, 0.02, backpack);
+  ring(dark, 0.075, 0.01, 0.11, 0.02, -0.05, backpack, 0);
+  ring(dark, 0.075, 0.01, -0.11, 0.02, -0.05, backpack, 0);
+  cyl(mat.ember, 0.03, 0.022, 0.1, 0, -0.2, 0.04, backpack);
+  cyl(mat.neon, 0.014, 0.014, 0.16, 0.18, 0.08, 0.06, backpack);
+  sph(mat.voidCore, 0.034, 0, 0.1, 0.1, backpack, 10);
+  sph(mat.ember, 0.018, 0.11, 0.26, -0.02, backpack, 8);
+  sph(mat.neon, 0.016, -0.11, 0.26, -0.02, backpack, 8);
+  cap(metal, 0.032, 0.08, 0.16, -0.14, 0.08, backpack);
+  cap(metal, 0.032, 0.08, -0.16, -0.14, 0.08, backpack);
+  cap(dark, 0.02, 0.16, 0.18, 0.06, -0.02, backpack, 0.6);
+  cap(dark, 0.02, 0.16, -0.18, 0.06, -0.02, backpack, 0.6);
+  box(metal, 0.22, 0.03, 0.08, 0, 0.24, 0.0, backpack);
+  for (let i = 0; i < 4; i++) box(dark, 0.016, 0.12, 0.04, -0.06 + i * 0.04, 0.04, -0.12, backpack);
 
   const head = new THREE.Group();
   head.position.set(0, 1.66, 0.04);
   group.add(head);
-  sph(bone, 0.13, 0, 0.1, 0.0, head, 16);
-  sph(suit, 0.118, 0, 0.1, 0.01, head, 16);
-  cap(suit, 0.07, 0.06, 0, 0.0, 0.04, head);
-  ring(dark, 0.08, 0.014, 0, -0.02, 0.02, head);
-  const visorGeo = new THREE.SphereGeometry(0.132, 18, 12, 0, Math.PI * 2, 0.85, 0.5);
+  sph(bone, 0.135, 0, 0.1, 0.0, head, 18);
+  lathe(
+    suit,
+    [
+      [0.02, 0.22],
+      [0.09, 0.21],
+      [0.14, 0.16],
+      [0.155, 0.08],
+      [0.14, 0.0],
+      [0.1, -0.08],
+    ],
+    0,
+    0.08,
+    0.0,
+    head,
+  );
+  cap(suit, 0.075, 0.07, 0, 0.0, 0.05, head);
+  ring(dark, 0.09, 0.016, 0, -0.02, 0.03, head);
+  const visorGeo = new THREE.SphereGeometry(0.148, 22, 16, 0, Math.PI * 2, 0.82, 0.55);
   const visor = new THREE.Mesh(visorGeo, mat.visor);
-  visor.position.set(0, 0.1, 0.01);
+  visor.position.set(0, 0.1, 0.02);
   visor.castShadow = true;
   head.add(visor);
-  sph(bone, 0.03, 0.05, 0.08, 0.1, head, 8);
-  sph(bone, 0.03, -0.05, 0.08, 0.1, head, 8);
-  cyl(dark, 0.012, 0.008, 0.1, 0.08, 0.22, -0.02, head, 0.35);
-  sph(mat.ember, 0.016, 0, 0.1, 0.13, head, 8);
+  cap(dark, 0.05, 0.08, 0, 0.16, 0.02, head, 1.15);
+  sph(bone, 0.028, 0.05, 0.08, 0.12, head, 8);
+  sph(bone, 0.028, -0.05, 0.08, 0.12, head, 8);
+  cyl(dark, 0.014, 0.01, 0.12, 0.09, 0.24, -0.04, head, 0.35);
+  sph(mat.ember, 0.018, 0, 0.1, 0.15, head, 8);
+  sph(suit, 0.045, 0.12, 0.1, 0.02, head, 10);
+  sph(suit, 0.045, -0.12, 0.1, 0.02, head, 10);
 
   const mkArm = (side: number) => {
     const root = new THREE.Group();
     root.position.set(0.44 * side, 1.48, 0);
     root.rotation.z = 0.14 * side;
     group.add(root);
-    sph(suit, 0.085, 0.03 * side, 0.02, 0, root, 14);
-    cap(suit, 0.058, 0.2, 0.05 * side, -0.16, 0.02, root);
-    ring(dark, 0.06, 0.01, 0.05 * side, -0.04, 0.03, root);
-    cap(dark, 0.03, 0.08, 0.08 * side, -0.02, 0.06, root);
+    const deltoid = sph(suit, 0.095, 0.04 * side, 0.02, 0, root, 16);
+    deltoid.scale.set(1.15, 0.85, 1.05);
+    cap(suit, 0.068, 0.22, 0.05 * side, -0.16, 0.02, root);
+    ring(dark, 0.07, 0.012, 0.05 * side, -0.04, 0.03, root);
+    ring(metal, 0.066, 0.01, 0.05 * side, -0.2, 0.03, root);
+    cap(dark, 0.032, 0.09, 0.09 * side, -0.02, 0.07, root);
     const forearm = new THREE.Group();
     forearm.position.set(0.02 * side, -0.38, 0.04);
     root.add(forearm);
-    sph(suit, 0.048, 0.03 * side, 0.0, 0.02, forearm, 12);
-    cap(suit, 0.05, 0.18, 0.04 * side, -0.12, 0.02, forearm);
-    ring(metal, 0.052, 0.01, 0.04 * side, -0.2, 0.04, forearm);
-    sph(suit, 0.045, 0.03 * side, -0.34, 0.06, forearm, 12);
-    cap(dark, 0.022, 0.05, 0.05 * side, -0.36, 0.1, forearm);
-    cap(suit, 0.012, 0.03, 0.01 * side, -0.4, 0.12, forearm);
-    cap(suit, 0.011, 0.028, 0.04 * side, -0.4, 0.11, forearm);
-    cap(suit, 0.011, 0.026, 0.06 * side, -0.39, 0.09, forearm);
+    sph(suit, 0.052, 0.03 * side, 0.0, 0.02, forearm, 14);
+    cap(suit, 0.056, 0.2, 0.04 * side, -0.12, 0.02, forearm);
+    ring(metal, 0.058, 0.012, 0.04 * side, -0.2, 0.04, forearm);
+    sph(suit, 0.05, 0.03 * side, -0.34, 0.06, forearm, 14);
+    cap(dark, 0.024, 0.055, 0.05 * side, -0.36, 0.1, forearm);
+    cap(suit, 0.013, 0.032, 0.01 * side, -0.4, 0.13, forearm);
+    cap(suit, 0.012, 0.03, 0.04 * side, -0.4, 0.12, forearm);
+    cap(suit, 0.012, 0.028, 0.065 * side, -0.39, 0.1, forearm);
+    cap(suit, 0.011, 0.024, 0.03 * side, -0.38, 0.08, forearm);
     return { root, forearm };
   };
   const left = mkArm(-1);
@@ -470,19 +542,20 @@ export function createExoSuit(mat: Materials): PlayerRig {
     const thigh = new THREE.Group();
     thigh.position.set(0.17 * side, 0.9, 0);
     group.add(thigh);
-    cap(suit, 0.08, 0.24, 0, -0.16, 0.02, thigh);
-    ring(dark, 0.082, 0.012, 0, -0.28, 0.04, thigh);
-    cap(dark, 0.04, 0.08, 0.06 * side, -0.18, 0.08, thigh);
+    cap(suit, 0.09, 0.26, 0, -0.16, 0.02, thigh);
+    ring(dark, 0.092, 0.014, 0, -0.28, 0.04, thigh);
+    cap(dark, 0.042, 0.09, 0.07 * side, -0.18, 0.09, thigh);
     const shin = new THREE.Group();
     shin.position.set(0, -0.38, 0.02);
     thigh.add(shin);
-    sph(suit, 0.055, 0, -0.02, 0.02, shin, 12);
-    cap(suit, 0.058, 0.2, 0, -0.16, 0.0, shin);
-    ring(metal, 0.06, 0.01, 0, -0.26, 0.04, shin);
-    cap(mat.rubber, 0.07, 0.08, 0, -0.36, 0.06, shin);
-    sph(mat.rubber, 0.055, 0, -0.4, 0.1, shin, 10);
-    cap(dark, 0.03, 0.06, 0.05 * side, -0.32, -0.06, shin);
-    box(mat.warning, 0.06, 0.016, 0.03, 0, -0.28, 0.08, shin);
+    sph(suit, 0.062, 0, -0.02, 0.03, shin, 14);
+    cap(suit, 0.066, 0.22, 0, -0.16, 0.0, shin);
+    ring(metal, 0.068, 0.012, 0, -0.26, 0.04, shin);
+    cap(mat.rubber, 0.078, 0.1, 0, -0.36, 0.07, shin);
+    const boot = sph(mat.rubber, 0.062, 0, -0.4, 0.12, shin, 12);
+    boot.scale.set(1.05, 0.7, 1.35);
+    cap(dark, 0.032, 0.07, 0.055 * side, -0.32, -0.07, shin);
+    box(mat.warning, 0.065, 0.016, 0.032, 0, -0.28, 0.09, shin);
     return { thigh, shin };
   };
 
