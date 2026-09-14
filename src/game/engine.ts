@@ -5,7 +5,7 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { GameAudio } from "./audio";
 import { collidePlayer, groundHeight, rayWorld, clamp } from "./collision";
-import { isMissionUnlocked, missionInfo } from "./campaign";
+import { isMissionUnlocked, missionInfo, missionScale, rollMissionRarity } from "./campaign";
 import { buildMission } from "./level";
 import {
   addWorldFromBoxes,
@@ -171,13 +171,26 @@ function rarityColor(r: Rarity) {
   return r === "legendary" ? 0xfb923c : r === "rare" ? 0xc4b5fd : r === "magic" ? 0x60a5fa : 0xd6d3d1;
 }
 
-function enemyStats(kind: EnemyKind) {
-  if (kind === "harbinger") return { hp: 1680, radius: 1.2, speed: 2.5, dmg: 26 };
-  if (kind === "brute") return { hp: 390, radius: 0.78, speed: 2.7, dmg: 24 };
-  if (kind === "stalker") return { hp: 125, radius: 0.46, speed: 4.5, dmg: 16 };
-  if (kind === "spitter") return { hp: 110, radius: 0.5, speed: 2.9, dmg: 18 };
-  if (kind === "wraith") return { hp: 72, radius: 0.38, speed: 6.4, dmg: 15 };
-  return { hp: 78, radius: 0.42, speed: 5.0, dmg: 13 };
+function enemyStats(kind: EnemyKind, id: MissionId = "ashfall") {
+  const base =
+    kind === "harbinger"
+      ? { hp: 1680, radius: 1.2, speed: 2.5, dmg: 26 }
+      : kind === "brute"
+        ? { hp: 390, radius: 0.78, speed: 2.7, dmg: 24 }
+        : kind === "stalker"
+          ? { hp: 125, radius: 0.46, speed: 4.5, dmg: 16 }
+          : kind === "spitter"
+            ? { hp: 110, radius: 0.5, speed: 2.9, dmg: 18 }
+            : kind === "wraith"
+              ? { hp: 72, radius: 0.38, speed: 6.4, dmg: 15 }
+              : { hp: 78, radius: 0.42, speed: 5.0, dmg: 13 };
+  const sc = missionScale(id);
+  return {
+    hp: Math.round(base.hp * sc.hp),
+    radius: base.radius,
+    speed: base.speed * sc.speed,
+    dmg: Math.round(base.dmg * sc.dmg),
+  };
 }
 
 function radialDeadzone(x: number, y: number, dz = 0.16) {
@@ -467,7 +480,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     toneMapped: false,
   });
 
-  const groundGeo = new THREE.PlaneGeometry(160, 180, 1, 1);
+  const groundGeo = new THREE.PlaneGeometry(160, 240, 1, 1);
   groundGeo.rotateX(-Math.PI / 2);
 
   function fillMissionDecor() {
@@ -475,7 +488,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     while (missionGroup.children.length) missionGroup.remove(missionGroup.children[0]);
     const ground = new THREE.Mesh(groundGeo, new THREE.MeshBasicMaterial({ color: 0x12100e }));
     ground.receiveShadow = true;
-    ground.position.set(0, 0, -48);
+    ground.position.set(0, 0, -70);
     missionGroup.add(ground);
     if (textures.ground) {
       const g = textures.ground.clone();
@@ -903,7 +916,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
 
   function spawnEnemy(kind: EnemyKind, x: number, z: number, rift = true) {
     if (!mat) return;
-    const st = enemyStats(kind);
+    const st = enemyStats(kind, level.id);
     const rig = createShade(kind, mat);
     rig.group.position.set(x, 0, z);
     scene.add(rig.group);
@@ -965,18 +978,18 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
 
   function rollDrop(x: number, z: number, kind: EnemyKind) {
     if (!mat) return;
+    const sc = missionScale(level.id);
     if (kind === "harbinger" || kind === "brute" || Math.random() > 0.18) spawnAmmoDrop(x, z);
     const roll = Math.random();
-    if (!(kind === "harbinger" || roll > 0.38)) return;
-    const rarity: Rarity =
-      kind === "harbinger" ? "legendary" : roll > 0.92 ? "legendary" : roll > 0.78 ? "rare" : roll > 0.5 ? "magic" : "common";
+    if (!(kind === "harbinger" || roll < sc.dropChance)) return;
+    const rarity = rollMissionRarity(level.id, kind);
     const gearRoll = Math.random();
     const item =
       rarity === "common" && gearRoll < 0.5
         ? undefined
         : gearRoll > 0.55
-          ? rollLootArmor(rarity)
-          : rollLootWeapon(rarity);
+          ? rollLootArmor(rarity, sc.tier)
+          : rollLootWeapon(rarity, sc.tier);
     const kindDrop: Drop["kind"] = item ? (item.kind === "armor" ? "armor" : "weapon") : Math.random() > 0.5 ? "health" : "gold";
     let mesh: THREE.Object3D;
     if (item?.kind === "weapon") {
@@ -1012,7 +1025,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       hp = Math.min(maxHp, hp + 22);
       pushLoot(`Op ${pLevel}`, "rare");
     }
-    gold += 12 + Math.floor(Math.random() * 24);
+    gold += Math.round((12 + Math.floor(Math.random() * 24)) * missionScale(level.id).scrapMult);
     audio.kill();
     freeze = Math.max(freeze, e.kind === "harbinger" ? 0.12 : 0.045);
     trauma = Math.min(1, trauma + (e.kind === "harbinger" ? 0.55 : 0.18));
@@ -1494,10 +1507,18 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     if (cacheTaken) return;
     if (Math.hypot(px - level.cache.x, pz - level.cache.z) > 1.55) return;
     cacheTaken = true;
-    gold += 48;
+    const sc = missionScale(level.id);
+    gold += Math.round(48 * sc.scrapMult);
     addAmmoToItems(save.inventory, WEAPON_AMMO[currentWeapon().id], 20);
+    const cacheRarity = sc.tier === 3 ? "legendary" : sc.tier === 2 ? "rare" : "magic";
+    const cacheGear = Math.random() > 0.5 ? rollLootWeapon(cacheRarity, sc.tier) : rollLootArmor(cacheRarity, sc.tier);
+    if (save.inventory.length < INVENTORY_CAP) {
+      save.inventory.push(cacheGear);
+      pushLoot(cacheGear.name, cacheGear.rarity);
+    } else {
+      pushLoot("Field cache", cacheRarity);
+    }
     persistLoadout();
-    pushLoot("Field cache", "rare");
     audio.kill();
     const obj = missionGroup.getObjectByName("fieldCache");
     if (obj) obj.visible = false;
@@ -1772,7 +1793,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       const nx = dx / dist;
       const nz = dz / dist;
       e.yaw = Math.atan2(-dx, -dz);
-      const st = enemyStats(e.kind);
+      const st = enemyStats(e.kind, level.id);
       const stop =
         e.kind === "stalker"
           ? 8.5
@@ -2506,7 +2527,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       tryFieldCache();
     }
 
-    if (!extractReady && (spawned.size >= 2 || kills >= 8)) {
+    const extractGate = missionScale(level.id);
+    if (!extractReady && (spawned.size >= extractGate.extractWaves || kills >= extractGate.extractKills)) {
       extractReady = true;
       hint = "Extract pad live at drop — hold X, or push the gate";
     }
@@ -2699,6 +2721,19 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       if (codes.length === 0) qaKeys.active = false;
     },
     setSteer: () => {},
+    getLevelMeta: () => {
+      const sc = missionScale(level.id);
+      return {
+        id: level.id,
+        waves: level.spawners.length,
+        enemies: level.spawners.reduce((n, s) => n + s.enemies.length, 0),
+        gateZ: level.gate.z,
+        spawnZ: level.spawn.z,
+        extractWaves: sc.extractWaves,
+        extractKills: sc.extractKills,
+        hp: sc.hp,
+      };
+    },
     getPos: () => ({ x: px, z: pz, y: py }),
     setPos: (x, z) => {
       px = x;

@@ -21,7 +21,7 @@ export function MissionPanel({
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="font-display text-3xl font-semibold">Ops holotable</h2>
-            <p className="text-sm text-muted">Pick a district. Ember Rail and Null Spire unlock after the previous gate falls.</p>
+            <p className="text-sm text-muted">Each district is longer and meaner. Higher gates drop better kits.</p>
           </div>
           <button
             type="button"
@@ -58,7 +58,10 @@ export function MissionPanel({
                   </span>
                 </span>
                 <span className="mt-1 block text-sm leading-relaxed text-muted">{m.blurb}</span>
-                <span className="mt-2 block font-mono text-[10px] uppercase tracking-widest text-faint">{m.threat}</span>
+                <span className="mt-2 block font-mono text-[10px] uppercase tracking-widest text-faint">
+                  {m.length} · {m.threat}
+                </span>
+                <span className="mt-1 block font-mono text-[10px] uppercase tracking-widest text-accent">Loot · {m.loot}</span>
               </button>
             );
           })}

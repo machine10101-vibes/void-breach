@@ -163,6 +163,16 @@ export type ControlsProbe = {
   setPos?: (x: number, z: number) => void;
   getCam?: () => { x: number; y: number; z: number; fov: number; dist: number };
   getPhase?: () => string;
+  getLevelMeta?: () => {
+    id: MissionId;
+    waves: number;
+    enemies: number;
+    gateZ: number;
+    spawnZ: number;
+    extractWaves: number;
+    extractKills: number;
+    hp: number;
+  };
   getMove?: () => { x: number; y: number };
   getPose?: () => {
     lThigh: number;
