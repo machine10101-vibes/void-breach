@@ -180,15 +180,16 @@ export function makeArmor(
   };
 }
 
-export function rollLootWeapon(rarity: Rarity): InvItem {
+export function rollLootWeapon(rarity: Rarity, tier = 1): InvItem {
   const pool: WeaponId[] = ["ar", "shotgun", "smg", "dmr", "cannon", "lmg", "rail", "gl", "pulse"];
   const id = pool[Math.floor(Math.random() * pool.length)];
   const prefix = rarity === "legendary" ? "Mythic " : rarity === "rare" ? "Rare " : rarity === "magic" ? "Tuned " : "";
   const mult = rarity === "legendary" ? 1.7 : rarity === "rare" ? 1.35 : rarity === "magic" ? 1.15 : 1;
+  const tierBonus = 1 + Math.max(0, tier - 1) * 0.14;
   const base = WEAPON_BASE[id];
   return makeWeapon(id, prefix + base.name, rarity, {
     ...base,
-    dmg: Math.round(base.dmg * mult),
+    dmg: Math.round(base.dmg * mult * tierBonus),
   });
 }
 
@@ -198,7 +199,7 @@ export function rollLootAmmo(kindHint?: WeaponId): InvItem {
   return makeAmmo(ammoId, extra);
 }
 
-export function rollLootArmor(rarity: Rarity): InvItem {
+export function rollLootArmor(rarity: Rarity, tier = 1): InvItem {
   const slots: ArmorSlot[] = ["helm", "chest", "arms", "legs"];
   const slot = slots[Math.floor(Math.random() * slots.length)];
   const names: Record<ArmorSlot, Record<Rarity, string>> = {
@@ -208,10 +209,11 @@ export function rollLootArmor(rarity: Rarity): InvItem {
     legs: { common: "Salvaged greaves", magic: "Strider greaves", rare: "Rail greaves", legendary: "Void greaves" },
   };
   const scale = rarity === "legendary" ? 3 : rarity === "rare" ? 2 : rarity === "magic" ? 1.4 : 1;
+  const tierBonus = 1 + Math.max(0, tier - 1) * 0.16;
   return makeArmor(slot, names[slot][rarity], rarity, {
-    hpBonus: Math.round((slot === "chest" ? 22 : 12) * scale),
-    shieldBonus: Math.round((slot === "chest" ? 16 : 8) * scale),
-    dmgBonus: slot === "arms" ? Math.round(6 * scale) : 0,
+    hpBonus: Math.round((slot === "chest" ? 22 : 12) * scale * tierBonus),
+    shieldBonus: Math.round((slot === "chest" ? 16 : 8) * scale * tierBonus),
+    dmgBonus: slot === "arms" ? Math.round(6 * scale * tierBonus) : 0,
   });
 }
 

@@ -70,7 +70,7 @@ const bootHud: HudSnapshot = {
   stimReady: false,
   missionId: "ashfall",
   missionName: "Ashfall Gate",
-  missionBlurb: "Boulevard drop. Push the plaza, hold the overpass, and burn the Harbinger at the Void Gate.",
+  missionBlurb: "Short boulevard drop. Push the plaza, hold the overpass, and burn the Harbinger. Common and magic kits fall here.",
   clearedMissions: [],
   outcome: "none",
 };

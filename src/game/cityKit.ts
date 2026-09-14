@@ -245,8 +245,10 @@ export function paintStreetSurfaces(scene: THREE.Object3D, mat: Materials, theme
   const walkCol = theme === "spire" ? 0x2e343c : 0x322e2a;
   const roadMat = new THREE.MeshBasicMaterial({ color: roadCol });
   const walkLit = new THREE.MeshLambertMaterial({ color: walkCol });
-  const road = new THREE.Mesh(new THREE.BoxGeometry(6.4, 0.06, 136), roadMat);
-  road.position.set(0, 0.025, -48);
+  const streetLen = 210;
+  const streetZ = -78;
+  const road = new THREE.Mesh(new THREE.BoxGeometry(6.4, 0.06, streetLen), roadMat);
+  road.position.set(0, 0.025, streetZ);
   road.receiveShadow = true;
   scene.add(road);
 
@@ -256,19 +258,19 @@ export function paintStreetSurfaces(scene: THREE.Object3D, mat: Materials, theme
   scene.add(cross);
 
   for (const x of [-3.28, 3.28]) {
-    const curb = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.16, 136), mat.concrete);
-    curb.position.set(x, 0.08, -48);
+    const curb = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.16, streetLen), mat.concrete);
+    curb.position.set(x, 0.08, streetZ);
     curb.castShadow = true;
     curb.receiveShadow = true;
     scene.add(curb);
   }
 
   for (const x of [-5.05, 5.05]) {
-    const walk = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.08, 136), walkLit);
-    walk.position.set(x, 0.04, -48);
+    const walk = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.08, streetLen), walkLit);
+    walk.position.set(x, 0.04, streetZ);
     walk.receiveShadow = true;
     scene.add(walk);
-    for (let i = 0; i < 34; i++) {
+    for (let i = 0; i < 52; i++) {
       const joint = new THREE.Mesh(new THREE.BoxGeometry(3.15, 0.01, 0.04), mat.dark);
       joint.position.set(x, 0.085, 16 - i * 4);
       scene.add(joint);
@@ -277,8 +279,8 @@ export function paintStreetSurfaces(scene: THREE.Object3D, mat: Materials, theme
 
   const dirtMat = new THREE.MeshBasicMaterial({ color: 0x141210 });
   for (const x of [-7.7, 7.7]) {
-    const dirt = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.05, 136), dirtMat);
-    dirt.position.set(x, 0.02, -48);
+    const dirt = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.05, streetLen), dirtMat);
+    dirt.position.set(x, 0.02, streetZ);
     dirt.receiveShadow = true;
     scene.add(dirt);
   }
@@ -288,16 +290,16 @@ export function paintStreetSurfaces(scene: THREE.Object3D, mat: Materials, theme
     color: 0xd4c090,
     toneMapped: false,
   });
-  const dashes = new THREE.InstancedMesh(dashGeo, dashMat, 44);
+  const dashes = new THREE.InstancedMesh(dashGeo, dashMat, 68);
   const dummy = new THREE.Object3D();
-  for (let i = 0; i < 44; i++) {
+  for (let i = 0; i < 68; i++) {
     dummy.position.set(0, 0.055, 14 - i * 3.05);
     dummy.updateMatrix();
     dashes.setMatrixAt(i, dummy.matrix);
   }
   scene.add(dashes);
 
-  for (const z of [8.2, -16.5, -50.5, -96]) paintCrosswalk(scene, z, mat);
+  for (const z of [8.2, -16.5, -50.5, -96, -132]) paintCrosswalk(scene, z, mat);
 
   const stainGeo = new THREE.CircleGeometry(0.95, 10);
   stainGeo.rotateX(-Math.PI / 2);
@@ -318,7 +320,7 @@ export function paintStreetSurfaces(scene: THREE.Object3D, mat: Materials, theme
   }
   scene.add(stains);
 
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < 18; i++) {
     const hole = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.06, 12), mat.metal);
     hole.position.set(i % 2 ? -1.35 : 1.4, 0.05, 10 - i * 10.5);
     scene.add(hole);
@@ -326,7 +328,7 @@ export function paintStreetSurfaces(scene: THREE.Object3D, mat: Materials, theme
     lid.position.set(i % 2 ? -1.35 : 1.4, 0.085, 10 - i * 10.5);
     scene.add(lid);
   }
-  for (let i = 0; i < 14; i++) {
+  for (let i = 0; i < 20; i++) {
     const side = i % 2 === 0 ? -1 : 1;
     const grate = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.04, 0.85), mat.dark);
     grate.position.set(side * 2.95, 0.06, 12 - i * 9.2);
@@ -458,7 +460,7 @@ export function placeStreetFurniture(scene: THREE.Object3D, mat: Materials, them
   }
 
   if (theme === "rail") {
-    for (let z = 8; z > -118; z -= 8.2) {
+    for (let z = 8; z > -150; z -= 8.2) {
       const rail = createRailSegment(mat);
       rail.position.set(0, 0.01, z);
       scene.add(rail);
@@ -486,8 +488,8 @@ export function placeStreetFurniture(scene: THREE.Object3D, mat: Materials, them
 
 export function dressThemeGround(scene: THREE.Object3D, mat: Materials, theme: LevelTheme) {
   if (theme === "rail") {
-    const bed = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.08, 132), mat.dark);
-    bed.position.set(0, 0.01, -48);
+    const bed = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.08, 200), mat.dark);
+    bed.position.set(0, 0.01, -78);
     bed.receiveShadow = true;
     scene.add(bed);
     const platL = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.28, 22), mat.concrete);
@@ -498,7 +500,7 @@ export function dressThemeGround(scene: THREE.Object3D, mat: Materials, theme: L
     platR.position.set(4.4, 0.16, 2);
     scene.add(platR);
     const end = new THREE.Mesh(new THREE.BoxGeometry(8.2, 0.28, 16), mat.concrete);
-    end.position.set(0, 0.16, -108);
+    end.position.set(0, 0.16, -128);
     end.receiveShadow = true;
     scene.add(end);
   }
@@ -615,7 +617,7 @@ export function paintAtmosphere(scene: THREE.Object3D, mat: Materials, theme: Le
   }
 
   const fogSheet = new THREE.Mesh(
-    new THREE.PlaneGeometry(28, 140),
+    new THREE.PlaneGeometry(28, 200),
     new THREE.MeshBasicMaterial({
       color: theme === "spire" ? 0x1a2834 : 0x2a1c14,
       transparent: true,
@@ -625,7 +627,7 @@ export function paintAtmosphere(scene: THREE.Object3D, mat: Materials, theme: Le
     }),
   );
   fogSheet.rotation.x = -Math.PI / 2;
-  fogSheet.position.set(0, 0.22, -48);
+  fogSheet.position.set(0, 0.22, -70);
   scene.add(fogSheet);
 
   const ridgeMat = new THREE.MeshBasicMaterial({ color: theme === "spire" ? 0x0c1016 : 0x0e0a08 });
