@@ -1622,9 +1622,9 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   }) {
     if (!playerRig) return;
     const dt = args.dt;
-    moveW = THREE.MathUtils.damp(moveW, args.moving ? 1 : 0, 8.4, dt);
-    sprintW = THREE.MathUtils.damp(sprintW, args.moving && args.sprint ? 1 : 0, 6.8, dt);
-    const cadence = THREE.MathUtils.lerp(7.35, 11.2, sprintW);
+    moveW = THREE.MathUtils.damp(moveW, args.moving ? 1 : 0, 10.5, dt);
+    sprintW = THREE.MathUtils.damp(sprintW, args.moving && args.sprint ? 1 : 0, 8.2, dt);
+    const cadence = THREE.MathUtils.lerp(7.6, 11.6, sprintW);
     gaitT += dt * THREE.MathUtils.lerp(1.05, cadence, moveW);
     const ph = gaitT;
     const hipCurve = (p: number) => {
@@ -1634,18 +1634,10 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     };
     const kneeCurve = (p: number) => {
       const s = Math.sin(p);
-      const c = Math.cos(p);
-      const swing = Math.max(0, c);
-      const stance = Math.max(0, -c);
-      const early = swing * Math.max(0, -s);
-      const late = swing * Math.max(0, s);
-      const idleKnee = 0.12 + (1 - moveW) * 0.04;
-      return (
-        idleKnee +
-        early * THREE.MathUtils.lerp(0.88, 1.18, sprintW) * moveW +
-        late * 0.2 * moveW +
-        stance * (0.07 + Math.max(0, -s) * 0.16) * moveW
-      );
+      const lift = Math.max(0, -s);
+      const crumple = Math.max(0, Math.cos(p + 0.28));
+      const plant = Math.max(0, s) * 0.12;
+      return 0.14 + (lift * THREE.MathUtils.lerp(1.02, 1.32, sprintW) + crumple * 0.3 + plant) * moveW;
     };
     const footCurve = (p: number) => {
       const s = Math.sin(p);
@@ -1656,7 +1648,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     };
     const L = hipCurve(ph);
     const R = hipCurve(ph + Math.PI);
-    const hipAmp = THREE.MathUtils.lerp(0.5, 0.76, sprintW) * moveW;
+    const hipAmp = THREE.MathUtils.lerp(0.64, 0.92, sprintW) * moveW;
     const idle = Math.sin(args.now * 0.0024) * 0.018 * (1 - moveW * 0.65);
     const breath = Math.sin(args.now * 0.00155) * 0.012;
     const sway = Math.sin(args.now * 0.00105) * 0.03 * (1 - moveW);
