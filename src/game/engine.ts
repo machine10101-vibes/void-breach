@@ -274,6 +274,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   let fireCd = 0;
   let recoil = 0;
   let gaitT = 0;
+  let moveW = 0;
+  let sprintW = 0;
   let reloadT = 0;
   let overdriveT = 0;
   let skillCd = { frag: 0, overdrive: 0, cleave: 0, scan: 0 };
@@ -1194,6 +1196,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     velZ = 0;
     recoil = 0;
     gaitT = 0;
+    moveW = 0;
+    sprintW = 0;
     shipWalk = null;
     shipTapLock = performance.now() + 1400;
     shipStickLock = performance.now() + 480;
@@ -1613,74 +1617,113 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     aim: number;
     armed: boolean;
     reload: number;
+    drive?: number;
+    strafe?: number;
   }) {
     if (!playerRig) return;
-    const rate = args.sprint ? 13.2 : 8.8;
-    gaitT += args.dt * (args.moving ? rate : 1.2);
-    const step = args.moving ? Math.sin(gaitT) : 0;
-    const opposite = args.moving ? Math.sin(gaitT + Math.PI) : 0;
-    const idle = Math.sin(args.now * 0.0026) * 0.022;
-    const breath = Math.sin(args.now * 0.0017) * 0.012;
-    const amp = args.moving ? (args.sprint ? 0.98 : 0.7) : 0;
-    const knee = (ph: number) => {
-      if (!args.moving) return 0.1;
-      const swing = Math.sin(ph);
-      const lift = Math.max(0, -swing);
-      const crumple = Math.max(0, Math.cos(ph + 0.35));
-      return 0.18 + lift * (args.sprint ? 1.36 : 1.08) + crumple * 0.34;
+    const dt = args.dt;
+    moveW = THREE.MathUtils.damp(moveW, args.moving ? 1 : 0, 8.4, dt);
+    sprintW = THREE.MathUtils.damp(sprintW, args.moving && args.sprint ? 1 : 0, 6.8, dt);
+    const cadence = THREE.MathUtils.lerp(7.35, 11.2, sprintW);
+    gaitT += dt * THREE.MathUtils.lerp(1.05, cadence, moveW);
+    const ph = gaitT;
+    const hipCurve = (p: number) => {
+      const s = Math.sin(p);
+      const c = Math.cos(p);
+      return s * (1.04 + 0.18 * c) + Math.sin(p * 2) * 0.055;
     };
-    const plant = args.moving ? Math.pow(Math.abs(Math.sin(gaitT)), 1.35) : 0;
+    const kneeCurve = (p: number) => {
+      const s = Math.sin(p);
+      const c = Math.cos(p);
+      const swing = Math.max(0, c);
+      const stance = Math.max(0, -c);
+      const early = swing * Math.max(0, -s);
+      const late = swing * Math.max(0, s);
+      const idleKnee = 0.12 + (1 - moveW) * 0.04;
+      return (
+        idleKnee +
+        early * THREE.MathUtils.lerp(0.88, 1.18, sprintW) * moveW +
+        late * 0.2 * moveW +
+        stance * (0.07 + Math.max(0, -s) * 0.16) * moveW
+      );
+    };
+    const footCurve = (p: number) => {
+      const s = Math.sin(p);
+      const c = Math.cos(p);
+      const swing = Math.max(0, c) * Math.max(0, 0.25 - s);
+      const plant = Math.max(0, -c);
+      return (plant * 0.1 - swing * 0.38) * moveW;
+    };
+    const L = hipCurve(ph);
+    const R = hipCurve(ph + Math.PI);
+    const hipAmp = THREE.MathUtils.lerp(0.5, 0.76, sprintW) * moveW;
+    const idle = Math.sin(args.now * 0.0024) * 0.018 * (1 - moveW * 0.65);
+    const breath = Math.sin(args.now * 0.00155) * 0.012;
+    const sway = Math.sin(args.now * 0.00105) * 0.03 * (1 - moveW);
+    const plant = Math.pow(Math.abs(Math.sin(ph)), 1.15);
     const aim = THREE.MathUtils.clamp(args.aim, 0, 1);
-    const hop = (args.moving ? plant * (args.sprint ? 0.078 : 0.052) : idle * 0.45) * (0.55 + (1 - aim) * 0.45);
+    const hop =
+      (moveW * plant * THREE.MathUtils.lerp(0.034, 0.056, sprintW) + idle * 0.4) * (0.58 + (1 - aim) * 0.42);
     const kick = recoil;
     const dodgeLean = Math.min(1, args.dodge * 3.4);
     const rel = Math.sin(args.reload * Math.PI);
+    const drive = THREE.MathUtils.clamp(args.drive ?? (args.moving ? 1 : 0), -1, 1);
+    const strafe = THREE.MathUtils.clamp(args.strafe ?? 0, -1, 1) * moveW;
 
-    playerRig.leftThigh.rotation.x = step * amp + idle * 0.28 + dodgeLean * 0.42;
-    playerRig.rightThigh.rotation.x = opposite * amp + idle * 0.28 - dodgeLean * 0.18;
-    playerRig.leftShin.rotation.x = knee(gaitT) + dodgeLean * 0.55;
-    playerRig.rightShin.rotation.x = knee(gaitT + Math.PI) + dodgeLean * 0.2;
+    playerRig.hips.position.y = 0.9 + hop * 0.22 + breath * 0.35;
+    playerRig.hips.rotation.x = moveW * THREE.MathUtils.lerp(0.03, 0.08, sprintW) * (0.35 + drive * 0.65);
+    playerRig.hips.rotation.y = -L * 0.13 * moveW * (1 - aim * 0.45);
+    playerRig.hips.rotation.z = L * 0.075 * moveW + sway * 0.55 + strafe * 0.08;
 
-    playerRig.torso.position.y = 1.2 + breath * 1.4 + (args.moving ? plant * 0.012 : 0);
+    playerRig.leftThigh.rotation.x = L * hipAmp + idle * 0.22 + dodgeLean * 0.4 + sway * 0.2;
+    playerRig.rightThigh.rotation.x = R * hipAmp + idle * 0.22 - dodgeLean * 0.16 - sway * 0.2;
+    playerRig.leftThigh.rotation.z = -0.02 + L * 0.03 * moveW;
+    playerRig.rightThigh.rotation.z = 0.02 + R * 0.03 * moveW;
+    playerRig.leftShin.rotation.x = kneeCurve(ph) + dodgeLean * 0.5;
+    playerRig.rightShin.rotation.x = kneeCurve(ph + Math.PI) + dodgeLean * 0.18;
+    playerRig.leftFoot.rotation.x = footCurve(ph);
+    playerRig.rightFoot.rotation.x = footCurve(ph + Math.PI);
+
+    playerRig.torso.position.y = 1.2 + breath * 1.25 + hop * 0.18;
     playerRig.torso.rotation.x =
       args.pitch * 0.16 +
       idle +
-      (args.moving ? THREE.MathUtils.lerp(args.sprint ? 0.2 : 0.12, 0.06, aim) : 0.035) +
+      THREE.MathUtils.lerp(0.03, THREE.MathUtils.lerp(0.1, 0.18, sprintW), moveW) * (1 - aim * 0.55) +
       aim * 0.1 +
       rel * 0.1 +
       kick * 0.14 +
       dodgeLean * 0.22;
-    playerRig.torso.rotation.y = args.moving ? -step * THREE.MathUtils.lerp(0.1, 0.04, aim) : 0;
-    playerRig.torso.rotation.z = (args.moving ? -step * 0.05 : 0) + dodgeLean * 0.16;
+    playerRig.torso.rotation.y = L * THREE.MathUtils.lerp(0.09, 0.035, aim) * moveW;
+    playerRig.torso.rotation.z = -L * 0.04 * moveW + dodgeLean * 0.16 + strafe * 0.07;
 
-    playerRig.head.position.y = 1.66 + breath * 0.7 + hop * 0.15;
-    playerRig.head.rotation.x = args.pitch * 0.34 + idle * 0.6 - aim * 0.08 - kick * 0.1 + rel * 0.08;
-    playerRig.head.rotation.y = args.moving ? step * 0.05 : 0;
-    playerRig.head.rotation.z = args.moving ? -step * 0.03 : dodgeLean * 0.08;
+    playerRig.head.position.y = 1.66 + breath * 0.55 + hop * 0.1;
+    playerRig.head.rotation.x = args.pitch * 0.34 + idle * 0.55 - aim * 0.08 - kick * 0.1 + rel * 0.08;
+    playerRig.head.rotation.y = -playerRig.torso.rotation.y * 0.55 + L * 0.02 * moveW;
+    playerRig.head.rotation.z = -playerRig.torso.rotation.z * 0.4 + dodgeLean * 0.06;
 
-    playerRig.backpack.rotation.x = (args.moving ? -step * 0.07 : idle * 0.4) - kick * 0.18;
-    playerRig.backpack.rotation.z = args.moving ? step * 0.04 : 0;
-    playerRig.backpack.position.y = 0.16 + hop * 0.28 + breath * 0.4;
+    playerRig.backpack.rotation.x = -L * 0.055 * moveW + idle * 0.35 - kick * 0.18;
+    playerRig.backpack.rotation.z = L * 0.03 * moveW;
+    playerRig.backpack.position.y = 0.16 + hop * 0.22 + breath * 0.35;
 
     if (!args.armed) {
       if (playerRig.gun) playerRig.gun.visible = false;
-      playerRig.leftArm.rotation.x = -0.16 - step * amp * 0.64 + idle;
-      playerRig.leftArm.rotation.y = 0.02;
-      playerRig.leftArm.rotation.z = 0.14;
-      playerRig.leftForearm.rotation.x = 0.14 + (args.moving ? Math.max(0, -step) * 0.32 : 0);
-      playerRig.rightArm.rotation.x = -0.16 + opposite * amp * 0.64 + idle;
-      playerRig.rightArm.rotation.y = -0.02;
-      playerRig.rightArm.rotation.z = -0.1 + dodgeLean * 0.08;
-      playerRig.rightForearm.rotation.x = 0.14 + (args.moving ? Math.max(0, -opposite) * 0.32 : 0);
+      playerRig.leftArm.rotation.x = -0.14 - L * hipAmp * 0.7 + idle;
+      playerRig.leftArm.rotation.y = 0.03;
+      playerRig.leftArm.rotation.z = 0.13 + Math.abs(L) * 0.035 * moveW;
+      playerRig.leftForearm.rotation.x = 0.12 + Math.max(0, -L) * 0.36 * moveW;
+      playerRig.rightArm.rotation.x = -0.14 - R * hipAmp * 0.7 + idle;
+      playerRig.rightArm.rotation.y = -0.03;
+      playerRig.rightArm.rotation.z = -0.1 - Math.abs(R) * 0.035 * moveW + dodgeLean * 0.08;
+      playerRig.rightForearm.rotation.x = 0.12 + Math.max(0, -R) * 0.36 * moveW;
     } else {
       if (playerRig.gun) playerRig.gun.visible = true;
-      const pump = THREE.MathUtils.lerp(0.08, 0.02, aim);
-      playerRig.leftArm.rotation.x = THREE.MathUtils.lerp(-0.32, -1.05, aim) - step * amp * pump - kick * 0.08 + rel * 0.22;
+      const pump = THREE.MathUtils.lerp(0.055, 0.016, aim) * moveW;
+      playerRig.leftArm.rotation.x = THREE.MathUtils.lerp(-0.32, -1.05, aim) - L * hipAmp * pump - kick * 0.08 + rel * 0.22;
       playerRig.leftArm.rotation.y = THREE.MathUtils.lerp(0.32, 0.1, aim) + rel * 0.18;
-      playerRig.leftArm.rotation.z = THREE.MathUtils.lerp(0.48, 0.16, aim) + Math.abs(step) * amp * 0.03;
+      playerRig.leftArm.rotation.z = THREE.MathUtils.lerp(0.48, 0.16, aim) + Math.abs(L) * hipAmp * 0.025;
       playerRig.leftForearm.rotation.x = THREE.MathUtils.lerp(0.55, 0.16, aim) + rel * 0.28;
       playerRig.rightArm.rotation.x =
-        THREE.MathUtils.lerp(-0.18, -1.18, aim) + opposite * amp * pump * 0.45 - kick * 0.38 - rel * 0.55;
+        THREE.MathUtils.lerp(-0.18, -1.18, aim) + R * hipAmp * pump * 0.4 - kick * 0.38 - rel * 0.55;
       playerRig.rightArm.rotation.y = THREE.MathUtils.lerp(0.22, -0.08, aim) + rel * 0.38;
       playerRig.rightArm.rotation.z = THREE.MathUtils.lerp(0.16, 0.0, aim) + kick * 0.1 + dodgeLean * 0.08;
       playerRig.rightForearm.rotation.x = THREE.MathUtils.lerp(0.52, 0.02, aim) + kick * 0.22 + rel * 0.62;
@@ -1701,9 +1744,9 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
 
     playerRig.group.position.set(px, args.lift + hop, pz);
     playerRig.group.rotation.set(
-      dodgeLean * 0.12 + kick * 0.04 + (args.moving ? THREE.MathUtils.lerp(0.04, 0, aim) : 0),
+      dodgeLean * 0.12 + kick * 0.04 + moveW * THREE.MathUtils.lerp(0.03, 0, aim) * (0.4 + drive * 0.6),
       args.yaw + Math.PI,
-      args.moving ? step * THREE.MathUtils.lerp(0.042, 0.02, aim) : dodgeLean * 0.1,
+      L * THREE.MathUtils.lerp(0.034, 0.016, aim) * moveW + dodgeLean * 0.1 * (1 - moveW) + strafe * 0.05,
     );
   }
 
@@ -2190,6 +2233,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     fireCd = 0;
     recoil = 0;
     gaitT = 0;
+    moveW = 0;
+    sprintW = 0;
     reloadT = 0;
     lmgHeat = 0;
     overdriveT = 0;
@@ -2381,6 +2426,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
           aim: 0,
           armed: isArmed(),
           reload: 0,
+          drive: wm > 0.12 ? 1 : 0,
+          strafe: 0,
         });
       }
       placeFollowCam(dt);
@@ -2553,6 +2600,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     if (playerRig) {
       const moving = Math.hypot(velX, velZ) > 0.6 && grounded;
       const sprint = held.sprint || k.has("ShiftLeft") || k.has("ShiftRight");
+      const right = { x: Math.cos(yaw), z: -Math.sin(yaw) };
+      const spd = Math.max(0.001, Math.hypot(velX, velZ));
       poseOperator({
         moving,
         sprint,
@@ -2566,6 +2615,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
         aim: aimT,
         armed: isArmed(),
         reload: reloadT > 0 ? Math.min(1, 1 - reloadT / Math.max(0.4, currentWeapon()?.reload ?? 1)) : 0,
+        drive: (velX * f.x + velZ * f.z) / spd,
+        strafe: (velX * right.x + velZ * right.z) / spd,
       });
       if (overdriveT > 0) {
         (playerRig.visor.material as THREE.MeshStandardMaterial).emissiveIntensity = 5;

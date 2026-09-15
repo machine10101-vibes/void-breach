@@ -343,6 +343,14 @@ export function buildHelmKit(mat: Materials, style: ArmorStyle, rarity: Rarity, 
   glowSph(p.glow, 0.02, 0, 0.1, 0.2, g, glows);
   ring(p.light, 0.1, 0.008, 0, 0.1, 0.16, g, 0.25);
   cyl(p.dark, 0.012, 0.008, 0.16, 0.1, 0.32, -0.04, g, 0.32);
+  cap(p.plate, 0.07, 0.06, 0, 0.0, 0.12, g);
+  box(p.dark, 0.1, 0.018, 0.04, 0, 0.04, 0.18, g);
+  sph(p.metal, 0.028, 0.16, 0.16, -0.04, g, 10);
+  sph(p.metal, 0.028, -0.16, 0.16, -0.04, g, 10);
+  cap(p.dark, 0.03, 0.06, 0.12, 0.02, 0.12, g);
+  cap(p.dark, 0.03, 0.06, -0.12, 0.02, 0.12, g);
+  ring(p.metal, 0.08, 0.01, 0, 0.2, 0.0, g);
+  for (let i = 0; i < 3; i++) box(p.metal, 0.012, 0.012, 0.012, -0.04 + i * 0.04, 0.18, 0.1, g);
 
   if (style === "ember") {
     cap(p.accent, 0.04, 0.22, 0, 0.4, -0.02, g);
@@ -418,6 +426,18 @@ export function buildChestKit(mat: Materials, style: ArmorStyle, rarity: Rarity,
   ring(p.metal, 0.1, 0.014, 0, 0.2, -0.22, g);
   cap(p.dark, 0.045, 0.1, 0.18, 0.22, 0.16, g);
   cap(p.dark, 0.045, 0.1, -0.18, 0.22, 0.16, g);
+  cap(p.plate, 0.07, 0.1, 0.22, 0.3, 0.04, g, 0.4);
+  cap(p.plate, 0.07, 0.1, -0.22, 0.3, 0.04, g, 0.4);
+  box(p.dark, 0.28, 0.02, 0.06, 0, 0.06, 0.18, g);
+  box(p.dark, 0.24, 0.016, 0.05, 0, -0.04, 0.16, g);
+  sph(p.plate, 0.07, 0.26, 0.14, 0.1, g, 12);
+  sph(p.plate, 0.07, -0.26, 0.14, 0.1, g, 12);
+  for (let i = 0; i < 5; i++) {
+    box(p.metal, 0.012, 0.012, 0.012, 0.16, 0.36 - i * 0.07, 0.14, g);
+    box(p.metal, 0.012, 0.012, 0.012, -0.16, 0.36 - i * 0.07, 0.14, g);
+  }
+  cap(p.dark, 0.03, 0.12, 0.1, 0.2, -0.18, g, 0.9);
+  cap(p.dark, 0.03, 0.12, -0.1, 0.2, -0.18, g, 0.9);
 
   if (style === "assault") {
     const wideL = sph(p.plate, 0.18, 0.42, 0.34, 0.07, g, 16);
@@ -467,6 +487,10 @@ export function buildUpperArmKit(mat: Materials, style: ArmorStyle, rarity: Rari
   ring(p.dark, 0.078, 0.01, 0.08 * side, -0.06, 0.05, g);
   cap(p.dark, 0.038, 0.09, 0.15 * side, 0.04, 0.13, g);
   glowSph(p.glow, 0.018, 0.13 * side, 0.16, 0.13, g, glows);
+  sph(p.plate, 0.055, 0.1 * side, -0.08, 0.06, g, 12);
+  box(p.dark, 0.06, 0.02, 0.05, 0.12 * side, 0.08, 0.1, g);
+  cyl(p.metal, 0.012, 0.012, 0.08, 0.14 * side, 0.02, 0.08, g, 0.8);
+  for (let i = 0; i < 3; i++) box(p.metal, 0.01, 0.01, 0.01, 0.16 * side, 0.12 - i * 0.06, 0.1, g);
 
   if (style === "servo") {
     cyl(p.metal, 0.016, 0.016, 0.16, 0.16 * side, -0.02, 0.12, g, 1.1);
@@ -497,6 +521,11 @@ export function buildForearmKit(mat: Materials, style: ArmorStyle, rarity: Rarit
   ring(p.metal, 0.066, 0.012, 0.04 * side, -0.16, 0.08, g);
   ring(p.dark, 0.06, 0.01, 0.04 * side, -0.28, 0.08, g);
   sph(p.dark, 0.046, 0.04 * side, -0.36, 0.1, g, 12);
+  box(p.plate, 0.05, 0.04, 0.07, 0.05 * side, -0.34, 0.12, g);
+  cap(p.dark, 0.018, 0.04, 0.02 * side, -0.42, 0.14, g);
+  cap(p.dark, 0.016, 0.036, 0.05 * side, -0.42, 0.13, g);
+  cap(p.dark, 0.015, 0.032, 0.07 * side, -0.41, 0.11, g);
+  ring(p.metal, 0.05, 0.008, 0.04 * side, -0.1, 0.06, g);
 
   if (style === "servo") {
     sph(p.metal, 0.035, 0.05 * side, -0.4, 0.14, g, 8);
@@ -523,6 +552,9 @@ export function buildThighKit(mat: Materials, style: ArmorStyle, rarity: Rarity,
   ring(p.dark, 0.096, 0.01, 0, -0.08, 0.08, g);
   cap(p.dark, 0.036, 0.09, 0.09 * side, -0.2, 0.12, g);
   glowSph(p.glow, 0.018, 0, -0.1, 0.16, g, glows);
+  sph(p.plate, 0.055, 0.06 * side, -0.28, 0.1, g, 12);
+  box(p.dark, 0.08, 0.02, 0.06, 0, -0.18, 0.14, g);
+  cyl(p.metal, 0.014, 0.014, 0.08, 0.08 * side, -0.14, 0.1, g, 0.9);
   if (style === "strider") {
     cap(p.metal, 0.04, 0.1, 0, -0.08, 0.12, g, 0.3);
     cyl(p.accent, 0.016, 0.016, 0.1, 0.08 * side, -0.18, 0.14, g);
@@ -543,6 +575,10 @@ export function buildShinKit(mat: Materials, style: ArmorStyle, rarity: Rarity, 
   cap(p.metal, 0.034, 0.09, 0.09 * side, -0.16, -0.05, g);
   ring(p.dark, 0.08, 0.012, 0, -0.26, 0.08, g);
   ring(p.metal, 0.074, 0.01, 0, -0.1, 0.09, g);
+  box(p.plate, 0.08, 0.04, 0.1, 0, -0.4, 0.16, g);
+  box(p.dark, 0.09, 0.014, 0.14, 0, -0.46, 0.16, g);
+  for (let i = 0; i < 3; i++) box(p.metal, 0.07, 0.008, 0.016, 0, -0.48, 0.08 + i * 0.04, g);
+  sph(p.plate, 0.04, 0.05 * side, -0.22, 0.12, g, 10);
 
   if (style === "rail") {
     cyl(p.accent, 0.016, 0.016, 0.2, 0.08 * side, -0.16, 0.14, g);
