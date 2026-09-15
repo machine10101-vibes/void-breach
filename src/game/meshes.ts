@@ -192,10 +192,13 @@ export function makeMaterials(tex: {
 
 export type PlayerRig = {
   group: THREE.Group;
+  hips: THREE.Object3D;
   leftThigh: THREE.Object3D;
   rightThigh: THREE.Object3D;
   leftShin: THREE.Object3D;
   rightShin: THREE.Object3D;
+  leftFoot: THREE.Object3D;
+  rightFoot: THREE.Object3D;
   leftArm: THREE.Object3D;
   rightArm: THREE.Object3D;
   leftForearm: THREE.Object3D;
@@ -311,6 +314,60 @@ function barrel(
   return cyl(mat, r, r * 0.92, len, x, y, z, parent, Math.PI / 2, 0, 12);
 }
 
+function firearmKit(
+  mat: Materials,
+  g: THREE.Group,
+  opts: {
+    magH?: number;
+    magZ?: number;
+    stock?: boolean;
+    optic?: "iron" | "scope" | "holo" | "none";
+    muzzle?: "brake" | "supp" | "wide" | "none";
+    muzzleZ?: number;
+    rail?: boolean;
+  } = {},
+) {
+  const magH = opts.magH ?? 0.13;
+  const magZ = opts.magZ ?? 0.05;
+  ring(mat.dark, 0.026, 0.007, 0, -0.038, -0.012, g, 0);
+  box(mat.dark, 0.01, 0.026, 0.008, 0, -0.018, 0.012, g);
+  cap(mat.rubber, 0.02, 0.07, 0, -0.155, -0.078, g, 0.18);
+  box(mat.dark, 0.036, magH, 0.062, 0, -0.07 - magH * 0.12, magZ, g);
+  for (let i = 0; i < 4; i++) box(mat.metal, 0.038, 0.005, 0.058, 0, -0.042 - i * 0.026, magZ, g);
+  box(mat.metal, 0.062, 0.01, 0.012, 0.034, 0.048, -0.05, g);
+  box(mat.metal, 0.016, 0.018, 0.055, 0.036, 0.028, 0.04, g);
+  if (opts.rail !== false) {
+    for (let i = 0; i < 7; i++) box(mat.metal, 0.026, 0.007, 0.016, 0, 0.07, -0.08 + i * 0.038, g);
+  }
+  if (opts.stock !== false) {
+    cap(mat.dark, 0.028, 0.11, 0, 0.018, -0.34, g, Math.PI / 2);
+    box(mat.rubber, 0.048, 0.086, 0.024, 0, 0.02, -0.44, g);
+    box(mat.metal, 0.03, 0.03, 0.06, 0, 0.04, -0.28, g);
+  }
+  const optic = opts.optic ?? "iron";
+  if (optic === "iron") {
+    box(mat.dark, 0.016, 0.026, 0.01, 0, 0.082, 0.34, g);
+    box(mat.dark, 0.026, 0.014, 0.01, 0, 0.088, -0.12, g);
+  } else if (optic === "holo") {
+    box(mat.dark, 0.038, 0.038, 0.048, 0, 0.098, -0.02, g);
+    ring(mat.neon, 0.014, 0.0035, 0, 0.108, 0.01, g, 0);
+  } else if (optic === "scope") {
+    cyl(mat.dark, 0.02, 0.02, 0.15, 0, 0.132, 0.02, g, Math.PI / 2, 0, 12);
+    cyl(mat.glass, 0.016, 0.016, 0.018, 0, 0.132, 0.1, g, Math.PI / 2, 0, 10);
+    cyl(mat.dark, 0.022, 0.022, 0.03, 0, 0.132, -0.06, g, Math.PI / 2, 0, 10);
+  }
+  const mz = opts.muzzleZ ?? 0.7;
+  if (opts.muzzle === "brake") {
+    cyl(mat.metal, 0.02, 0.026, 0.048, 0, 0.028, mz, g, Math.PI / 2, 0, 10);
+    box(mat.dark, 0.038, 0.016, 0.028, 0, 0.028, mz + 0.03, g);
+  } else if (opts.muzzle === "supp") {
+    cyl(mat.dark, 0.022, 0.02, 0.13, 0, 0.028, mz, g, Math.PI / 2, 0, 12);
+    ring(mat.metal, 0.022, 0.004, 0, 0.028, mz + 0.05, g, 0);
+  } else if (opts.muzzle === "wide") {
+    cyl(mat.metal, 0.028, 0.034, 0.055, 0, 0.032, mz, g, Math.PI / 2, 0, 10);
+  }
+}
+
 function sph(
   mat: THREE.Material,
   r: number,
@@ -397,12 +454,18 @@ export function createExoSuit(mat: Materials): PlayerRig {
   sph(suit, 0.13, 0.16, 0.92, 0.04, group, 16);
   sph(suit, 0.13, -0.16, 0.92, 0.04, group, 16);
   ring(dark, 0.17, 0.02, 0, 1.04, 0.04, group);
+  ring(metal, 0.148, 0.012, 0, 0.9, 0.03, group);
   cyl(metal, 0.018, 0.018, 0.14, 0.15, 0.98, 0.13, group, 1.05);
   cyl(metal, 0.018, 0.018, 0.14, -0.15, 0.98, 0.13, group, 1.05);
   box(mat.warning, 0.2, 0.022, 0.034, 0, 1.03, 0.17, group);
   cap(dark, 0.045, 0.09, 0.18, 0.88, 0.13, group);
   cap(dark, 0.045, 0.09, -0.18, 0.88, 0.13, group);
   sph(mat.ember, 0.016, 0, 1.04, 0.18, group, 8);
+  box(dark, 0.09, 0.05, 0.06, 0.16, 0.86, 0.1, group);
+  box(dark, 0.09, 0.05, 0.06, -0.16, 0.86, 0.1, group);
+  for (let i = 0; i < 3; i++) box(metal, 0.018, 0.028, 0.04, -0.06 + i * 0.06, 0.88, 0.14, group);
+  cap(suit, 0.04, 0.08, 0.22, 0.94, -0.04, group);
+  cap(suit, 0.04, 0.08, -0.22, 0.94, -0.04, group);
 
   const torso = new THREE.Group();
   torso.position.set(0, 1.2, 0);
@@ -444,6 +507,18 @@ export function createExoSuit(mat: Materials): PlayerRig {
   cap(dark, 0.04, 0.09, 0.16, 0.22, 0.14, torso);
   cap(dark, 0.04, 0.09, -0.16, 0.22, 0.14, torso);
   ring(dark, 0.15, 0.012, 0, 0.18, 0.08, torso);
+  cap(suit, 0.05, 0.08, 0, 0.36, 0.08, torso);
+  ring(metal, 0.072, 0.01, 0, 0.38, 0.06, torso);
+  box(dark, 0.22, 0.018, 0.05, 0, 0.08, 0.16, torso);
+  box(dark, 0.2, 0.014, 0.04, 0, -0.02, 0.15, torso);
+  sph(suit, 0.055, 0.2, 0.14, 0.08, torso, 12);
+  sph(suit, 0.055, -0.2, 0.14, 0.08, torso, 12);
+  cap(metal, 0.018, 0.1, 0.12, 0.26, 0.16, torso, 0.7);
+  cap(metal, 0.018, 0.1, -0.12, 0.26, 0.16, torso, 0.7);
+  for (let i = 0; i < 4; i++) {
+    box(metal, 0.012, 0.012, 0.012, 0.1, 0.34 - i * 0.06, 0.14, torso);
+    box(metal, 0.012, 0.012, 0.012, -0.1, 0.34 - i * 0.06, 0.14, torso);
+  }
 
   const backpack = new THREE.Group();
   backpack.position.set(0, 0.16, -0.32);
@@ -469,6 +544,12 @@ export function createExoSuit(mat: Materials): PlayerRig {
   cap(dark, 0.02, 0.16, -0.18, 0.06, -0.02, backpack, 0.6);
   box(metal, 0.22, 0.03, 0.08, 0, 0.24, 0.0, backpack);
   for (let i = 0; i < 4; i++) box(dark, 0.016, 0.12, 0.04, -0.06 + i * 0.04, 0.04, -0.12, backpack);
+  cap(dark, 0.018, 0.14, 0.08, 0.12, 0.12, backpack, 1.15);
+  cap(dark, 0.018, 0.14, -0.08, 0.12, 0.12, backpack, 1.15);
+  cyl(metal, 0.02, 0.02, 0.08, 0.11, -0.22, 0.02, backpack);
+  cyl(metal, 0.02, 0.02, 0.08, -0.11, -0.22, 0.02, backpack);
+  box(dark, 0.16, 0.04, 0.1, 0, -0.08, 0.1, backpack);
+  ring(metal, 0.05, 0.008, 0, 0.02, 0.12, backpack);
 
   const head = new THREE.Group();
   head.position.set(0, 1.66, 0.04);
@@ -503,6 +584,13 @@ export function createExoSuit(mat: Materials): PlayerRig {
   sph(mat.ember, 0.018, 0, 0.1, 0.15, head, 8);
   sph(suit, 0.045, 0.12, 0.1, 0.02, head, 10);
   sph(suit, 0.045, -0.12, 0.1, 0.02, head, 10);
+  cap(dark, 0.042, 0.055, 0, -0.02, 0.1, head);
+  cap(suit, 0.038, 0.05, 0.13, 0.08, 0.08, head);
+  cap(suit, 0.038, 0.05, -0.13, 0.08, 0.08, head);
+  sph(metal, 0.022, 0.14, 0.14, 0.0, head, 8);
+  sph(metal, 0.022, -0.14, 0.14, 0.0, head, 8);
+  box(dark, 0.08, 0.016, 0.03, 0, 0.02, 0.14, head);
+  cyl(metal, 0.01, 0.008, 0.07, -0.1, 0.2, -0.06, head, 0.5);
 
   const mkArm = (side: number) => {
     const root = new THREE.Group();
@@ -527,6 +615,10 @@ export function createExoSuit(mat: Materials): PlayerRig {
     cap(suit, 0.012, 0.03, 0.04 * side, -0.4, 0.12, forearm);
     cap(suit, 0.012, 0.028, 0.065 * side, -0.39, 0.1, forearm);
     cap(suit, 0.011, 0.024, 0.03 * side, -0.38, 0.08, forearm);
+    cap(suit, 0.011, 0.022, 0.05 * side, -0.37, 0.07, forearm);
+    ring(metal, 0.048, 0.008, 0.04 * side, -0.08, 0.03, forearm);
+    box(dark, 0.04, 0.018, 0.05, 0.05 * side, -0.32, 0.1, forearm);
+    sph(suit, 0.018, 0.02 * side, -0.42, 0.12, forearm, 8);
     return { root, forearm };
   };
   const left = mkArm(-1);
@@ -543,25 +635,41 @@ export function createExoSuit(mat: Materials): PlayerRig {
   gunGrip.rotation.set(0.86, 0.04, -0.02);
   right.forearm.add(gunGrip);
 
+  const hips = new THREE.Group();
+  hips.position.set(0, 0.9, 0);
+  group.add(hips);
+  sph(suit, 0.1, 0.15, 0.02, 0.02, hips, 14);
+  sph(suit, 0.1, -0.15, 0.02, 0.02, hips, 14);
+  lathe(suit, [[0.06, 0.08], [0.14, 0.04], [0.15, -0.02], [0.1, -0.08]], 0, 0.02, 0.02, hips);
+  ring(metal, 0.12, 0.012, 0, 0.04, 0.02, hips);
+  box(dark, 0.22, 0.03, 0.08, 0, 0.06, 0.08, hips);
+
   const mkLeg = (side: number) => {
     const thigh = new THREE.Group();
-    thigh.position.set(0.17 * side, 0.9, 0);
-    group.add(thigh);
+    thigh.position.set(0.17 * side, 0, 0);
+    hips.add(thigh);
     cap(suit, 0.09, 0.26, 0, -0.16, 0.02, thigh);
     ring(dark, 0.092, 0.014, 0, -0.28, 0.04, thigh);
     cap(dark, 0.042, 0.09, 0.07 * side, -0.18, 0.09, thigh);
+    cyl(metal, 0.016, 0.016, 0.08, 0.08 * side, -0.12, 0.08, thigh, 0.9);
     const shin = new THREE.Group();
     shin.position.set(0, -0.38, 0.02);
     thigh.add(shin);
     sph(suit, 0.062, 0, -0.02, 0.03, shin, 14);
     cap(suit, 0.066, 0.22, 0, -0.16, 0.0, shin);
     ring(metal, 0.068, 0.012, 0, -0.26, 0.04, shin);
-    cap(mat.rubber, 0.078, 0.1, 0, -0.36, 0.07, shin);
-    const boot = sph(mat.rubber, 0.062, 0, -0.4, 0.12, shin, 12);
-    boot.scale.set(1.05, 0.7, 1.35);
-    cap(dark, 0.032, 0.07, 0.055 * side, -0.32, -0.07, shin);
-    box(mat.warning, 0.065, 0.016, 0.032, 0, -0.28, 0.09, shin);
-    return { thigh, shin };
+    cyl(metal, 0.018, 0.018, 0.07, 0.06 * side, -0.02, 0.05, shin, Math.PI / 2);
+    const foot = new THREE.Group();
+    foot.position.set(0, -0.4, 0.08);
+    shin.add(foot);
+    cap(mat.rubber, 0.078, 0.08, 0, 0.02, -0.01, foot);
+    const boot = sph(mat.rubber, 0.062, 0, 0.0, 0.04, foot, 12);
+    boot.scale.set(1.08, 0.62, 1.42);
+    box(dark, 0.09, 0.018, 0.16, 0, -0.04, 0.06, foot);
+    for (let i = 0; i < 3; i++) box(metal, 0.07, 0.01, 0.018, 0, -0.05, 0.0 + i * 0.04, foot);
+    cap(dark, 0.032, 0.07, 0.055 * side, 0.08, -0.15, foot);
+    box(mat.warning, 0.065, 0.016, 0.032, 0, 0.12, 0.01, foot);
+    return { thigh, shin, foot };
   };
 
   const gun = createRifle(mat);
@@ -575,10 +683,13 @@ export function createExoSuit(mat: Materials): PlayerRig {
 
   return {
     group,
+    hips,
     leftThigh: leftLeg.thigh,
     rightThigh: rightLeg.thigh,
     leftShin: leftLeg.shin,
     rightShin: rightLeg.shin,
+    leftFoot: leftLeg.foot,
+    rightFoot: rightLeg.foot,
     leftArm,
     rightArm,
     leftForearm: left.forearm,
@@ -640,6 +751,7 @@ export function createRifle(mat: Materials) {
   box(mat.metal, 0.08, 0.06, 0.2, 0, 0.04, 0.16, g);
   box(mat.dark, 0.05, 0.08, 0.16, 0, 0.08, -0.22, g);
   box(mat.ember, 0.02, 0.02, 0.12, 0.04, 0.09, 0.28, g);
+  firearmKit(mat, g, { magH: 0.15, magZ: 0.08, optic: "holo", muzzle: "brake", muzzleZ: 0.74 });
   return g;
 }
 
@@ -679,6 +791,7 @@ export function createShotgun(mat: Materials) {
   box(mat.metal, 0.16, 0.08, 0.12, 0, 0.02, 0.08, g);
   box(mat.dark, 0.05, 0.1, 0.22, 0, 0.04, 0.28, g);
   box(mat.rubber, 0.08, 0.06, 0.16, 0, -0.08, -0.2, g);
+  firearmKit(mat, g, { magH: 0.08, magZ: -0.02, optic: "iron", muzzle: "wide", muzzleZ: 0.6, stock: true });
   return g;
 }
 
@@ -714,6 +827,7 @@ export function createSmg(mat: Materials) {
   box(mat.dark, 0.05, 0.16, 0.07, 0.05, -0.08, 0.02, g);
   box(mat.metal, 0.09, 0.04, 0.18, 0, 0.07, 0.08, g);
   box(mat.neon, 0.012, 0.012, 0.16, 0.035, 0.07, 0.18, g);
+  firearmKit(mat, g, { magH: 0.16, magZ: 0.02, optic: "holo", muzzle: "supp", muzzleZ: 0.46, stock: false });
   return g;
 }
 
@@ -759,6 +873,7 @@ export function createDmr(mat: Materials) {
   box(mat.armor, 0.08, 0.16, 0.08, 0, -0.08, -0.02, g);
   barrel(mat.dark, 0.03, 0.22, 0, 0.032, 1.02, g);
   box(mat.neon, 0.01, 0.01, 0.18, 0, 0.24, 0.08, g);
+  firearmKit(mat, g, { magH: 0.12, magZ: 0.18, optic: "scope", muzzle: "brake", muzzleZ: 1.08 });
   return g;
 }
 
@@ -797,6 +912,7 @@ export function createCannon(mat: Materials) {
   box(mat.dark, 0.14, 0.1, 0.18, 0, 0.04, 0.08, g);
   box(mat.metal, 0.1, 0.06, 0.1, 0, 0.12, 0.16, g);
   box(mat.warning, 0.08, 0.03, 0.1, 0, 0.16, 0.02, g);
+  firearmKit(mat, g, { magH: 0.1, magZ: -0.04, optic: "iron", muzzle: "wide", muzzleZ: 0.42, stock: false });
   return g;
 }
 
@@ -837,6 +953,7 @@ export function createLmg(mat: Materials) {
   box(mat.dark, 0.2, 0.18, 0.28, 0.16, 0.0, 0.02, g);
   box(mat.warning, 0.2, 0.04, 0.06, 0.16, 0.1, 0.14, g);
   box(mat.metal, 0.08, 0.04, 0.28, 0, -0.1, 0.36, g);
+  firearmKit(mat, g, { magH: 0.18, magZ: 0.0, optic: "iron", muzzle: "brake", muzzleZ: 0.72 });
   return g;
 }
 
@@ -880,6 +997,7 @@ export function createRail(mat: Materials) {
   sph(mat.voidCore, 0.04, 0, 0.14, -0.2, g, 8);
   box(mat.metal, 0.08, 0.04, 0.32, 0, 0.1, 0.48, g);
   box(mat.neon, 0.02, 0.02, 0.4, 0, 0.12, 0.36, g);
+  firearmKit(mat, g, { magH: 0.1, magZ: -0.08, optic: "holo", muzzle: "none", stock: true });
   return g;
 }
 
@@ -919,6 +1037,7 @@ export function createGrenadeLauncher(mat: Materials) {
   box(mat.armor, 0.2, 0.08, 0.28, 0, -0.1, -0.02, g);
   box(mat.warning, 0.18, 0.05, 0.08, 0, 0.18, 0.0, g);
   box(mat.metal, 0.06, 0.16, 0.06, 0.1, -0.08, 0.12, g);
+  firearmKit(mat, g, { magH: 0.08, magZ: -0.1, optic: "iron", muzzle: "wide", muzzleZ: 0.68, stock: true });
   return g;
 }
 
@@ -967,6 +1086,7 @@ export function createPulse(mat: Materials) {
   box(mat.dark, 0.04, 0.06, 0.2, 0, 0.06, 0.4, g);
   sph(mat.voidCore, 0.016, 0, 0.1, 0.32, g, 6);
   box(mat.warning, 0.02, 0.03, 0.05, 0.04, 0.08, -0.12, g);
+  firearmKit(mat, g, { magH: 0.14, magZ: 0.04, optic: "holo", muzzle: "supp", muzzleZ: 0.72 });
   return g;
 }
 
