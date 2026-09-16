@@ -1711,8 +1711,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       if (playerRig.gun) playerRig.gun.visible = true;
       const pump = THREE.MathUtils.lerp(0.055, 0.016, aim) * moveW;
       playerRig.leftArm.rotation.x = THREE.MathUtils.lerp(-0.32, -1.05, aim) - L * hipAmp * pump - kick * 0.08 + rel * 0.22;
-      playerRig.leftArm.rotation.y = THREE.MathUtils.lerp(0.32, 0.1, aim) + rel * 0.18;
-      playerRig.leftArm.rotation.z = THREE.MathUtils.lerp(0.48, 0.16, aim) + Math.abs(L) * hipAmp * 0.025;
+      playerRig.leftArm.rotation.y = THREE.MathUtils.lerp(0.2, 0.1, aim) + rel * 0.18;
+      playerRig.leftArm.rotation.z = THREE.MathUtils.lerp(0.2, 0.12, aim) + Math.abs(L) * hipAmp * 0.025;
       playerRig.leftForearm.rotation.x = THREE.MathUtils.lerp(0.55, 0.16, aim) + rel * 0.28;
       playerRig.rightArm.rotation.x =
         THREE.MathUtils.lerp(-0.18, -1.18, aim) + R * hipAmp * pump * 0.4 - kick * 0.38 - rel * 0.55;

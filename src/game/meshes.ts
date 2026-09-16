@@ -528,10 +528,11 @@ export function createExoSuit(mat: Materials): PlayerRig {
     torso,
     28,
   );
-  const pecL = sph(plate, 0.125, 0.1, 0.2, 0.12, torso, 18);
-  pecL.scale.set(1.35, 0.58, 0.92);
-  const pecR = sph(plate, 0.125, -0.1, 0.2, 0.12, torso, 18);
-  pecR.scale.set(1.35, 0.58, 0.92);
+  const pecL = sph(plate, 0.13, 0.11, 0.2, 0.13, torso, 18);
+  pecL.scale.set(1.45, 0.6, 0.95);
+  const pecR = sph(plate, 0.13, -0.11, 0.2, 0.13, torso, 18);
+  pecR.scale.set(1.45, 0.6, 0.95);
+  box(plate, 0.22, 0.08, 0.06, 0, 0.18, 0.16, torso);
   const trapL = sph(fabric, 0.09, 0.16, 0.32, 0.0, torso, 14);
   trapL.scale.set(1.15, 0.7, 1.0);
   const trapR = sph(fabric, 0.09, -0.16, 0.32, 0.0, torso, 14);
