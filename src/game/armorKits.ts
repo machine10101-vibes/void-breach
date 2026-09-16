@@ -289,9 +289,9 @@ function glowSph(
   return m;
 }
 
-function helmVisor(mat: THREE.Material, parent: THREE.Object3D, glows: THREE.Mesh[], r = 0.22) {
-  const mesh = new THREE.Mesh(new THREE.SphereGeometry(r, 22, 16, 0, Math.PI * 2, 0.8, 0.58), mat);
-  mesh.position.set(0, 0.12, 0.03);
+function helmVisor(mat: THREE.Material, parent: THREE.Object3D, glows: THREE.Mesh[]) {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.03, 0.052), mat);
+  mesh.position.set(0, 0.08, 0.12);
   mesh.castShadow = true;
   mesh.userData.kitGlow = true;
   parent.add(mesh);
@@ -305,72 +305,68 @@ export function buildHelmKit(mat: Materials, style: ArmorStyle, rarity: Rarity, 
   lathe(
     p.plate,
     [
-      [0.02, 0.28],
-      [0.1, 0.27],
-      [0.18, 0.22],
-      [0.22, 0.12],
-      [0.215, 0.02],
-      [0.17, -0.07],
-      [0.12, -0.12],
+      [0.02, 0.22],
+      [0.08, 0.21],
+      [0.12, 0.16],
+      [0.13, 0.06],
+      [0.12, -0.02],
+      [0.09, -0.08],
+      [0.055, -0.12],
     ],
     0,
-    0.1,
+    0.08,
     0.0,
     g,
+    28,
   );
   lathe(
     p.dark,
     [
-      [0.02, 0.22],
-      [0.14, 0.18],
-      [0.175, 0.08],
-      [0.15, -0.02],
+      [0.02, 0.16],
+      [0.09, 0.12],
+      [0.11, 0.04],
+      [0.09, -0.04],
     ],
     0,
-    0.1,
+    0.08,
     0.02,
     g,
   );
-  cap(p.plate, 0.1, 0.09, 0, -0.02, 0.07, g);
-  ring(p.metal, 0.13, 0.02, 0, -0.04, 0.03, g);
-  const cheekL = sph(p.plate, 0.08, 0.17, 0.1, 0.02, g, 14);
-  cheekL.scale.set(0.85, 0.95, 1.1);
-  const cheekR = sph(p.plate, 0.08, -0.17, 0.1, 0.02, g, 14);
-  cheekR.scale.set(0.85, 0.95, 1.1);
-  cap(p.dark, 0.055, 0.08, 0, 0.22, -0.02, g, 1.2);
-  cap(p.metal, 0.032, 0.1, 0, 0.08, -0.18, g, 0.45);
-  helmVisor(p.visor, g, glows, 0.222);
-  glowSph(p.glow, 0.02, 0, 0.1, 0.2, g, glows);
-  ring(p.light, 0.1, 0.008, 0, 0.1, 0.16, g, 0.25);
-  cyl(p.dark, 0.012, 0.008, 0.16, 0.1, 0.32, -0.04, g, 0.32);
-  cap(p.plate, 0.07, 0.06, 0, 0.0, 0.12, g);
-  box(p.dark, 0.1, 0.018, 0.04, 0, 0.04, 0.18, g);
-  sph(p.metal, 0.028, 0.16, 0.16, -0.04, g, 10);
-  sph(p.metal, 0.028, -0.16, 0.16, -0.04, g, 10);
-  cap(p.dark, 0.03, 0.06, 0.12, 0.02, 0.12, g);
-  cap(p.dark, 0.03, 0.06, -0.12, 0.02, 0.12, g);
-  ring(p.metal, 0.08, 0.01, 0, 0.2, 0.0, g);
-  for (let i = 0; i < 3; i++) box(p.metal, 0.012, 0.012, 0.012, -0.04 + i * 0.04, 0.18, 0.1, g);
+  cap(p.plate, 0.055, 0.05, 0, -0.02, 0.08, g);
+  const jaw = sph(p.plate, 0.055, 0, -0.02, 0.08, g, 14);
+  jaw.scale.set(1.2, 0.55, 1.05);
+  const cheekL = sph(p.plate, 0.042, 0.09, 0.07, 0.06, g, 12);
+  cheekL.scale.set(0.85, 0.9, 1.05);
+  const cheekR = sph(p.plate, 0.042, -0.09, 0.07, 0.06, g, 12);
+  cheekR.scale.set(0.85, 0.9, 1.05);
+  cap(p.dark, 0.038, 0.05, 0, 0.18, -0.02, g, 1.15);
+  cap(p.metal, 0.022, 0.07, 0, 0.08, -0.14, g, 0.4);
+  helmVisor(p.visor, g, glows);
+  glowSph(p.glow, 0.014, 0, 0.08, 0.14, g, glows);
+  box(p.dark, 0.14, 0.016, 0.03, 0, 0.1, 0.1, g);
+  sph(p.metal, 0.02, 0.1, 0.12, 0.0, g, 8);
+  sph(p.metal, 0.02, -0.1, 0.12, 0.0, g, 8);
+  ring(p.metal, 0.06, 0.01, 0, -0.08, 0.02, g);
+  for (let i = 0; i < 3; i++) box(p.metal, 0.01, 0.01, 0.01, -0.03 + i * 0.03, 0.16, 0.08, g);
 
   if (style === "ember") {
-    cap(p.accent, 0.04, 0.22, 0, 0.4, -0.02, g);
-    glowSph(p.accent, 0.03, 0.15, 0.22, 0.12, g, glows);
-    glowSph(p.accent, 0.03, -0.15, 0.22, 0.12, g, glows);
-    sph(p.dark, 0.065, 0.2, 0.16, -0.05, g, 12);
-    box(p.accent, 0.06, 0.02, 0.12, 0, 0.18, 0.16, g);
+    cap(p.accent, 0.028, 0.12, 0, 0.24, -0.02, g);
+    glowSph(p.accent, 0.018, 0.1, 0.14, 0.1, g, glows);
+    glowSph(p.accent, 0.018, -0.1, 0.14, 0.1, g, glows);
+    box(p.accent, 0.05, 0.016, 0.08, 0, 0.12, 0.12, g);
   } else if (style === "sealed") {
     cap(p.dark, 0.055, 0.1, 0, 0.06, 0.18, g);
     cyl(p.metal, 0.032, 0.032, 0.12, 0.11, 0.02, 0.16, g, Math.PI / 2);
     cyl(p.metal, 0.032, 0.032, 0.12, -0.11, 0.02, 0.16, g, Math.PI / 2);
     ring(p.metal, 0.09, 0.014, 0, 0.08, 0.16, g, 0);
   } else if (style === "void") {
-    cyl(p.accent, 0.012, 0.006, 0.22, 0.13, 0.34, 0.0, g, 0.28);
-    glowSph(p.light, 0.022, 0.13, 0.48, 0.04, g, glows);
-    cap(p.accent, 0.03, 0.07, 0, 0.08, 0.2, g);
+    cyl(p.accent, 0.01, 0.006, 0.14, 0.09, 0.22, 0.0, g, 0.28);
+    glowSph(p.light, 0.016, 0.09, 0.3, 0.03, g, glows);
+    cap(p.accent, 0.022, 0.05, 0, 0.06, 0.12, g);
   } else if (style === "assault") {
-    cap(p.metal, 0.09, 0.12, 0, 0.28, 0.02, g);
-    sph(p.plate, 0.09, 0.2, 0.2, 0.05, g, 14);
-    sph(p.plate, 0.09, -0.2, 0.2, 0.05, g, 14);
+    cap(p.metal, 0.06, 0.08, 0, 0.2, 0.02, g);
+    sph(p.plate, 0.05, 0.12, 0.14, 0.04, g, 12);
+    sph(p.plate, 0.05, -0.12, 0.14, 0.04, g, 12);
     box(p.accent, 0.09, 0.028, 0.12, 0.16, 0.22, 0.12, g);
     box(p.accent, 0.09, 0.028, 0.12, -0.16, 0.22, 0.12, g);
   } else if (style === "salvaged") {
@@ -396,25 +392,26 @@ export function buildChestKit(mat: Materials, style: ArmorStyle, rarity: Rarity,
   lathe(
     p.plate,
     [
-      [0.09, 0.38],
-      [0.18, 0.32],
-      [0.2, 0.16],
-      [0.18, 0.02],
-      [0.14, -0.1],
+      [0.07, 0.4],
+      [0.13, 0.34],
+      [0.2, 0.24],
+      [0.19, 0.08],
+      [0.14, -0.08],
     ],
     0,
-    0.1,
-    0.04,
+    0.08,
+    0.03,
     g,
+    26,
   );
-  const pecL = sph(p.plate, 0.155, 0.13, 0.24, 0.12, g, 18);
-  pecL.scale.set(1.2, 0.7, 0.9);
-  const pecR = sph(p.plate, 0.155, -0.13, 0.24, 0.12, g, 18);
-  pecR.scale.set(1.2, 0.7, 0.9);
-  const pldL = sph(p.plate, 0.175, 0.38, 0.32, 0.06, g, 16);
-  pldL.scale.set(1.28, 0.7, 1.12);
-  const pldR = sph(p.plate, 0.175, -0.38, 0.32, 0.06, g, 16);
-  pldR.scale.set(1.28, 0.7, 1.12);
+  const pecL = sph(p.plate, 0.13, 0.1, 0.2, 0.13, g, 18);
+  pecL.scale.set(1.4, 0.55, 0.95);
+  const pecR = sph(p.plate, 0.13, -0.1, 0.2, 0.13, g, 18);
+  pecR.scale.set(1.4, 0.55, 0.95);
+  const pldL = sph(p.plate, 0.14, 0.32, 0.3, 0.04, g, 16);
+  pldL.scale.set(1.2, 0.62, 1.05);
+  const pldR = sph(p.plate, 0.14, -0.32, 0.3, 0.04, g, 16);
+  pldR.scale.set(1.2, 0.62, 1.05);
   cap(p.plate, 0.11, 0.12, 0, 0.44, 0.03, g);
   ring(p.metal, 0.15, 0.022, 0, 0.46, 0.03, g);
   cap(p.dark, 0.09, 0.16, 0, 0.16, 0.2, g);
