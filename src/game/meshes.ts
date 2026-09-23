@@ -523,6 +523,7 @@ export function createExoSuit(mat: Materials): PlayerRig {
   const torso = new THREE.Group();
   torso.position.set(0, 1.2, 0);
   group.add(torso);
+  cap(fabric, 0.15, 0.32, 0, 0.1, 0.02, torso);
   lathe(
     fabric,
     [
@@ -616,6 +617,8 @@ export function createExoSuit(mat: Materials): PlayerRig {
     head,
     28,
   );
+  const helmShell = sph(plate, 0.122, 0, 0.08, 0.01, head, 18);
+  helmShell.scale.set(0.96, 1.18, 1.12);
   const skull = sph(fabric, 0.105, 0, 0.07, 0.0, head, 18);
   skull.scale.set(0.94, 1.08, 1.08);
   cap(plate, 0.058, 0.055, 0, -0.02, 0.085, head);
@@ -627,8 +630,8 @@ export function createExoSuit(mat: Materials): PlayerRig {
   cheekR.scale.set(0.82, 0.92, 1.05);
   box(dark, 0.15, 0.02, 0.032, 0, 0.108, 0.108, head);
   box(plate, 0.16, 0.018, 0.04, 0, 0.122, 0.1, head);
-  const visor = new THREE.Mesh(new THREE.BoxGeometry(0.162, 0.024, 0.048), mat.visor);
-  visor.position.set(0, 0.082, 0.116);
+  const visor = new THREE.Mesh(new THREE.BoxGeometry(0.172, 0.03, 0.055), mat.visor);
+  visor.position.set(0, 0.084, 0.122);
   visor.castShadow = true;
   head.add(visor);
   box(dark, 0.07, 0.016, 0.02, 0, 0.04, 0.12, head);
@@ -1419,6 +1422,7 @@ function createHusk(mat: Materials): EnemyRig {
   const glow: THREE.Mesh[] = [];
   const gMat = cloneGlow(mat.shadeGlow);
   const flesh = shadeFlesh(mat);
+  cap(flesh, 0.2, 0.42, 0, 1.2, 0.06, group);
   lathe(
     flesh,
     [
@@ -1473,7 +1477,7 @@ function createHusk(mat: Materials): EnemyRig {
   const cheekR = sph(mat.shade, 0.045, -0.09, 1.7, 0.12, group, 10);
   cheekR.scale.set(0.8, 0.9, 1);
   box(mat.dark, 0.16, 0.02, 0.03, 0, 1.74, 0.18, group);
-  glowSlit(gMat, 0.16, 0.028, 0.05, 0, 1.72, 0.2, group, glow);
+  glowSlit(gMat, 0.18, 0.034, 0.055, 0, 1.72, 0.22, group, glow);
   cap(flesh, 0.04, 0.1, 0, 1.54, 0.06, group);
   ring(mat.metal, 0.05, 0.008, 0, 1.5, 0.06, group);
   const lShoulder = sph(mat.shade, 0.13, -0.26, 1.44, 0.04, group, 12);
@@ -1511,7 +1515,7 @@ function createStalker(mat: Materials): EnemyRig {
   const glow: THREE.Mesh[] = [];
   const gMat = cloneGlow(mat.shadeGlow);
   const flesh = shadeFlesh(mat);
-  cap(flesh, 0.15, 0.62, 0, 1.34, 0.04, group);
+  cap(flesh, 0.17, 0.58, 0, 1.34, 0.04, group);
   lathe(
     mat.shade,
     [
@@ -1548,7 +1552,7 @@ function createStalker(mat: Materials): EnemyRig {
   );
   const snout = sph(mat.shade, 0.07, 0, 1.84, 0.16, group, 12);
   snout.scale.set(0.9, 0.7, 1.35);
-  glowSlit(gMat, 0.14, 0.026, 0.05, 0, 1.92, 0.22, group, glow);
+  glowSlit(gMat, 0.16, 0.032, 0.055, 0, 1.92, 0.24, group, glow);
   glow.push(sph(gMat, 0.022, 0.05, 1.52, 0.16, group, 8));
   cyl(mat.shade, 0.014, 0.01, 0.42, 0.08, 2.16, -0.06, group, 0.28);
   cyl(mat.shade, 0.012, 0.008, 0.3, -0.06, 2.1, -0.08, group, 0.4);
