@@ -339,11 +339,17 @@ export function buildHelmKit(mat: Materials, style: ArmorStyle, rarity: Rarity, 
   cheekL.scale.set(0.85, 0.9, 1.05);
   const cheekR = sph(p.plate, 0.042, -0.09, 0.07, 0.06, g, 12);
   cheekR.scale.set(0.85, 0.9, 1.05);
+  box(p.plate, 0.16, 0.018, 0.04, 0, 0.12, 0.1, g);
+  const earL = cap(p.plate, 0.028, 0.04, 0.13, 0.07, 0.0, g, 1.25);
+  earL.scale.set(0.7, 1, 1.1);
+  const earR = cap(p.plate, 0.028, 0.04, -0.13, 0.07, 0.0, g, 1.25);
+  earR.scale.set(0.7, 1, 1.1);
   cap(p.dark, 0.038, 0.05, 0, 0.18, -0.02, g, 1.15);
   cap(p.metal, 0.022, 0.07, 0, 0.08, -0.14, g, 0.4);
   helmVisor(p.visor, g, glows);
   glowSph(p.glow, 0.014, 0, 0.08, 0.14, g, glows);
   box(p.dark, 0.14, 0.016, 0.03, 0, 0.1, 0.1, g);
+  for (let i = 0; i < 4; i++) box(p.dark, 0.012, 0.018, 0.01, -0.03 + i * 0.02, -0.01, 0.12, g);
   sph(p.metal, 0.02, 0.1, 0.12, 0.0, g, 8);
   sph(p.metal, 0.02, -0.1, 0.12, 0.0, g, 8);
   ring(p.metal, 0.06, 0.01, 0, -0.08, 0.02, g);
@@ -427,6 +433,8 @@ export function buildChestKit(mat: Materials, style: ArmorStyle, rarity: Rarity,
   cap(p.plate, 0.07, 0.1, -0.22, 0.3, 0.04, g, 0.4);
   box(p.dark, 0.28, 0.02, 0.06, 0, 0.06, 0.18, g);
   box(p.dark, 0.24, 0.016, 0.05, 0, -0.04, 0.16, g);
+  box(p.dark, 0.07, 0.09, 0.05, 0.24, 0.0, 0.14, g);
+  box(p.dark, 0.07, 0.09, 0.05, -0.24, 0.0, 0.14, g);
   sph(p.plate, 0.07, 0.26, 0.14, 0.1, g, 12);
   sph(p.plate, 0.07, -0.26, 0.14, 0.1, g, 12);
   for (let i = 0; i < 5; i++) {
