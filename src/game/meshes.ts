@@ -1729,10 +1729,10 @@ function createHarbinger(mat: Materials): EnemyRig {
   group.add(core);
   glow.push(core);
   ring(mat.shade, 0.22, 0.03, 0, 1.72, 0.28, group, 0);
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.82, 0.042, 8, 28), mat.voidCore.clone());
-  ring.rotation.x = Math.PI / 2;
-  ring.position.set(0, 1.72, 0);
-  group.add(ring);
+  const halo = new THREE.Mesh(new THREE.TorusGeometry(0.82, 0.042, 8, 28), mat.voidCore.clone());
+  halo.rotation.x = Math.PI / 2;
+  halo.position.set(0, 1.72, 0);
+  group.add(halo);
   const ringB = new THREE.Mesh(new THREE.TorusGeometry(1.08, 0.026, 8, 32), mat.voidCore.clone());
   ringB.rotation.x = Math.PI / 2.4;
   ringB.position.set(0, 1.9, 0);
@@ -1764,7 +1764,7 @@ function createHarbinger(mat: Materials): EnemyRig {
     rightArm: mkArm(1, 2.08, 0),
     glow,
     core,
-    ring,
+    ring: halo,
   };
 }
 
