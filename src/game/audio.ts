@@ -218,6 +218,22 @@ export class GameAudio {
     o.stop(t + 0.56);
   }
 
+  tell() {
+    if (!this.ctx || !this.sfx) return;
+    const t = this.ctx.currentTime;
+    const o = this.ctx.createOscillator();
+    o.type = "triangle";
+    o.frequency.setValueAtTime(540, t);
+    o.frequency.exponentialRampToValueAtTime(880, t + 0.09);
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.07, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    o.connect(g);
+    g.connect(this.sfx);
+    o.start(t);
+    o.stop(t + 0.13);
+  }
+
   spawn() {
     if (!this.ctx || !this.sfx) return;
     const t = this.ctx.currentTime;

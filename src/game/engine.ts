@@ -111,6 +111,8 @@ type Weapon = {
   reload: number;
 };
 
+type EnemyIntent = "none" | "melee" | "slam" | "shot" | "blink" | "beam";
+
 type Enemy = {
   id: number;
   kind: EnemyKind;
@@ -129,9 +131,20 @@ type Enemy = {
   speed: number;
   state: "chase" | "windup" | "attack";
   stateT: number;
+  windMax: number;
+  intent: EnemyIntent;
   kbX: number;
   kbZ: number;
   summoned: number;
+  elite: boolean;
+  dmgMul: number;
+  scale: number;
+  stagger: number;
+  blinkX: number;
+  blinkZ: number;
+  ring: THREE.Mesh;
+  mark: THREE.Object3D | null;
+  bar: THREE.Mesh | null;
 };
 
 type BulletFx = { mesh: THREE.Line; life: number };
@@ -272,6 +285,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   let weapons = defaultWeapons();
   let mag = weapons[0].mag;
   let fireCd = 0;
+  let tellCd = 0;
   let recoil = 0;
   let gaitT = 0;
   let moveW = 0;
@@ -916,35 +930,93 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     particles.burst(x, 0.4, z, 10, 0xe85d04, 2.2, 0.38, 0.08, 1);
   }
 
-  function spawnEnemy(kind: EnemyKind, x: number, z: number, rift = true) {
+  function makeThreatRing(color: number) {
+    const mesh = new THREE.Mesh(
+      new THREE.RingGeometry(0.62, 0.78, 28),
+      new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+        toneMapped: false,
+      }),
+    );
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.visible = false;
+    scene.add(mesh);
+    return mesh;
+  }
+
+  function makeEliteMark(kind: EnemyKind) {
+    if (!mat) return null;
+    const g = new THREE.Group();
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * Math.PI * 2;
+      const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.055, 0), mat.voidCore.clone());
+      gem.position.set(Math.cos(a) * 0.16, 0, Math.sin(a) * 0.16);
+      g.add(gem);
+    }
+    const crown = kind === "brute" ? 2.55 : kind === "stalker" ? 2.4 : kind === "harbinger" ? 3.15 : 2.12;
+    g.position.y = crown;
+    return g;
+  }
+
+  function spawnEnemy(kind: EnemyKind, x: number, z: number, rift = true, elite = false) {
     if (!mat) return;
     const st = enemyStats(kind, level.id);
+    const marked = elite && kind !== "harbinger";
     const rig = createShade(kind, mat);
+    if (marked) rig.group.scale.multiplyScalar(1.14);
     rig.group.position.set(x, 0, z);
+    const mark = marked ? makeEliteMark(kind) : null;
+    let bar: THREE.Mesh | null = null;
+    if (mark) {
+      rig.group.add(mark);
+      bar = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.72, 0.055),
+        new THREE.MeshBasicMaterial({ color: 0xfb923c, toneMapped: false, depthTest: false }),
+      );
+      bar.position.y = mark.position.y + 0.22;
+      rig.group.add(bar);
+    }
     scene.add(rig.group);
+    const hp = Math.round(st.hp * (marked ? 2.05 : 1));
     enemies.push({
       id: enemyId++,
       kind,
       x,
       y: kind === "harbinger" ? 0.4 : 0,
       z,
-      hp: st.hp,
-      max: st.hp,
+      hp,
+      max: hp,
       yaw: 0,
-      attackCd: 0.5 + Math.random() * 0.4,
+      attackCd: 0.45 + Math.random() * 0.35,
       alive: true,
       dying: 0,
       flash: 0,
       rig,
-      radius: st.radius,
-      speed: st.speed,
+      radius: st.radius * (marked ? 1.08 : 1),
+      speed: st.speed * (marked ? 1.06 : 1),
       state: "chase",
       stateT: 0,
+      windMax: 0.4,
+      intent: "none",
       kbX: 0,
       kbZ: 0,
       summoned: 0,
+      elite: marked,
+      dmgMul: marked ? 1.28 : 1,
+      scale: rig.group.scale.x,
+      stagger: 0,
+      blinkX: x,
+      blinkZ: z,
+      ring: makeThreatRing(marked ? 0xfb923c : 0xe85d04),
+      mark,
+      bar,
     });
     if (kind === "harbinger") bossAlive = true;
+    if (marked) pushFloat("MARKED", x, 2.4, z, "legendary");
     if (rift) spawnRift(x, z);
   }
 
@@ -978,13 +1050,20 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     spawnWorldDrop(x + (Math.random() - 0.5) * 0.5, z + (Math.random() - 0.5) * 0.5, mesh, "ammo", pack, pack.qty ?? AMMO_META[ammoId].pickup, "common");
   }
 
-  function rollDrop(x: number, z: number, kind: EnemyKind) {
+  function bumpRarity(r: Rarity): Rarity {
+    if (r === "common") return "magic";
+    if (r === "magic") return "rare";
+    if (r === "rare") return "legendary";
+    return "legendary";
+  }
+
+  function rollDrop(x: number, z: number, kind: EnemyKind, elite = false) {
     if (!mat) return;
     const sc = missionScale(level.id);
-    if (kind === "harbinger" || kind === "brute" || Math.random() > 0.18) spawnAmmoDrop(x, z);
+    if (kind === "harbinger" || kind === "brute" || elite || Math.random() > 0.18) spawnAmmoDrop(x, z);
     const roll = Math.random();
-    if (!(kind === "harbinger" || roll < sc.dropChance)) return;
-    const rarity = rollMissionRarity(level.id, kind);
+    if (!(kind === "harbinger" || elite || roll < sc.dropChance)) return;
+    const rarity = elite ? bumpRarity(rollMissionRarity(level.id, kind)) : rollMissionRarity(level.id, kind);
     const gearRoll = Math.random();
     const item =
       rarity === "common" && gearRoll < 0.5
@@ -1012,13 +1091,15 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     if (e.dying > 0 || !e.alive) return;
     e.alive = false;
     e.hp = 0;
-    e.dying = 0.55;
+    e.dying = 0.62;
+    e.ring.visible = false;
     kills++;
     comboT = 2.4;
     combo++;
     const xpGain =
       (e.kind === "harbinger" ? 800 : e.kind === "brute" ? 120 : e.kind === "spitter" ? 70 : e.kind === "wraith" ? 55 : 40) *
-      (1 + Math.min(combo, 8) * 0.05);
+      (1 + Math.min(combo, 8) * 0.05) *
+      (e.elite ? 1.75 : 1);
     xp += xpGain;
     while (xp >= pLevel * 200) {
       xp -= pLevel * 200;
@@ -1034,7 +1115,11 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     particles.burst(e.x, 1.1, e.z, e.kind === "harbinger" ? 48 : 22, 0x2dd4bf, 5.5, 0.7, 0.16, -2);
     particles.burst(e.x, 1.0, e.z, 10, 0xe85d04, 3.2, 0.45, 0.1, -3);
     pushFloat(`${combo > 1 ? combo + "x " : ""}DOWN`, e.x, 2.1, e.z, "void");
-    rollDrop(e.x, e.z, e.kind);
+    rollDrop(e.x, e.z, e.kind, e.elite);
+    if (e.elite) {
+      gold += Math.round(28 * missionScale(level.id).scrapMult);
+      pushFloat("MARKED DOWN", e.x, 2.4, e.z, "legendary");
+    }
     if (e.kind === "harbinger") {
       bossAlive = false;
       outcome = "clear";
@@ -1047,16 +1132,28 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
 
   function damageEnemy(e: Enemy, dmg: number, hx: number, hz: number, kb = 2.8) {
     if (!e.alive) return;
-    e.hp -= dmg;
+    const seam = e.state === "windup" || e.stagger > 0;
+    const dealt = dmg * (seam ? (e.elite ? 1.65 : 1.4) : 1);
+    e.hp -= dealt;
     e.flash = 0.14;
     e.kbX += hx * kb;
     e.kbZ += hz * kb;
-    damageDealt += dmg;
+    damageDealt += dealt;
     hits++;
-    hitMarker = 0.14;
+    hitMarker = seam ? 0.22 : 0.14;
     audio.hit();
-    particles.spray(e.x, 1.15, e.z, hx, 0.2, hz, 6, 0x5eead4, 4, 0.22, 0.08);
-    pushFloat(`${Math.round(dmg)}`, e.x, 1.9, e.z, e.hp <= 0 ? "legendary" : "void");
+    particles.spray(e.x, 1.15, e.z, hx, 0.2, hz, seam ? 10 : 6, seam ? 0xfb923c : 0x5eead4, 4, 0.22, 0.08);
+    pushFloat(seam ? `SEAM ${Math.round(dealt)}` : `${Math.round(dealt)}`, e.x, 1.9, e.z, seam || e.hp <= 0 ? "legendary" : "void");
+    if (e.kind !== "harbinger" && kb >= 4.2) {
+      e.stagger = e.elite ? 0.18 : 0.32;
+      if (e.state === "windup" || e.state === "attack") {
+        e.state = "chase";
+        e.stateT = 0;
+        e.attackCd = Math.max(e.attackCd, 0.7);
+      }
+      freeze = Math.max(freeze, 0.028);
+    }
+    if (e.bar) e.bar.scale.x = Math.max(0.05, e.hp / e.max);
     if (e.hp <= 0) killEnemy(e);
   }
 
@@ -1419,7 +1516,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     const ads = 1 - adsT * (w.id === "dmr" || w.id === "rail" ? 0.72 : 0.55);
     const heatSpread = w.id === "lmg" ? 1.7 - lmgHeat * 0.85 : 1;
     const pierce = w.id === "rail" ? 5 : w.id === "dmr" ? 2 : 1;
-    const kb = w.id === "cannon" ? 6.4 : w.id === "rail" ? 4.2 : 2.8;
+    const kb = w.id === "cannon" ? 6.4 : w.id === "shotgun" ? 5.4 : w.id === "rail" || w.id === "gl" ? 4.6 : 2.8;
     const kit = 1 + armorBonuses(save.inventory, save.equippedArmor).dmg / 100 + (pLevel - 1) * 0.03;
     for (let p = 0; p < w.pellets; p++) {
       const spread = w.spread * (1 + (1 - mag / w.mag) * 0.4) * ads * heatSpread;
@@ -1600,7 +1697,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       const dx = e.x - px;
       const dz = e.z - pz;
       const dist = Math.hypot(dx, dz);
-      if (dist < 3.4 && dx * f.x + dz * f.z > 0) damageEnemy(e, 90, f.x, f.z);
+      if (dist < 3.4 && dx * f.x + dz * f.z > 0) damageEnemy(e, 90, f.x, f.z, 5.6);
     }
   }
 
@@ -1795,28 +1892,94 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       if (spawned.has(s.id)) continue;
       if (pz > s.zTrigger) continue;
       spawned.add(s.id);
+      const pool = s.enemies.map((e, i) => i).filter((i) => s.enemies[i].kind !== "harbinger");
+      const markAt = pool.length >= 3 ? pool[Math.floor(Math.random() * pool.length)] : -1;
       objective = s.message;
-      hint = s.enemies.some((en) => en.kind === "harbinger") ? `Burn the ${level.bossName}` : "Clear the pack, then push";
-      for (const e of s.enemies) spawnEnemy(e.kind, e.x, e.z);
+      hint =
+        markAt >= 0
+          ? "Marked Shade in the pack — shoot the seam while the ring burns"
+          : s.enemies.some((en) => en.kind === "harbinger")
+            ? `Burn the ${level.bossName}`
+            : "Clear the pack, then push";
+      s.enemies.forEach((e, i) => spawnEnemy(e.kind, e.x, e.z, true, i === markAt));
     }
+  }
+
+  function pingTell() {
+    if (tellCd > 0) return;
+    tellCd = 0.16;
+    audio.tell();
+  }
+
+  function beginWindup(e: Enemy, intent: EnemyIntent, time: number, blinkX = e.x, blinkZ = e.z) {
+    e.state = "windup";
+    e.intent = intent;
+    e.stateT = time;
+    e.windMax = time;
+    e.blinkX = blinkX;
+    e.blinkZ = blinkZ;
+    const color =
+      intent === "shot" || intent === "beam" ? 0x5eead4 : intent === "blink" ? 0xc4b5fd : intent === "slam" ? 0xfb923c : 0xe85d04;
+    (e.ring.material as THREE.MeshBasicMaterial).color.setHex(color);
+    pingTell();
+  }
+
+  function launchBolt(e: Enemy, dmg: number) {
+    const dx = px - e.x;
+    const dz = pz - e.z;
+    const dist = Math.hypot(dx, dz) || 0.001;
+    const nx = dx / dist;
+    const nz = dz / dist;
+    const mesh = createBolt();
+    if (e.kind === "spitter") {
+      mesh.traverse((c) => {
+        if (c instanceof THREE.Mesh && c.material instanceof THREE.MeshBasicMaterial) c.material.color.setHex(0xe85d04);
+      });
+    }
+    mesh.position.set(e.x, 1.45, e.z);
+    scene.add(mesh);
+    const lead = e.kind === "spitter" ? 0.22 : 0.14;
+    const bx = nx + velX * lead;
+    const bz = nz + velZ * lead;
+    const bm = Math.hypot(bx, bz) || 1;
+    const spd = (e.kind === "spitter" ? 16 : 22) * (e.elite ? 1.08 : 1);
+    projs.push({
+      kind: "bolt",
+      mesh,
+      x: e.x,
+      y: 1.45,
+      z: e.z,
+      vx: (bx / bm) * spd,
+      vy: e.kind === "spitter" ? 1.15 : 0.35,
+      vz: (bz / bm) * spd,
+      life: 1.8,
+      dmg,
+      r: e.kind === "spitter" ? 0.42 : 0.35,
+    });
   }
 
   function updateEnemies(dt: number) {
     if (beamMesh) beamMesh.visible = false;
+    tellCd = Math.max(0, tellCd - dt);
     let nearby = 0;
     for (const e of enemies) {
       if (e.dying > 0) {
         e.dying -= dt;
-        const s = Math.max(0.05, e.dying / 0.55);
-        e.rig.group.scale.multiplyScalar(0.92);
-        e.rig.group.position.y += dt * 0.6;
-        e.rig.group.rotation.y += dt * 2;
-        if (e.dying <= 0) scene.remove(e.rig.group);
+        e.ring.visible = false;
+        const fall = 1 - Math.max(0, e.dying) / 0.62;
+        e.rig.group.scale.setScalar(e.scale * (1 - fall * 0.4));
+        e.rig.group.position.y = Math.max(0, e.y * (1 - fall));
+        if (e.rig.group.rotation.x < 1.2) e.rig.group.rotateX(dt * 2.6);
+        if (e.dying <= 0) {
+          scene.remove(e.rig.group);
+          scene.remove(e.ring);
+        }
         continue;
       }
       if (!e.alive) continue;
       nearby++;
       e.attackCd -= dt;
+      e.stagger = Math.max(0, e.stagger - dt);
       e.flash = Math.max(0, e.flash - dt);
       e.kbX *= Math.pow(0.08, dt);
       e.kbZ *= Math.pow(0.08, dt);
@@ -1831,38 +1994,60 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       const st = enemyStats(e.kind, level.id);
       const stop =
         e.kind === "stalker"
-          ? 8.5
+          ? 8.2
           : e.kind === "spitter"
-            ? 9.2
+            ? 9
             : e.kind === "harbinger"
               ? 3.4
               : e.kind === "wraith"
-                ? 1.55
-                : e.radius + 1.15;
+                ? 2.1
+                : e.radius + 1.2;
 
-      if (e.state === "windup") {
+      if (e.stagger > 0) {
+        e.state = "chase";
+        e.stateT = 0;
+      } else if (e.state === "windup") {
         e.stateT -= dt;
-        if (e.kind === "harbinger" && beamMesh) {
+        if ((e.intent === "melee" || e.intent === "slam") && dist > e.radius + 0.8) {
+          const creep = e.speed * dt * 0.45;
+          e.x += nx * creep;
+          e.z += nz * creep;
+        }
+        if (e.intent === "beam" && beamMesh) {
           alignBeam(e.x, e.y + 2.4, e.z, px, py + 1.2, pz, 0.04);
           beamMesh.visible = true;
           (beamMesh.material as THREE.MeshBasicMaterial).opacity = 0.35;
         }
         if (e.stateT <= 0) {
           e.state = "attack";
-          e.stateT = e.kind === "harbinger" ? 0.7 : 0.28;
-          if (e.kind === "harbinger") audio.beam();
-          if (e.kind === "brute") {
-            particles.burst(e.x, 0.2, e.z, 22, 0x2dd4bf, 5, 0.35, 0.12, 2);
-            scorch.stamp(e.x, e.z, 2.2);
-            if (dist < 3.3) hurtPlayer(st.dmg);
+          e.stateT = e.intent === "beam" ? 0.7 : e.intent === "slam" ? 0.4 : 0.24;
+          const bite = st.dmg * e.dmgMul;
+          if (e.intent === "beam") audio.beam();
+          else if (e.intent === "slam") {
+            particles.burst(e.x, 0.2, e.z, e.elite ? 28 : 22, 0xfb923c, 5, 0.35, 0.12, 2);
+            scorch.stamp(e.x, e.z, e.elite ? 2.7 : 2.2);
+            if (dist < (e.elite ? 3.7 : 3.3)) hurtPlayer(bite);
             trauma = Math.min(1, trauma + 0.28);
-          } else if (e.kind !== "harbinger" && dist < e.radius + 1.15) {
-            hurtPlayer(st.dmg);
+          } else if (e.intent === "shot") {
+            launchBolt(e, bite);
+          } else if (e.intent === "blink") {
+            particles.spray(e.x, 1.1, e.z, 0, 0.4, 0, 8, 0xc4b5fd, 6, 0.2, 0.08);
+            e.x = e.blinkX;
+            e.z = e.blinkZ;
+            const c = collidePlayer(level.boxes, e.x, 0, e.z, e.radius, 1.8);
+            e.x = c.x;
+            e.z = c.z;
+            particles.spray(e.x, 1.1, e.z, nx, 0.2, nz, 8, 0x5eead4, 6, 0.2, 0.08);
+            if (Math.hypot(px - e.x, pz - e.z) < 1.75) hurtPlayer(bite);
+          } else if (e.intent === "melee") {
+            e.kbX += nx * (e.elite ? 11 : 9);
+            e.kbZ += nz * (e.elite ? 11 : 9);
+            if (dist < e.radius + 1.45) hurtPlayer(bite);
           }
         }
       } else if (e.state === "attack") {
         e.stateT -= dt;
-        if (e.kind === "harbinger" && beamMesh) {
+        if (e.intent === "beam" && beamMesh) {
           alignBeam(e.x, e.y + 2.4, e.z, px, py + 1.2, pz, 0.16);
           beamMesh.visible = true;
           (beamMesh.material as THREE.MeshBasicMaterial).opacity = 0.9;
@@ -1871,92 +2056,51 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
             const t = (px - e.x) * nx + (pz - e.z) * nz;
             const closestX = e.x + nx * Math.max(0, t);
             const closestZ = e.z + nz * Math.max(0, t);
-            if (Math.hypot(px - closestX, pz - closestZ) < 0.9 && t > 0) hurtPlayer(18 * dt * 2.8);
+            if (Math.hypot(px - closestX, pz - closestZ) < 0.9 && t > 0) hurtPlayer(18 * dt * 2.8 * e.dmgMul);
           }
         }
         if (e.stateT <= 0) {
+          const cd =
+            e.intent === "beam" ? 2.15 : e.intent === "slam" ? 1.5 : e.intent === "shot" ? (e.kind === "spitter" ? 1.45 : 1.15) : e.intent === "blink" ? 1.2 : 0.95;
           e.state = "chase";
-          e.attackCd = e.kind === "harbinger" ? 2.2 : e.kind === "brute" ? 1.5 : 1.05;
+          e.intent = "none";
+          e.attackCd = cd * (e.elite ? 0.88 : 1);
         }
-      } else {
-        if (dist > stop) {
-          const sp = e.speed * dt;
-          e.x += nx * sp;
-          e.z += nz * sp;
-          const c = collidePlayer(level.boxes, e.x, 0, e.z, e.radius, 1.8);
-          e.x = c.x;
-          e.z = c.z;
-        }
-        if ((e.kind === "stalker" || e.kind === "spitter") && dist < (e.kind === "spitter" ? 18 : 16) && e.attackCd <= 0) {
-          e.attackCd = e.kind === "spitter" ? 1.7 : 1.35;
-          const mesh = createBolt();
-          if (e.kind === "spitter") {
-            mesh.traverse((c) => {
-              if (c instanceof THREE.Mesh && c.material instanceof THREE.MeshBasicMaterial) {
-                c.material.color.setHex(0xe85d04);
-              }
-            });
-          }
-          mesh.position.set(e.x, 1.5, e.z);
-          scene.add(mesh);
-          const lead = e.kind === "spitter" ? 0.2 : 0.12;
-          const bx = nx + velX * lead;
-          const bz = nz + velZ * lead;
-          const bm = Math.hypot(bx, bz) || 1;
-          const spd = e.kind === "spitter" ? 16 : 22;
-          projs.push({
-            kind: "bolt",
-            mesh,
-            x: e.x,
-            y: 1.5,
-            z: e.z,
-            vx: (bx / bm) * spd,
-            vy: e.kind === "spitter" ? 1.1 : 0.4,
-            vz: (bz / bm) * spd,
-            life: 1.8,
-            dmg: st.dmg,
-            r: e.kind === "spitter" ? 0.42 : 0.35,
-          });
-        }
-        if (e.kind === "wraith" && dist < 7.5 && e.attackCd <= 0) {
-          e.attackCd = 1.15;
-          e.x += nx * 3.4;
-          e.z += nz * 3.4;
-          const c = collidePlayer(level.boxes, e.x, 0, e.z, e.radius, 1.8);
-          e.x = c.x;
-          e.z = c.z;
-          particles.spray(e.x, 1.1, e.z, -nx, 0.3, -nz, 8, 0x5eead4, 6, 0.2, 0.08);
-          if (Math.hypot(px - e.x, pz - e.z) < 1.8) hurtPlayer(st.dmg);
-        }
-        if (e.kind === "husk" && dist < 3.6 && e.attackCd <= 0) {
-          e.state = "windup";
-          e.stateT = 0.22;
-          e.kbX += nx * 8;
-          e.kbZ += nz * 8;
-        }
-        if (e.kind === "brute" && dist < 3.0 && e.attackCd <= 0) {
-          e.state = "windup";
-          e.stateT = 0.48;
-        }
-        if (e.kind === "harbinger" && dist < 18 && e.attackCd <= 0) {
-          if (dist < 3.6) {
-            e.state = "windup";
-            e.stateT = 0.35;
-          } else {
-            e.state = "windup";
-            e.stateT = 1.05;
-          }
+      } else if (dist > stop) {
+        const sp = e.speed * dt * (e.stagger > 0 ? 0.25 : 1);
+        e.x += nx * sp;
+        e.z += nz * sp;
+        const c = collidePlayer(level.boxes, e.x, 0, e.z, e.radius, 1.8);
+        e.x = c.x;
+        e.z = c.z;
+      }
+
+      if (e.stagger <= 0 && e.state === "chase" && e.attackCd <= 0) {
+        if ((e.kind === "stalker" || e.kind === "spitter") && dist < (e.kind === "spitter" ? 18 : 16) && dist > 3.1) {
+          beginWindup(e, "shot", e.elite ? 0.26 : 0.36);
+        } else if (e.kind === "wraith" && dist < 8.4) {
+          if (dist < 2.3) beginWindup(e, "blink", 0.28, px + nz * 1.7, pz - nx * 1.7);
+          else beginWindup(e, "blink", 0.34, px - nx * 1.15, pz - nz * 1.15);
+        } else if (e.kind === "husk" && dist < 2.35) {
+          beginWindup(e, "melee", e.elite ? 0.32 : 0.42);
+        } else if (e.kind === "brute" && dist < 2.55) {
+          beginWindup(e, "slam", e.elite ? 0.4 : 0.52);
+        } else if (e.kind === "harbinger" && dist < 18) {
+          if (dist < 3.6) beginWindup(e, "melee", 0.38);
+          else beginWindup(e, "beam", 1.02);
         }
       }
 
       if (e.kind === "harbinger") {
         if (e.hp < e.max * 0.6 && e.summoned < 1) {
           e.summoned = 1;
+          hint = "The Harbinger is calling husks";
           spawnEnemy("husk", e.x + 3.2, e.z + 1);
           spawnEnemy("husk", e.x - 3.2, e.z + 1);
         }
         if (e.hp < e.max * 0.3 && e.summoned < 2) {
           e.summoned = 2;
+          hint = "Stalkers joining the Harbinger";
           spawnEnemy("stalker", e.x + 4, e.z);
           spawnEnemy("stalker", e.x - 4, e.z);
           spawnEnemy("husk", e.x, e.z + 3);
@@ -1966,17 +2110,57 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
         if (e.rig.core) e.rig.core.rotation.y += dt * 2.2;
       }
 
-      const bob = e.kind === "harbinger" ? 0 : Math.sin(performance.now() * 0.008 + e.id) * 0.35;
-      e.rig.leftArm.rotation.x = bob;
-      e.rig.rightArm.rotation.x = -bob;
+      const lift = e.state === "windup" ? 1 - e.stateT / Math.max(0.05, e.windMax) : 0;
+      if (e.stagger > 0) {
+        e.rig.leftArm.rotation.x = 0.95;
+        e.rig.rightArm.rotation.x = 1.05;
+      } else if (e.state === "windup" && (e.intent === "melee" || e.intent === "slam")) {
+        e.rig.leftArm.rotation.x = -1.15 * lift;
+        e.rig.rightArm.rotation.x = -1.2 * lift;
+      } else if (e.state === "windup" && e.intent === "shot") {
+        e.rig.rightArm.rotation.x = -0.2 - lift * 1.25;
+        e.rig.leftArm.rotation.x = -0.4;
+      } else if (e.state === "attack" && (e.intent === "melee" || e.intent === "slam")) {
+        e.rig.rightArm.rotation.x = 0.75;
+        e.rig.leftArm.rotation.x = 0.25;
+      } else {
+        const bob = e.kind === "harbinger" ? 0 : Math.sin(performance.now() * 0.008 + e.id) * 0.35;
+        e.rig.leftArm.rotation.x = bob;
+        e.rig.rightArm.rotation.x = -bob;
+      }
       e.rig.group.position.set(e.x, e.y, e.z);
       e.rig.group.lookAt(px, e.y, pz);
+      if (e.mark) e.mark.rotation.y += dt * 1.7;
+      if (e.bar) {
+        e.bar.lookAt(camera.position);
+        e.bar.scale.x = Math.max(0.06, e.hp / e.max);
+      }
+      const ringMat = e.ring.material as THREE.MeshBasicMaterial;
+      if (e.state === "windup") {
+        const u = 1 - e.stateT / Math.max(0.05, e.windMax);
+        e.ring.visible = true;
+        e.ring.scale.setScalar(e.intent === "slam" ? 1.15 + u * 1.9 : e.intent === "beam" ? 0.9 + u * 0.55 : 0.8 + u * 0.75);
+        ringMat.opacity = 0.2 + u * 0.72;
+        if (e.intent === "blink") e.ring.position.set(e.blinkX, 0.07, e.blinkZ);
+        else e.ring.position.set(e.x, 0.07, e.z);
+      } else if (e.elite) {
+        e.ring.visible = true;
+        e.ring.position.set(e.x, 0.06, e.z);
+        e.ring.scale.setScalar(1.08);
+        ringMat.color.setHex(0xfb923c);
+        ringMat.opacity = 0.34;
+      } else e.ring.visible = false;
       const pulse = 1 + Math.sin(performance.now() * 0.008 + e.id) * 0.18;
+      const winding = e.state === "windup";
       for (const g of e.rig.glow) {
         const m = g.material as THREE.MeshStandardMaterial;
         if (m.emissiveIntensity !== undefined) {
-          m.emissiveIntensity = (scanT > 0 ? 8.8 : e.flash > 0 ? 9 : 3.1) * pulse;
-          if (scanT > 0 && m.emissive) m.emissive.setHex(0x5eead4);
+          m.emissiveIntensity = (scanT > 0 ? 8.8 : e.flash > 0 ? 9 : winding ? 7.4 : 3.1) * pulse;
+          if (m.emissive) {
+            if (scanT > 0) m.emissive.setHex(0x5eead4);
+            else if (winding) m.emissive.setHex(e.intent === "shot" || e.intent === "blink" || e.intent === "beam" ? 0x5eead4 : 0xff7a1a);
+            else m.emissive.setHex(0x2dd4bf);
+          }
         }
       }
     }
@@ -2179,7 +2363,10 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   }
 
   function clearCombat() {
-    for (const e of enemies) scene.remove(e.rig.group);
+    for (const e of enemies) {
+      scene.remove(e.rig.group);
+      scene.remove(e.ring);
+    }
     enemies.length = 0;
     for (const d of drops) scene.remove(d.mesh);
     drops.length = 0;
