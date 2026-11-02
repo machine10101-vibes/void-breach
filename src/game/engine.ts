@@ -355,6 +355,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   let nearExtract = false;
   let extractReady = false;
   let extractHold = 0;
+  let extractBreach = false;
   let scanT = 0;
   let outcome: RunOutcome = "none";
   let extractMark: THREE.Object3D | null = null;
@@ -1911,6 +1912,50 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     audio.tell();
   }
 
+  function segmentBlocked(ax: number, az: number, bx: number, bz: number, slack: number) {
+    const dx = bx - ax;
+    const dz = bz - az;
+    const dist = Math.hypot(dx, dz);
+    if (dist < 0.05) return false;
+    const nx = dx / dist;
+    const nz = dz / dist;
+    const reach = Math.max(0.02, dist - slack);
+    const chest = rayWorld(level.boxes, ax, 1.15, az, nx, 0, nz, reach);
+    if (chest !== null) return true;
+    const knee = rayWorld(level.boxes, ax, 0.42, az, nx, 0, nz, reach, (b) => b.cover);
+    return knee !== null;
+  }
+
+  function losBlocked(ax: number, az: number, bx: number, bz: number) {
+    if (Math.hypot(bx - ax, bz - az) < 0.5) return false;
+    return segmentBlocked(ax, az, bx, bz, 0.22);
+  }
+
+  function triggerExtractBreach() {
+    if (extractBreach || phase !== "playing") return;
+    extractBreach = true;
+    const tier = missionScale(level.id).tier;
+    const ring: EnemyKind[] =
+      tier === 1
+        ? ["husk", "husk", "stalker", "husk"]
+        : tier === 2
+          ? ["husk", "stalker", "spitter", "wraith", "husk", "stalker"]
+          : ["stalker", "wraith", "brute", "spitter", "husk", "wraith", "stalker"];
+    const markAt = 1 + Math.floor(Math.random() * (ring.length - 1));
+    const sx = level.spawn.x;
+    const sz = level.spawn.z;
+    ring.forEach((kind, i) => {
+      const ang = (i / ring.length) * Math.PI * 2 + 0.35;
+      const rad = 8.2 + (i % 2) * 1.35;
+      const spot = collidePlayer(level.boxes, sx + Math.cos(ang) * rad, 0, sz + Math.sin(ang) * rad, 0.55, 1.8);
+      spawnEnemy(kind, spot.x, spot.z, true, i === markAt);
+    });
+    objective = "Extraction breach";
+    hint = "Hold the pad — Shade are coming in";
+    pushFloat("BREACH", sx, 2.4, sz, "legendary");
+    audio.tell();
+  }
+
   function beginWindup(e: Enemy, intent: EnemyIntent, time: number, blinkX = e.x, blinkZ = e.z) {
     e.state = "windup";
     e.intent = intent;
@@ -2026,7 +2071,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
           else if (e.intent === "slam") {
             particles.burst(e.x, 0.2, e.z, e.elite ? 28 : 22, 0xfb923c, 5, 0.35, 0.12, 2);
             scorch.stamp(e.x, e.z, e.elite ? 2.7 : 2.2);
-            if (dist < (e.elite ? 3.7 : 3.3)) hurtPlayer(bite);
+            if (dist < (e.elite ? 3.7 : 3.3) && !losBlocked(e.x, e.z, px, pz)) hurtPlayer(bite);
+            else if (dist < (e.elite ? 3.7 : 3.3)) particles.burst(e.x + nx * 1.1, 0.7, e.z + nz * 1.1, 8, 0x9aa6b2, 2.4, 0.16, 0.05, 0);
             trauma = Math.min(1, trauma + 0.28);
           } else if (e.intent === "shot") {
             launchBolt(e, bite);
@@ -2038,11 +2084,12 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
             e.x = c.x;
             e.z = c.z;
             particles.spray(e.x, 1.1, e.z, nx, 0.2, nz, 8, 0x5eead4, 6, 0.2, 0.08);
-            if (Math.hypot(px - e.x, pz - e.z) < 1.75) hurtPlayer(bite);
+            if (Math.hypot(px - e.x, pz - e.z) < 1.75 && !losBlocked(e.x, e.z, px, pz)) hurtPlayer(bite);
           } else if (e.intent === "melee") {
             e.kbX += nx * (e.elite ? 11 : 9);
             e.kbZ += nz * (e.elite ? 11 : 9);
-            if (dist < e.radius + 1.45) hurtPlayer(bite);
+            if (dist < e.radius + 1.45 && !losBlocked(e.x, e.z, px, pz)) hurtPlayer(bite);
+            else if (dist < e.radius + 1.45) particles.burst(e.x + nx * 0.7, 0.9, e.z + nz * 0.7, 6, 0x9aa6b2, 2.2, 0.14, 0.05, 0);
           }
         }
       } else if (e.state === "attack") {
@@ -2233,14 +2280,25 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       }
       if (p.kind === "bolt") {
         particles.spawn(p.x, p.y, p.z, 0, 0, 0, 0.12, 0.07, 0x5eead4, 4, 0);
-        if (Math.hypot(p.x - px, p.z - pz) < 0.55 && Math.abs(p.y - (py + 1.1)) < 1.1) {
+        const prevX = p.x - p.vx * dt;
+        const prevZ = p.z - p.vz * dt;
+        const crossed = hitWall || segmentBlocked(prevX, prevZ, p.x, p.z, 0.02);
+        const near = Math.hypot(p.x - px, p.z - pz) < 0.55 && Math.abs(p.y - (py + 1.1)) < 1.1;
+        const covered = near && losBlocked(p.x, p.z, px, pz);
+        if (crossed || covered) {
+          particles.burst(p.x, p.y, p.z, 7, 0x9aa6b2, 2.2, 0.15, 0.05, 0);
+          scene.remove(p.mesh);
+          projs.splice(i, 1);
+          continue;
+        }
+        if (near) {
           hurtPlayer(p.dmg);
           particles.burst(p.x, p.y, p.z, 8, 0x5eead4, 3, 0.2, 0.07, 0);
           scene.remove(p.mesh);
           projs.splice(i, 1);
           continue;
         }
-        if (p.life <= 0 || hitWall) {
+        if (p.life <= 0) {
           particles.burst(p.x, p.y, p.z, 6, 0x5eead4, 2, 0.15, 0.05, 0);
           scene.remove(p.mesh);
           projs.splice(i, 1);
@@ -2253,8 +2311,21 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     for (let i = drops.length - 1; i >= 0; i--) {
       const d = drops[i];
       d.mesh.rotation.y += dt * 1.8;
+      let dist = Math.hypot(d.x - px, d.z - pz);
+      if (dist > 1.35 && dist < 8.2 && !losBlocked(d.x, d.z, px, pz)) {
+        const nx = (px - d.x) / dist;
+        const nz = (pz - d.z) / dist;
+        const step = Math.min(dist - 1.15, (7.2 + (8.2 - dist) * 1.5) * dt);
+        d.x += nx * step;
+        d.z += nz * step;
+        d.mesh.position.x = d.x;
+        d.mesh.position.z = d.z;
+        dist = Math.hypot(d.x - px, d.z - pz);
+        const beam = d.mesh.children[1];
+        if (beam instanceof THREE.Mesh && beam.material instanceof THREE.MeshBasicMaterial) beam.material.opacity = 0.82;
+      }
       d.mesh.position.y = 0.28 + Math.sin(performance.now() * 0.004 + i) * 0.1;
-      if (Math.hypot(d.x - px, d.z - pz) < 1.35) {
+      if (dist < 1.35) {
         if (d.kind === "health") {
           hp = Math.min(maxHp, hp + 48);
           pushLoot("Health orb", "magic");
@@ -2420,10 +2491,14 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     skillCd = { frag: 0, overdrive: 0, cleave: 0, scan: 0 };
     extractReady = false;
     extractHold = 0;
+    extractBreach = false;
     scanT = 0;
     outcome = "wipe";
     cacheTaken = false;
-    if (extractMark) extractMark.visible = false;
+    if (extractMark) {
+      extractMark.visible = false;
+      extractMark.scale.setScalar(1);
+    }
     trauma = 0;
     hitFlash = 0;
     combo = 0;
@@ -2756,15 +2831,20 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     const extractGate = missionScale(level.id);
     if (!extractReady && (spawned.size >= extractGate.extractWaves || kills >= extractGate.extractKills)) {
       extractReady = true;
-      hint = "Extract pad live at drop — hold X, or push the gate";
+      hint = "Extract pad live at drop — hold X and the breach comes in";
     }
     if (extractReady && extractMark && phase === "playing") {
       extractMark.visible = true;
       extractMark.position.set(level.spawn.x, 0.04, level.spawn.z);
-      extractMark.rotation.y += dt * 1.2;
+      extractMark.rotation.y += dt * (extractBreach ? 2.4 : 1.2);
+      if (extractBreach) {
+        const s = 1.12 + Math.sin(performance.now() * 0.012) * 0.1;
+        extractMark.scale.setScalar(s);
+      }
       nearExtract = Math.hypot(px - level.spawn.x, pz - level.spawn.z) < 1.85;
       if (nearExtract && (held.extract || k.has("KeyX"))) {
         extractHold = Math.min(1, extractHold + dt / 1.8);
+        if (extractHold > 0.08) triggerExtractBreach();
         if (extractHold >= 1) beginExtract();
       } else {
         extractHold = Math.max(0, extractHold - dt * 1.15);
@@ -2981,6 +3061,26 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
         dist: Math.hypot(dx, dy, dz),
       };
     },
+    getCombat: () => ({
+      hp,
+      enemies: enemies.filter((e) => e.alive).length,
+      drops: drops.length,
+      hint,
+      objective,
+      extractHold,
+      extractReady,
+      breach: extractBreach,
+      nearestDrop: drops.reduce((best, d) => Math.min(best, Math.hypot(d.x - px, d.z - pz)), 99),
+      bolts: projs.filter((p) => p.kind === "bolt").length,
+      mag,
+      aimX: aimPoint.x,
+      aimZ: aimPoint.z,
+      missionTime,
+      x: px,
+      z: pz,
+      foes: enemies.filter((e) => e.alive).slice(0, 8).map((e) => ({ kind: e.kind, x: +e.x.toFixed(1), z: +e.z.toFixed(1), state: e.state })),
+    }),
+    lineBlocked: (ax, az, bx, bz) => losBlocked(ax, az, bx, bz),
   };
   window.__controlsTest = probe;
 
