@@ -109,7 +109,8 @@ export function Hud({
           ) : null}
           {hud.boss ? (
             <div className="mt-1 max-w-[11rem] short:max-w-[9rem]">
-              <Bar value={hud.boss.hp} max={hud.boss.max} color="bg-void" height="h-1.5" />
+              {hud.boss.core ? <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-accent">Core open</p> : null}
+              <Bar value={hud.boss.hp} max={hud.boss.max} color={hud.boss.core ? "bg-accent" : "bg-void"} height="h-1.5" />
             </div>
           ) : null}
         </div>
@@ -156,12 +157,12 @@ export function Hud({
         {hud.boss ? (
           <div className="w-full max-w-md">
             <div className="mb-1 flex justify-between font-mono text-[10px] uppercase tracking-widest text-muted">
-              <span>{hud.boss.name}</span>
+              <span className={hud.boss.core ? "text-accent" : ""}>{hud.boss.core ? "Core open" : hud.boss.name}</span>
               <span>
                 {Math.ceil(hud.boss.hp)} / {hud.boss.max}
               </span>
             </div>
-            <Bar value={hud.boss.hp} max={hud.boss.max} color="bg-void" height="h-2.5" />
+            <Bar value={hud.boss.hp} max={hud.boss.max} color={hud.boss.core ? "bg-accent" : "bg-void"} height="h-2.5" />
           </div>
         ) : null}
       </div>

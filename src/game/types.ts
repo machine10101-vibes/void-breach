@@ -114,7 +114,7 @@ export type HudSnapshot = {
   overdrive: boolean;
   sprinting: boolean;
   ads: boolean;
-  boss: { name: string; hp: number; max: number } | null;
+  boss: { name: string; hp: number; max: number; core: boolean } | null;
   hitFlash: number;
   xp: number;
   xpNeed: number;
