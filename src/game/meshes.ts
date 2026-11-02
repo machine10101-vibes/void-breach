@@ -2486,7 +2486,7 @@ export function createExtractPad() {
 
 export function createPortalShader() {
   return new THREE.ShaderMaterial({
-    uniforms: { uTime: { value: 0 } },
+    uniforms: { uTime: { value: 0 }, uBurn: { value: 0 } },
     transparent: true,
     side: THREE.DoubleSide,
     depthWrite: false,
@@ -2500,6 +2500,7 @@ export function createPortalShader() {
     `,
     fragmentShader: `
       uniform float uTime;
+      uniform float uBurn;
       varying vec2 vUv;
       void main() {
         vec2 uv = vUv - 0.5;
@@ -2509,6 +2510,7 @@ export function createPortalShader() {
         float ring = smoothstep(0.48, 0.32, r) * smoothstep(0.05, 0.18, r);
         float core = smoothstep(0.22, 0.0, r);
         vec3 col = mix(vec3(0.07, 0.92, 0.86), vec3(0.95, 0.38, 0.06), swirl * 0.5 + 0.5);
+        col = mix(col, vec3(1.0, 0.28, 0.04), clamp(uBurn, 0.0, 1.0) * 0.85);
         float alpha = ring * (0.55 + 0.4 * swirl) + core * 0.7;
         gl_FragColor = vec4(col, alpha);
       }

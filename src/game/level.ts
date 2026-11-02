@@ -194,7 +194,7 @@ function buildAshfall(): LevelDef {
       {
         id: "gate",
         zTrigger: -86,
-        message: "Void Gate — kill the Harbinger",
+        message: "Void Gate — burn the Harbinger",
         enemies: [
           { kind: "harbinger", x: 0, z: -102 },
           { kind: "husk", x: -6, z: -98 },
@@ -428,7 +428,7 @@ function buildEmberRail(): LevelDef {
       {
         id: "terminus",
         zTrigger: -96,
-        message: "Terminus — Rail Warden",
+        message: "Terminus — burn the Rail Warden",
         enemies: [
           { kind: "harbinger", x: 0, z: -124 },
           { kind: "spitter", x: -5, z: -118 },
@@ -669,7 +669,7 @@ function buildNullSpire(): LevelDef {
       {
         id: "crown",
         zTrigger: -124,
-        message: "Crown — Null Sovereign",
+        message: "Crown — burn the Null Sovereign",
         enemies: [
           { kind: "harbinger", x: 0, z: -148 },
           { kind: "wraith", x: -6, z: -142 },

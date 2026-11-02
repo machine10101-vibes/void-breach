@@ -145,6 +145,7 @@ type Enemy = {
   ring: THREE.Mesh;
   mark: THREE.Object3D | null;
   bar: THREE.Mesh | null;
+  core: number;
 };
 
 type BulletFx = { mesh: THREE.Line; life: number };
@@ -356,6 +357,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   let extractReady = false;
   let extractHold = 0;
   let extractBreach = false;
+  let gateHeat = 0;
   let scanT = 0;
   let outcome: RunOutcome = "none";
   let extractMark: THREE.Object3D | null = null;
@@ -1015,6 +1017,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       ring: makeThreatRing(marked ? 0xfb923c : 0xe85d04),
       mark,
       bar,
+      core: 0,
     });
     if (kind === "harbinger") bossAlive = true;
     if (marked) pushFloat("MARKED", x, 2.4, z, "legendary");
@@ -1125,26 +1128,54 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       bossAlive = false;
       outcome = "clear";
       phase = "victory";
-      objective = `${level.bossName} down`;
-      hint = `${level.name} is yours`;
+      gateHeat = 1;
+      objective = `${level.bossName} burned`;
+      hint = "The gate is ash";
+      scorch.stamp(e.x, e.z, 4.8);
+      particles.burst(e.x, 1.6, e.z, 36, 0xfb923c, 6, 0.8, 0.2, 1);
       finishRun(true);
     }
   }
 
   function damageEnemy(e: Enemy, dmg: number, hx: number, hz: number, kb = 2.8) {
     if (!e.alive) return;
-    const seam = e.state === "windup" || e.stagger > 0;
-    const dealt = dmg * (seam ? (e.elite ? 1.65 : 1.4) : 1);
+    const burning = e.kind === "harbinger" && e.core > 0;
+    const plated = e.kind === "harbinger" && e.core <= 0;
+    const seam = e.kind !== "harbinger" && (e.state === "windup" || e.stagger > 0);
+    let dealt = dmg;
+    if (burning) {
+      dealt *= 1.85;
+      if (kb >= 4.2) e.core = Math.min(2.1, e.core + 0.22);
+    } else if (plated) dealt *= 0.22;
+    else if (seam) dealt *= e.elite ? 1.65 : 1.4;
     e.hp -= dealt;
     e.flash = 0.14;
     e.kbX += hx * kb;
     e.kbZ += hz * kb;
     damageDealt += dealt;
     hits++;
-    hitMarker = seam ? 0.22 : 0.14;
+    hitMarker = burning || seam ? 0.22 : 0.14;
     audio.hit();
-    particles.spray(e.x, 1.15, e.z, hx, 0.2, hz, seam ? 10 : 6, seam ? 0xfb923c : 0x5eead4, 4, 0.22, 0.08);
-    pushFloat(seam ? `SEAM ${Math.round(dealt)}` : `${Math.round(dealt)}`, e.x, 1.9, e.z, seam || e.hp <= 0 ? "legendary" : "void");
+    particles.spray(
+      e.x,
+      1.15,
+      e.z,
+      hx,
+      0.2,
+      hz,
+      burning ? 12 : seam ? 10 : 6,
+      burning || seam ? 0xfb923c : plated ? 0x9aa6b2 : 0x5eead4,
+      4,
+      0.22,
+      0.08,
+    );
+    pushFloat(
+      burning ? `BURN ${Math.round(dealt)}` : plated ? `PLATE ${Math.round(dealt)}` : seam ? `SEAM ${Math.round(dealt)}` : `${Math.round(dealt)}`,
+      e.x,
+      1.9,
+      e.z,
+      burning || seam || e.hp <= 0 ? "legendary" : "void",
+    );
     if (e.kind !== "harbinger" && kb >= 4.2) {
       e.stagger = e.elite ? 0.18 : 0.32;
       if (e.state === "windup" || e.state === "attack") {
@@ -1896,12 +1927,11 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       const pool = s.enemies.map((e, i) => i).filter((i) => s.enemies[i].kind !== "harbinger");
       const markAt = pool.length >= 3 ? pool[Math.floor(Math.random() * pool.length)] : -1;
       objective = s.message;
-      hint =
-        markAt >= 0
+      hint = s.enemies.some((en) => en.kind === "harbinger")
+        ? `Burn the ${level.bossName} — core opens after the beam`
+        : markAt >= 0
           ? "Marked Shade in the pack — shoot the seam while the ring burns"
-          : s.enemies.some((en) => en.kind === "harbinger")
-            ? `Burn the ${level.bossName}`
-            : "Clear the pack, then push";
+          : "Clear the pack, then push";
       s.enemies.forEach((e, i) => spawnEnemy(e.kind, e.x, e.z, true, i === markAt));
     }
   }
@@ -2066,6 +2096,12 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
         if (e.stateT <= 0) {
           e.state = "attack";
           e.stateT = e.intent === "beam" ? 0.7 : e.intent === "slam" ? 0.4 : 0.24;
+          if (e.kind === "harbinger" && (e.intent === "beam" || e.intent === "melee")) {
+            e.core = Math.max(e.core, e.intent === "beam" ? 1.9 : 0.9);
+            gateHeat = 1;
+            hint = `Core open — burn the ${level.bossName}`;
+            pingTell();
+          }
           const bite = st.dmg * e.dmgMul;
           if (e.intent === "beam") audio.beam();
           else if (e.intent === "slam") {
@@ -2139,6 +2175,10 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       }
 
       if (e.kind === "harbinger") {
+        const wasOpen = e.core > 0;
+        e.core = Math.max(0, e.core - dt);
+        if (wasOpen && e.core <= 0) hint = "Plate's shut — wait for the beam";
+        if (e.core > 0) gateHeat = 1;
         if (e.hp < e.max * 0.6 && e.summoned < 1) {
           e.summoned = 1;
           hint = "The Harbinger is calling husks";
@@ -2153,8 +2193,12 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
           spawnEnemy("husk", e.x, e.z + 3);
         }
         e.y = 0.45 + Math.sin(performance.now() * 0.002 + e.id) * 0.18;
-        if (e.rig.ring) e.rig.ring.rotation.z += dt * 1.4;
-        if (e.rig.core) e.rig.core.rotation.y += dt * 2.2;
+        if (e.rig.ring) e.rig.ring.rotation.z += dt * (e.core > 0 ? 3.2 : 1.4);
+        if (e.rig.core) {
+          e.rig.core.rotation.y += dt * (e.core > 0 ? 4.4 : 2.2);
+          const swell = e.core > 0 ? 1.38 : 0.7;
+          e.rig.core.scale.setScalar(swell);
+        }
       }
 
       const lift = e.state === "windup" ? 1 - e.stateT / Math.max(0.05, e.windMax) : 0;
@@ -2190,6 +2234,12 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
         ringMat.opacity = 0.2 + u * 0.72;
         if (e.intent === "blink") e.ring.position.set(e.blinkX, 0.07, e.blinkZ);
         else e.ring.position.set(e.x, 0.07, e.z);
+      } else if (e.kind === "harbinger" && e.core > 0) {
+        e.ring.visible = true;
+        e.ring.position.set(e.x, 0.06, e.z);
+        e.ring.scale.setScalar(1.28 + Math.sin(performance.now() * 0.018) * 0.08);
+        ringMat.color.setHex(0xfb923c);
+        ringMat.opacity = 0.82;
       } else if (e.elite) {
         e.ring.visible = true;
         e.ring.position.set(e.x, 0.06, e.z);
@@ -2199,12 +2249,14 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       } else e.ring.visible = false;
       const pulse = 1 + Math.sin(performance.now() * 0.008 + e.id) * 0.18;
       const winding = e.state === "windup";
+      const burning = e.kind === "harbinger" && e.core > 0;
       for (const g of e.rig.glow) {
         const m = g.material as THREE.MeshStandardMaterial;
         if (m.emissiveIntensity !== undefined) {
-          m.emissiveIntensity = (scanT > 0 ? 8.8 : e.flash > 0 ? 9 : winding ? 7.4 : 3.1) * pulse;
+          m.emissiveIntensity = (scanT > 0 ? 8.8 : e.flash > 0 ? 9 : burning ? 8.8 : winding ? 7.4 : 3.1) * pulse;
           if (m.emissive) {
             if (scanT > 0) m.emissive.setHex(0x5eead4);
+            else if (burning) m.emissive.setHex(0xff7a1a);
             else if (winding) m.emissive.setHex(e.intent === "shot" || e.intent === "blink" || e.intent === "beam" ? 0x5eead4 : 0xff7a1a);
             else m.emissive.setHex(0x2dd4bf);
           }
@@ -2384,7 +2436,11 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       overdrive: overdriveT > 0,
       sprinting: held.sprint || keySet().has("ShiftLeft") || keySet().has("ShiftRight"),
       ads: adsT > 0.4 || aimT > 0.45,
-      boss: boss ? { name: level.bossName, hp: Math.max(0, boss.hp), max: boss.max } : bossAlive ? { name: level.bossName, hp: 0, max: 1 } : null,
+      boss: boss
+        ? { name: level.bossName, hp: Math.max(0, boss.hp), max: boss.max, core: boss.core > 0 }
+        : bossAlive
+          ? { name: level.bossName, hp: 0, max: 1, core: false }
+          : null,
       hitFlash,
       xp,
       xpNeed: pLevel * 200,
@@ -2492,6 +2548,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     extractReady = false;
     extractHold = 0;
     extractBreach = false;
+    gateHeat = 0;
     scanT = 0;
     outcome = "wipe";
     cacheTaken = false;
@@ -2537,7 +2594,12 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     const now = performance.now();
     if (gateGroup) {
       const pm = gateGroup.userData.portalMat as THREE.ShaderMaterial | undefined;
-      if (pm) pm.uniforms.uTime.value = now * 0.001;
+      if (outcome === "clear") gateHeat = 1;
+      else if (!enemies.some((en) => en.alive && en.kind === "harbinger" && en.core > 0)) gateHeat = Math.max(0, gateHeat - dt * 1.15);
+      if (pm) {
+        pm.uniforms.uTime.value = now * 0.001;
+        if (pm.uniforms.uBurn) pm.uniforms.uBurn.value = gateHeat;
+      }
       const ring2 = gateGroup.userData.ring2 as THREE.Object3D | undefined;
       if (ring2) ring2.rotation.z += dt * 0.8;
       particles.mote(level.gate.x + (Math.random() - 0.5) * 3, 2 + Math.random() * 3, level.gate.z + (Math.random() - 0.5) * 2, 0x22d3ee);
@@ -2831,7 +2893,9 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     const extractGate = missionScale(level.id);
     if (!extractReady && (spawned.size >= extractGate.extractWaves || kills >= extractGate.extractKills)) {
       extractReady = true;
-      hint = "Extract pad live at drop — hold X and the breach comes in";
+      if (!enemies.some((en) => en.alive && en.kind === "harbinger")) {
+        hint = "Extract pad live at drop — hold X and the breach comes in";
+      }
     }
     if (extractReady && extractMark && phase === "playing") {
       extractMark.visible = true;
