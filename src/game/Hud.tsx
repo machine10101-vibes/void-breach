@@ -98,7 +98,13 @@ export function Hud({
           <p className="truncate font-mono text-[10px] uppercase tracking-[0.22em] text-accent">{hud.objective}</p>
           {hud.extractReady && hud.phase === "playing" ? (
             <p className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.18em] text-void">
-              {hud.nearExtract ? `Hold Extract ${Math.round(hud.extractHold * 100)}%` : "Extract pad at drop"}
+              {hud.nearExtract
+                ? hud.objective === "Extraction breach"
+                  ? `Hold the pad · ${Math.round(hud.extractHold * 100)}%`
+                  : `Hold Extract ${Math.round(hud.extractHold * 100)}%`
+                : hud.objective === "Extraction breach"
+                  ? "Breach on the pad"
+                  : "Extract pad at drop"}
             </p>
           ) : null}
           {hud.boss ? (
@@ -361,8 +367,12 @@ export function Hud({
           {hud.extractReady && hud.phase === "playing" ? (
             <p className="absolute bottom-10 left-1/2 hidden -translate-x-1/2 font-mono text-[10px] uppercase tracking-[0.22em] text-accent desk:block">
               {hud.nearExtract
-                ? `Hold X to extract · ${Math.round(hud.extractHold * 100)}%`
-                : "Extract pad live at drop · hold X"}
+                ? hud.objective === "Extraction breach"
+                  ? `Hold the pad · ${Math.round(hud.extractHold * 100)}%`
+                  : `Hold X to extract · ${Math.round(hud.extractHold * 100)}%`
+                : hud.objective === "Extraction breach"
+                  ? "Breach incoming · get back on the pad"
+                  : "Extract pad live at drop · hold X"}
             </p>
           ) : null}
           {hud.scanT > 0 && hud.phase === "playing" ? (

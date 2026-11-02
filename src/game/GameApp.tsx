@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { missionInfo } from "./campaign";
 import { CncPanel } from "./CncPanel";
 import type { GameHandle } from "./engine";
 import { Hud, PauseOverlay } from "./Hud";
@@ -69,8 +70,8 @@ const bootHud: HudSnapshot = {
   scanT: 0,
   stimReady: false,
   missionId: "ashfall",
-  missionName: "Ashfall Gate",
-  missionBlurb: "Short boulevard drop. Push the plaza, hold the overpass, and burn the Harbinger. Common and magic kits fall here.",
+  missionName: missionInfo("ashfall").name,
+  missionBlurb: missionInfo("ashfall").blurb,
   clearedMissions: [],
   outcome: "none",
 };

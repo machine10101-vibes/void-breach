@@ -184,6 +184,26 @@ export type ControlsProbe = {
     gunX: number;
     hop: number;
   };
+  getCombat?: () => {
+    hp: number;
+    enemies: number;
+    drops: number;
+    hint: string;
+    objective: string;
+    extractHold: number;
+    extractReady: boolean;
+    breach: boolean;
+    nearestDrop: number;
+    bolts: number;
+    mag: number;
+    aimX: number;
+    aimZ: number;
+    missionTime: number;
+    x: number;
+    z: number;
+    foes: { kind: string; x: number; z: number; state: string }[];
+  };
+  lineBlocked?: (ax: number, az: number, bx: number, bz: number) => boolean;
 };
 
 declare global {
