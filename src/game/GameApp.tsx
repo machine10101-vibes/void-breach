@@ -30,6 +30,7 @@ const bootHud: HudSnapshot = {
   kills: 0,
   objective: "",
   hint: "",
+  route: "",
   skills: [],
   loot: [],
   reloading: false,
@@ -302,11 +303,11 @@ export function GameApp() {
       ) : null}
       {phase === "victory" ? (
         <PauseOverlay
-          title={hud.outcome === "extract" ? "Extracted" : "District sealed"}
+          title={hud.outcome === "extract" ? "Extracted" : "Gate burned"}
           body={
             hud.outcome === "extract"
-              ? `Pulled out of ${hud.missionName}. 85% of the scrap is in the hopper.`
-              : `${hud.missionName} is clear. Return to the hull to print, or push the next district.`
+              ? `Pulled out of ${hud.missionName}. 85% of the scrap is in the hopper. The street is still there if you want the burn.`
+              : `${hud.missionName} is ash. Full scrap is in the hopper. Print on the hull, or push the next district.`
           }
           action="Return to ship"
           onAction={() => handleRef.current?.recallToShip()}
