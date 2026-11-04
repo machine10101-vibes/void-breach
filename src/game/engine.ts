@@ -55,6 +55,8 @@ import {
   INVENTORY_CAP,
   instantiateRecipe,
   itemToWeapon,
+  KIT_SETS,
+  kitMods,
   RECIPES,
   rollLootAmmo,
   rollLootArmor,
@@ -1303,6 +1305,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
 
   function hurtPlayer(dmg: number) {
     if (invuln > 0 || phase !== "playing") return;
+    dmg *= kitMods(save.inventory, save.equippedArmor).taken;
     let rest = dmg;
     const hadShield = shield > 0;
     if (shield > 0) {
@@ -1494,11 +1497,17 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       writeSave(save);
       applyLoadoutVisuals();
     } else if (it.slot) {
+      const before = kitMods(save.inventory, save.equippedArmor).active;
       save.equippedArmor[it.slot] = save.equippedArmor[it.slot] === it.uid ? null : it.uid;
+      const gained = kitMods(save.inventory, save.equippedArmor).active.filter((id) => !before.includes(id));
       persistLoadout();
       applyLoadoutVisuals();
       hp = maxHp;
       shield = maxShield;
+      if (gained[0]) {
+        hint = `${KIT_SETS[gained[0]].name} — ${KIT_SETS[gained[0]].line}`;
+        pingTell();
+      }
     }
     emitHud(true);
   }
@@ -1651,7 +1660,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
         vy: 3.6 + dir.y * 8,
         vz: dir.z * 22,
         life: 1.6,
-        dmg: w.dmg * (overdriveT > 0 ? 1.28 : 1) * (1 + (pLevel - 1) * 0.03),
+        dmg: w.dmg * (overdriveT > 0 ? kitMods(save.inventory, save.equippedArmor).overdriveMult : 1) * (1 + (pLevel - 1) * 0.03),
         r: 4.6,
       });
       if (mag <= 0) startReload();
@@ -1684,7 +1693,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       along.sort((a, b) => a.t - b.t);
       const struck = along.slice(0, pierce);
       for (const hit of struck) {
-        damageEnemy(hit.e, w.dmg * kit * (overdriveT > 0 ? 1.28 : 1) * (0.85 + Math.random() * 0.3), tmpV2.x, tmpV2.z, kb);
+        damageEnemy(hit.e, w.dmg * kit * (overdriveT > 0 ? kitMods(save.inventory, save.equippedArmor).overdriveMult : 1) * (0.85 + Math.random() * 0.3), tmpV2.x, tmpV2.z, kb);
       }
       const bestT = struck.length ? struck[struck.length - 1].t : wallT;
       if (!struck.length && worldT !== null) {
@@ -2904,7 +2913,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     if (justPressed("KeyQ") || (held.frag && skillCd.frag <= 0)) throwFrag();
     if ((justPressed("KeyE") || held.overdrive) && skillCd.overdrive <= 0) {
       skillCd.overdrive = 16;
-      overdriveT = 6;
+      overdriveT = kitMods(save.inventory, save.equippedArmor).overdriveSeconds;
       particles.burst(px, py + 1.2, pz, 16, 0xe85d04, 3, 0.4, 0.1, 1);
     }
     if (justPressed("KeyF") || (held.cleave && skillCd.cleave <= 0)) cleave();
@@ -2938,7 +2947,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     if (sim > 0) {
       const mv = inputMove();
       const sprint = (held.sprint || k.has("ShiftLeft") || k.has("ShiftRight") || pad.sprint) && aimT < 0.35;
-      const speed = (sprint ? SPRINT : WALK) * (overdriveT > 0 ? 1.22 : 1) * (wantAds || aimT > 0.45 ? 0.72 : 1);
+      const speed = (sprint ? SPRINT : WALK) * (overdriveT > 0 ? 1.22 : 1) * kitMods(save.inventory, save.equippedArmor).speed * (wantAds || aimT > 0.45 ? 0.72 : 1);
       const basis = camBasis();
       let wishX = basis.f.x * mv.y + basis.r.x * mv.x;
       let wishZ = basis.f.z * mv.y + basis.r.z * mv.x;
@@ -3395,7 +3404,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       if (name === "scan") triggerScan();
       if (name === "overdrive" && skillCd.overdrive <= 0) {
         skillCd.overdrive = 16;
-        overdriveT = 6;
+        overdriveT = kitMods(save.inventory, save.equippedArmor).overdriveSeconds;
       }
       if (name === "reload") startReload();
       if (name === "w1") selectWeaponSlot(0);

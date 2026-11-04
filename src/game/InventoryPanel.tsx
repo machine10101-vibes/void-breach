@@ -1,5 +1,5 @@
 import { armorStyle } from "./armorKits";
-import { RECIPES, scrapValue } from "./items";
+import { affixNames, itemToWeapon, kitMods, KIT_SETS, RECIPES, scrapValue } from "./items";
 import { ItemPreview } from "./ItemPreview";
 import type { ArmorSlot, InvItem, Rarity } from "./types";
 
@@ -18,7 +18,10 @@ const ARMOR_SLOTS: { slot: ArmorSlot; label: string }[] = [
 ];
 
 function bonusLine(it: InvItem) {
-  if (it.kind === "weapon") return `${it.dmg} dmg · ${it.mag} mag`;
+  if (it.kind === "weapon") {
+    const w = itemToWeapon(it);
+    return `${w.dmg} dmg · ${w.mag} mag`;
+  }
   if (it.kind === "ammo") return `${it.qty ?? 0} rounds`;
   const bits = [
     `${armorStyle(it.name)} mesh`,
@@ -27,6 +30,12 @@ function bonusLine(it: InvItem) {
     it.dmgBonus ? `+${it.dmgBonus}% dmg` : "",
   ].filter(Boolean);
   return bits.join(" · ") || it.slot;
+}
+
+function detailLine(it: InvItem) {
+  const affix = affixNames(it).join(" · ");
+  const set = it.setId ? KIT_SETS[it.setId].name : "";
+  return [set, affix].filter(Boolean).join(" · ");
 }
 
 export function InventoryPanel({
@@ -55,6 +64,7 @@ export function InventoryPanel({
   const stashWeapons = inventory.filter((i) => i.kind === "weapon" && !wornIds.has(i.uid));
   const stashArmor = inventory.filter((i) => i.kind === "armor" && !wornIds.has(i.uid));
   const ammo = inventory.filter((i) => i.kind === "ammo");
+  const kits = kitMods(inventory, equippedArmor).progress;
   return (
     <div className="absolute inset-0 z-40 flex items-center justify-center bg-bg/80 px-3 py-[max(0.6rem,env(safe-area-inset-top))]">
       <div className="max-h-[min(42rem,92dvh)] w-full max-w-3xl overflow-y-auto rounded-xl border border-border bg-surface p-4 desk:p-6">
@@ -74,6 +84,22 @@ export function InventoryPanel({
             Close
           </button>
         </div>
+
+        {kits.length ? (
+          <section className="mt-4">
+            <h3 className="font-mono text-[10px] uppercase tracking-widest text-accent">Kits</h3>
+            <ul className="mt-2 space-y-1">
+              {kits.map((kit) => (
+                <li key={kit.id} className="font-mono text-[10px] uppercase tracking-widest text-faint">
+                  <span className={kit.on ? "text-accent" : "text-muted"}>
+                    {kit.name} {kit.have}/{kit.need}
+                  </span>
+                  {kit.on ? ` — ${kit.line}` : ""}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
 
         <section className="mt-4">
           <h3 className="font-mono text-[10px] uppercase tracking-widest text-accent">On the body</h3>
@@ -160,6 +186,7 @@ function LoadoutSlot({
           <>
             <p className={`font-display text-lg font-semibold ${rarityClass[item.rarity]}`}>{item.name}</p>
             <p className="font-mono text-[10px] uppercase tracking-widest text-faint">{bonusLine(item)}</p>
+            {detailLine(item) ? <p className="font-mono text-[10px] uppercase tracking-widest text-magic">{detailLine(item)}</p> : null}
           </>
         ) : (
           <p className="font-mono text-xs text-muted">{empty}</p>
@@ -200,6 +227,7 @@ function ItemCard({
         <button type="button" onClick={onEquip} className="min-w-0 flex-1 text-left">
           <span className={`block font-display text-lg font-semibold ${rarityClass[item.rarity]}`}>{item.name}</span>
           <span className="block font-mono text-[10px] uppercase tracking-widest text-faint">{bonusLine(item)}</span>
+          {detailLine(item) ? <span className="block font-mono text-[10px] uppercase tracking-widest text-magic">{detailLine(item)}</span> : null}
           <span className="mt-1 block font-mono text-[10px] uppercase tracking-widest text-muted">
             {item.kind === "weapon" ? "Equip weapon" : `Equip ${item.slot}`}
           </span>
@@ -208,6 +236,7 @@ function ItemCard({
         <span className="min-w-0 flex-1">
           <span className={`block font-display text-lg font-semibold ${rarityClass[item.rarity]}`}>{item.name}</span>
           <span className="block font-mono text-[10px] uppercase tracking-widest text-faint">{bonusLine(item)}</span>
+          {detailLine(item) ? <span className="block font-mono text-[10px] uppercase tracking-widest text-magic">{detailLine(item)}</span> : null}
           <span className="mt-1 block font-mono text-[10px] uppercase tracking-widest text-muted">Reserve pack</span>
         </span>
       )}

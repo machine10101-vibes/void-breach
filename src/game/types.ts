@@ -8,6 +8,17 @@ export type Rarity = "common" | "magic" | "rare" | "legendary";
 export type Phase = "boot" | "title" | "playing" | "paused" | "dead" | "victory" | "ship";
 export type ArmorSlot = "helm" | "chest" | "arms" | "legs";
 export type ItemKind = "weapon" | "armor" | "ammo";
+export type AffixId =
+  | "overpressure"
+  | "tightbore"
+  | "quickmag"
+  | "extended"
+  | "longbarrel"
+  | "rapid"
+  | "plating"
+  | "mesh"
+  | "servo";
+export type SetId = "ember" | "rail" | "null";
 
 export type InvItem = {
   uid: string;
@@ -30,6 +41,8 @@ export type InvItem = {
   hpBonus?: number;
   shieldBonus?: number;
   dmgBonus?: number;
+  affixes?: AffixId[];
+  setId?: SetId;
 };
 
 export type Recipe = {

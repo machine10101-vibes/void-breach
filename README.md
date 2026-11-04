@@ -1,12 +1,36 @@
 # VOID BREACH
 
-Isometric top-down survival looter-shooter. Year 2172. Earth is ash after the Shade tore a Void Gate under New Meridian. You are Vanguard-7.
+Isometric top-down survival looter-shooter. Year 2172. Earth is ash after the Shade tore a Void Gate under New Meridian. You are Vanguard-7 in a Chimera Protocol exo-suit.
 
-**Level 01 — Ashfall Gate** is playable now: exo-suit gunplay, Diablo-style loot, a Gears-weight dodge, and a Harbinger fight at the rift.
+Suit up, hold the ash streets, vacuum loot off the Shade, and burn the Harbinger.
+
+## Campaign
+
+Pick a drop on the ship, then **Deploy**.
+
+| Drop | What it is |
+| --- | --- |
+| 01 Ashfall Gate | Short boulevard. Husk packs, then the Void Harbinger. |
+| 02 Ember Rail | Metro spine. Spitters, wraiths, and the Rail Warden. Unlocks after Ashfall. |
+| 03 Null Spire | Longest nest. Wraiths, brutes, and the Null Sovereign. Unlocks after Ember Rail. |
+
+Each street has cover, a route mark, and an extract pad. Hold the pad when the breach hits, or push to the gate and burn the boss while its core is open.
+
+## Loot
+
+Colored drops are common, magic, rare, or legendary. Magic and better guns and plates roll **affixes** (damage, magazine, spread, reload, range, fire rate, plate, shield, servos). The numbers on the loadout are the numbers the gun uses.
+
+Three two-piece kits change the suit when both pieces are worn:
+
+| Kit | Pieces | Bonus |
+| --- | --- | --- |
+| Ember Protocol | Ember visor + Ember gauntlets | Overdrive lasts longer and hits harder |
+| Rail Stride | Rail cuirass + Rail greaves | Move faster |
+| Null Mantle | Null helm + Null mantle | Take less damage |
+
+Print the missing piece on the hull CNC, or vacuum it off the street. Scrap, guns, plates, ammo, and cleared districts persist on this device.
 
 ## Play
-
-Open the deployed app. **Deploy** drops you into the plaza.
 
 | Input | Action |
 | --- | --- |
@@ -14,15 +38,18 @@ Open the deployed app. **Deploy** drops you into the plaza.
 | Mouse / right drag | Aim on the ground |
 | Click / Fire | Shoot |
 | Shift | Sprint |
-| Space | Dodge roll (i-frames) |
+| Space | Dodge roll |
 | R | Reload |
-| 1 / 2 / 3 | AR / shotgun / SMG |
+| 1–8 / scroll | Weapon slots |
 | Q | Frag |
 | E | Overdrive |
 | F | Chainsaw cleave |
-| Esc | Hold |
+| G | Scan |
+| X | Hold to extract |
+| I | Loadout |
+| Esc | Pause |
 
-Clear packs, pick up colored drops, push the boulevard → overpass → atrium → Void Gate.
+Follow the chevron. **Push** is the next plaza, **Contact** or **Marked** is a living pack, **Burn** is the boss, **Extract** is the pad.
 
 ## Mobile
 
@@ -32,8 +59,4 @@ A sideloadable Android APK (WebView wrapper around the live game) is built from 
 
 ## Stack
 
-Three.js (WebGL), TanStack Start, React 19. Characters, weapons, and the Shade are real 3D meshes — not sprites.
-
-## Repo
-
-Source: this repository. More levels next.
+Three.js (WebGL), TanStack Start, React 19. Characters, weapons, and the Shade are real 3D meshes.
