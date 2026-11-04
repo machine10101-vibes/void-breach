@@ -358,9 +358,12 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   let extractHold = 0;
   let extractBreach = false;
   let gateHeat = 0;
+  let routeLabel = "";
+  let streetQuiet = false;
   let scanT = 0;
   let outcome: RunOutcome = "none";
   let extractMark: THREE.Object3D | null = null;
+  let routeMark: THREE.Group | null = null;
   let cacheTaken = false;
   let lmgHeat = 0;
 
@@ -625,6 +628,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     scene.add(walkMark);
     extractMark = createExtractPad();
     scene.add(extractMark);
+    routeMark = makeRouteMark();
 
     if (!isMobile) {
       composer = new EffectComposer(renderer);
@@ -931,6 +935,114 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     rifts.push({ mesh, life: 0.55 });
     audio.spawn();
     particles.burst(x, 0.4, z, 10, 0xe85d04, 2.2, 0.38, 0.08, 1);
+  }
+
+  function makeRouteMark() {
+    const g = new THREE.Group();
+    const mat = new THREE.MeshBasicMaterial({
+      color: 0xfb923c,
+      transparent: true,
+      opacity: 0.92,
+      depthWrite: false,
+      toneMapped: false,
+      side: THREE.DoubleSide,
+    });
+    const shape = new THREE.Shape();
+    shape.moveTo(0, 0.46);
+    shape.lineTo(-0.2, 0);
+    shape.lineTo(0, 0.14);
+    shape.lineTo(0.2, 0);
+    shape.closePath();
+    const geo = new THREE.ShapeGeometry(shape);
+    for (let i = 0; i < 3; i++) {
+      const chev = new THREE.Mesh(geo, mat);
+      chev.rotation.x = Math.PI / 2;
+      chev.position.z = -i * 0.36;
+      chev.renderOrder = 4;
+      g.add(chev);
+    }
+    g.userData.mat = mat;
+    g.visible = false;
+    scene.add(g);
+    return g;
+  }
+
+  function routeAim(): { x: number; z: number; label: string; color: number } | null {
+    const boss = enemies.find((e) => e.alive && e.kind === "harbinger");
+    if (boss) {
+      const d = Math.hypot(boss.x - px, boss.z - pz);
+      if (d < 7) return null;
+      return { x: boss.x, z: boss.z, label: `Burn · ${Math.max(1, Math.round(d))}m`, color: 0xfb923c };
+    }
+    let nearest: (typeof enemies)[number] | null = null;
+    let best = 1e9;
+    for (const e of enemies) {
+      if (!e.alive) continue;
+      const d = Math.hypot(e.x - px, e.z - pz);
+      if (d < best) {
+        best = d;
+        nearest = e;
+      }
+    }
+    if (nearest) {
+      if (best < 7) return null;
+      return {
+        x: nearest.x,
+        z: nearest.z,
+        label: `${nearest.elite ? "Marked" : "Contact"} · ${Math.round(best)}m`,
+        color: nearest.elite ? 0xfb923c : 0x5eead4,
+      };
+    }
+    const next = level.spawners.find((s) => !spawned.has(s.id));
+    if (next && next.enemies.length) {
+      const ex = next.enemies.reduce((sum, e) => sum + e.x, 0) / next.enemies.length;
+      const ez = next.enemies.reduce((sum, e) => sum + e.z, 0) / next.enemies.length;
+      const d = Math.hypot(ex - px, ez - pz);
+      if (d < 7) return null;
+      return { x: ex, z: ez, label: `Push · ${Math.round(d)}m`, color: 0xe85d04 };
+    }
+    if (extractReady) {
+      const d = Math.hypot(level.spawn.x - px, level.spawn.z - pz);
+      if (d < 4) return null;
+      return { x: level.spawn.x, z: level.spawn.z, label: `Extract · ${Math.round(d)}m`, color: 0x5eead4 };
+    }
+    return null;
+  }
+
+  function updateRoute() {
+    if (!routeMark || phase !== "playing" || extractHold > 0.02) {
+      if (routeMark) routeMark.visible = false;
+      routeLabel = extractHold > 0.02 && phase === "playing" ? "Hold the pad" : "";
+      if (phase !== "playing") streetQuiet = false;
+      return;
+    }
+    const alive = enemies.some((e) => e.alive);
+    const next = level.spawners.find((s) => !spawned.has(s.id));
+    if (!alive && next && spawned.size > 0 && !streetQuiet && !enemies.some((e) => e.kind === "harbinger" && (e.alive || e.dying > 0))) {
+      streetQuiet = true;
+      objective = "Push the street";
+      hint = "Street clear — follow the mark";
+    }
+    if (alive) streetQuiet = false;
+    const aim = routeAim();
+    if (!aim) {
+      routeMark.visible = false;
+      routeLabel = "";
+      return;
+    }
+    const dx = aim.x - px;
+    const dz = aim.z - pz;
+    const dist = Math.hypot(dx, dz) || 1;
+    const nx = dx / dist;
+    const nz = dz / dist;
+    routeMark.visible = true;
+    routeMark.position.set(px + nx * 2.15, py + 0.16, pz + nz * 2.15);
+    routeMark.lookAt(px + nx * 6, py + 0.16, pz + nz * 6);
+    const pulse = 0.55 + Math.sin(performance.now() * 0.008) * 0.28;
+    const mat = routeMark.userData.mat as THREE.MeshBasicMaterial;
+    mat.color.setHex(aim.color);
+    mat.opacity = pulse;
+    routeLabel = aim.label;
   }
 
   function makeThreatRing(color: number) {
@@ -2405,6 +2517,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   }
 
   function snapshot(): HudSnapshot {
+    updateRoute();
     const armed = isArmed();
     const w = currentWeapon();
     const boss = enemies.find((e) => e.kind === "harbinger" && (e.alive || e.dying > 0));
@@ -2425,6 +2538,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       kills,
       objective,
       hint,
+      route: routeLabel,
       skills: [
         { id: "frag", key: "Q", name: "Frag", cd: skillCd.frag, max: 8, ready: skillCd.frag <= 0 },
         { id: "overdrive", key: "E", name: "Overdrive", cd: skillCd.overdrive, max: 16, ready: skillCd.overdrive <= 0 },
@@ -2549,6 +2663,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     extractHold = 0;
     extractBreach = false;
     gateHeat = 0;
+    streetQuiet = false;
+    routeLabel = "";
     scanT = 0;
     outcome = "wipe";
     cacheTaken = false;
@@ -2985,6 +3101,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       step(STEP);
       acc -= STEP;
     }
+    updateRoute();
     if (!mat) return;
     if (useComposer && composer) composer.render();
     else renderer.render(scene, camera);
