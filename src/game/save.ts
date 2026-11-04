@@ -1,4 +1,4 @@
-import { ensureAmmoPools, ensureIssueKit, starterLoadout } from "./items";
+import { ensureAmmoPools, ensureIssueKit, sanitizeItem, starterLoadout } from "./items";
 import type { EquippedArmor, InvItem, MissionId } from "./types";
 
 export type SaveData = {
@@ -60,7 +60,7 @@ export function loadSave(): SaveData {
     );
     let equippedArmor = { ...emptyArmor(), ...(parsed.equippedArmor ?? loadout?.equippedArmor ?? defaults.equippedArmor) };
     const kit = ensureIssueKit(inventory, equippedArmor);
-    inventory = kit.inventory;
+    inventory = kit.inventory.map(sanitizeItem);
     equippedArmor = kit.equippedArmor;
     return {
       ...defaults,

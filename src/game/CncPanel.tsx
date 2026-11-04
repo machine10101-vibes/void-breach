@@ -1,4 +1,4 @@
-import { RECIPES } from "./items";
+import { affixNames, KIT_SETS, RECIPES } from "./items";
 import { ItemPreview } from "./ItemPreview";
 import type { InvItem, Rarity } from "./types";
 
@@ -57,6 +57,8 @@ export function CncPanel({
                   </span>
                   <span className="block font-mono text-[10px] uppercase tracking-widest text-faint">
                     {r.output.kind} · {r.cost} scrap
+                    {r.output.setId ? ` · ${KIT_SETS[r.output.setId].name}` : ""}
+                    {r.output.affixes?.length ? ` · ${affixNames({ uid: r.id, ...r.output }).join(" · ")}` : ""}
                   </span>
                   <span className="mt-2 block font-display text-base text-fg">{can ? "Print" : "Need more scrap"}</span>
                 </span>
