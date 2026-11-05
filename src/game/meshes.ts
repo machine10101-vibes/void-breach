@@ -1124,7 +1124,9 @@ export function createWeaponMesh(id: WeaponId, mat: Materials, rarity: Rarity = 
                   ? createGrenadeLauncher(mat)
                   : id === "pulse"
                     ? createPulse(mat)
-                    : createRifle(mat);
+                    : id === "pike"
+                      ? createPike(mat)
+                      : createRifle(mat);
   addRarityStripe(g, mat, rarity);
   return g;
 }
@@ -1152,6 +1154,21 @@ export function createPulse(mat: Materials) {
   sph(mat.voidCore, 0.016, 0, 0.1, 0.32, g, 6);
   box(mat.warning, 0.02, 0.03, 0.05, 0.04, 0.08, -0.12, g);
   firearmKit(mat, g, { magH: 0.14, magZ: 0.04, optic: "holo", muzzle: "supp", muzzleZ: 0.72 });
+  return g;
+}
+
+export function createPike(mat: Materials) {
+  const g = new THREE.Group();
+  box(mat.dark, 0.07, 0.08, 0.46, 0, 0.02, 0.04, g);
+  barrel(mat.metal, 0.02, 0.62, 0, 0.04, 0.42, g);
+  barrel(mat.voidCore, 0.012, 0.28, 0, 0.04, 0.78, g);
+  box(mat.voidCore, 0.018, 0.018, 0.16, 0, 0.04, 0.96, g);
+  box(mat.dark, 0.05, 0.16, 0.1, 0, -0.12, -0.08, g);
+  box(mat.armor, 0.12, 0.04, 0.22, 0, -0.04, 0.08, g);
+  box(mat.neon, 0.012, 0.012, 0.22, 0, 0.08, 0.16, g);
+  box(mat.ember, 0.03, 0.03, 0.05, 0.04, 0.06, 0.2, g);
+  box(mat.metal, 0.04, 0.03, 0.18, 0, 0.07, 0.28, g);
+  firearmKit(mat, g, { magH: 0.1, magZ: 0.02, optic: "scope", muzzle: "none", stock: true });
   return g;
 }
 
@@ -1248,7 +1265,47 @@ export function createShade(kind: EnemyKind, mat: Materials): EnemyRig {
   if (kind === "stalker") return createStalker(mat);
   if (kind === "spitter") return createSpitter(mat);
   if (kind === "wraith") return createWraith(mat);
+  if (kind === "cantor") return createCantor(mat);
   return createHusk(mat);
+}
+
+function createCantor(mat: Materials): EnemyRig {
+  const group = new THREE.Group();
+  const glow: THREE.Mesh[] = [];
+  const gMat = cloneGlow(mat.shadeGlow);
+  const flesh = shadeFlesh(mat);
+  cap(flesh, 0.16, 0.7, 0, 1.15, 0.02, group);
+  lathe(
+    flesh,
+    [
+      [0.05, 0.22],
+      [0.14, 0.12],
+      [0.12, -0.02],
+      [0.06, -0.12],
+    ],
+    0,
+    1.72,
+    0.02,
+    group,
+  );
+  sph(flesh, 0.12, 0, 1.78, 0.04, group, 12);
+  glowSlit(gMat, 0.14, 0.03, 0.04, 0, 1.8, 0.14, group, glow);
+  const halo = ring(mat.voidCore, 0.22, 0.018, 0, 2.15, 0, group, Math.PI / 2);
+  glow.push(halo);
+  const mkArm = (side: number) => {
+    const root = new THREE.Group();
+    root.position.set(0.22 * side, 1.45, 0);
+    root.rotation.z = -0.7 * side;
+    group.add(root);
+    cap(flesh, 0.045, 0.46, 0, -0.28, 0.02, root);
+    glow.push(sph(mat.voidCore, 0.04, 0, -0.58, 0.06, root, 8));
+    return root;
+  };
+  cap(mat.shade, 0.07, 0.5, -0.1, 0.42, 0, group);
+  cap(mat.shade, 0.07, 0.5, 0.1, 0.42, 0, group);
+  box(mat.dark, 0.28, 0.55, 0.06, 0, 1.05, -0.12, group);
+  group.scale.setScalar(1.18);
+  return { group, kind: "cantor", leftArm: mkArm(-1), rightArm: mkArm(1), glow, ring: halo };
 }
 
 function shadeFlesh(mat: Materials) {

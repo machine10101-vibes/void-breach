@@ -168,13 +168,13 @@ function buildAshfall(): LevelDef {
       {
         id: "overpass",
         zTrigger: -42,
-        message: "Hold the overpass",
+        message: "Overpass — a cantor is singing",
         enemies: [
           { kind: "stalker", x: -3, z: -50 },
           { kind: "stalker", x: 3, z: -52 },
           { kind: "husk", x: 0, z: -48 },
           { kind: "brute", x: 0, z: -58 },
-          { kind: "husk", x: -2.5, z: -56 },
+          { kind: "cantor", x: -2.5, z: -56 },
           { kind: "husk", x: 2.8, z: -55 },
         ],
       },
@@ -373,11 +373,11 @@ function buildEmberRail(): LevelDef {
       {
         id: "tunnel",
         zTrigger: -14,
-        message: "Tunnel spitters",
+        message: "Tunnel — cantor in the pack",
         enemies: [
           { kind: "spitter", x: -3, z: -20 },
           { kind: "spitter", x: 3, z: -24 },
-          { kind: "husk", x: 0, z: -22 },
+          { kind: "cantor", x: 0, z: -22 },
           { kind: "wraith", x: 2, z: -28 },
           { kind: "husk", x: -2, z: -32 },
           { kind: "wraith", x: -4, z: -26 },
@@ -596,13 +596,13 @@ function buildNullSpire(): LevelDef {
       {
         id: "hall",
         zTrigger: -12,
-        message: "Broadcast hall",
+        message: "Broadcast hall — drop the cantor",
         enemies: [
           { kind: "wraith", x: -3, z: -20 },
           { kind: "wraith", x: 3, z: -24 },
           { kind: "spitter", x: 0, z: -28 },
           { kind: "brute", x: 0, z: -34 },
-          { kind: "husk", x: -2, z: -30 },
+          { kind: "cantor", x: -2, z: -30 },
           { kind: "wraith", x: 4, z: -22 },
           { kind: "spitter", x: -4, z: -32 },
         ],
@@ -654,7 +654,7 @@ function buildNullSpire(): LevelDef {
       {
         id: "nave",
         zTrigger: -96,
-        message: "Nave — last halls",
+        message: "Nave — cantor in the last halls",
         enemies: [
           { kind: "brute", x: -3, z: -106 },
           { kind: "brute", x: 3, z: -110 },
@@ -663,7 +663,7 @@ function buildNullSpire(): LevelDef {
           { kind: "spitter", x: 0, z: -102 },
           { kind: "spitter", x: -2, z: -114 },
           { kind: "wraith", x: 2, z: -112 },
-          { kind: "husk", x: 0, z: -116 },
+          { kind: "cantor", x: 0, z: -116 },
         ],
       },
       {

@@ -1,5 +1,5 @@
 import { buildMission } from "./level";
-import type { MissionId, Rarity } from "./types";
+import type { EnemyKind, MissionId, Rarity } from "./types";
 
 export type MissionInfo = {
   id: MissionId;
@@ -40,7 +40,7 @@ export function missionScale(id: MissionId): MissionScale {
   return { tier, hp: 1, dmg: 1, speed: 1, extractWaves: 2, extractKills: 8, dropChance: 0.62, scrapMult: 1 };
 }
 
-export function rollMissionRarity(id: MissionId, kind: "husk" | "stalker" | "brute" | "harbinger" | "spitter" | "wraith"): Rarity {
+export function rollMissionRarity(id: MissionId, kind: EnemyKind): Rarity {
   if (kind === "harbinger") return "legendary";
   const tier = missionTier(id);
   const r = Math.random();
@@ -77,9 +77,9 @@ export const MISSIONS: MissionInfo[] = [
     id: "ember",
     name: "Ember Rail",
     code: "02",
-    blurb: "Longer metro spine. Tougher Shade, rarer kits, and a heavier extract breach. Burn the Rail Warden or vacuum the street and hold the pad.",
+    blurb: "Longer metro spine. Cantors ward the pack until you drop the singer. Burn the Rail Warden, or vacuum the street and hold the pad.",
     unlocksAfter: "ashfall",
-    threat: "Spitters · Wraiths · Rail Warden",
+    threat: "Cantors · Spitters · Rail Warden",
     length: "6 packs · long spine",
     loot: "Magic · rare",
   },
@@ -87,9 +87,9 @@ export const MISSIONS: MissionInfo[] = [
     id: "spire",
     name: "Null Spire",
     code: "03",
-    blurb: "Longest nest. Heaviest Shade, the best street loot, and the meanest extract breach. Seal the Sovereign or hold the pad.",
+    blurb: "Longest nest. Cantors keep the halls warded. Heaviest Shade, the best street loot. Seal the Sovereign or hold the pad.",
     unlocksAfter: "ember",
-    threat: "Wraiths · Brutes · Null Sovereign",
+    threat: "Cantors · Wraiths · Null Sovereign",
     length: "7 packs · longest nest",
     loot: "Rare · legendary",
   },

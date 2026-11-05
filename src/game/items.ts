@@ -20,6 +20,7 @@ export const WEAPON_AMMO: Record<WeaponId, AmmoId> = {
   rail: "cell",
   gl: "cell",
   pulse: "cell",
+  pike: "rifle",
 };
 
 const WEAPON_BASE: Record<
@@ -35,6 +36,7 @@ const WEAPON_BASE: Record<
   rail: { name: "Null Lance", dmg: 96, pellets: 1, rpm: 46, mag: 4, reserve: 16, spread: 0.002, range: 146, reload: 2.15 },
   gl: { name: "Helios GL", dmg: 88, pellets: 1, rpm: 52, mag: 4, reserve: 12, spread: 0.028, range: 42, reload: 2.05 },
   pulse: { name: "Pulse Carbine", dmg: 28, pellets: 1, rpm: 640, mag: 24, reserve: 96, spread: 0.012, range: 78, reload: 1.55 },
+  pike: { name: "Sever Pike", dmg: 54, pellets: 1, rpm: 130, mag: 8, reserve: 40, spread: 0.007, range: 52, reload: 1.75 },
 };
 
 export const AFFIXES: Record<AffixId, { name: string; kind: "weapon" | "armor"; line: string }> = {
@@ -250,7 +252,7 @@ export function makeArmor(
 }
 
 export function rollLootWeapon(rarity: Rarity, tier = 1): InvItem {
-  const pool: WeaponId[] = ["ar", "shotgun", "smg", "dmr", "cannon", "lmg", "rail", "gl", "pulse"];
+  const pool: WeaponId[] = ["ar", "shotgun", "smg", "dmr", "cannon", "lmg", "rail", "gl", "pulse", "pike"];
   const id = pool[Math.floor(Math.random() * pool.length)];
   const prefix = rarity === "legendary" ? "Mythic " : rarity === "rare" ? "Rare " : rarity === "magic" ? "Tuned " : "";
   const mult = rarity === "legendary" ? 1.7 : rarity === "rare" ? 1.35 : rarity === "magic" ? 1.15 : 1;
@@ -348,6 +350,12 @@ export const RECIPES: Recipe[] = [
     name: "Pulse Carbine",
     cost: 180,
     output: { kind: "weapon", rarity: "rare", weaponId: "pulse", ...WEAPON_BASE.pulse, name: "Pulse Carbine", affixes: ["rapid", "tightbore"] },
+  },
+  {
+    id: "pike",
+    name: "Sever Pike",
+    cost: 165,
+    output: { kind: "weapon", rarity: "rare", weaponId: "pike", ...WEAPON_BASE.pike, name: "Sever Pike", affixes: ["tightbore"] },
   },
   {
     id: "helm-ember",
