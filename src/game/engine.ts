@@ -498,6 +498,10 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   let beamMesh: THREE.Mesh | null = null;
   let slashMesh: THREE.Mesh | null = null;
   let slashT = 0;
+  let cleaveArc: THREE.Mesh | null = null;
+  let blastMark: THREE.Mesh | null = null;
+  let blastPop = 0;
+  let blastR = 4;
   const tracerMat = new THREE.LineBasicMaterial({
     color: 0xffc58a,
     transparent: true,
@@ -631,6 +635,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     scene.add(beamMesh);
     slashMesh = createSlash();
     scene.add(slashMesh);
+    cleaveArc = makeFlatTell(2.9, 3.4, 0xe85d04, 1.7);
+    blastMark = makeFlatTell(0.82, 1.02, 0xfb923c);
     aimReticle = createAimReticle();
     scene.add(aimReticle);
     walkMark = createWalkMark();
@@ -1880,6 +1886,13 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     particles.burst(x, y, z, 36, 0xe85d04, 7, 0.55, 0.16, -4);
     particles.burst(x, y, z, 18, 0xffc58a, 4, 0.4, 0.1, -2);
     scorch.stamp(x, z, r * 0.45);
+    blastR = r;
+    blastPop = 0.28;
+    if (blastMark) {
+      blastMark.position.set(x, 0.08, z);
+      blastMark.scale.setScalar(r);
+      blastMark.visible = true;
+    }
     for (const e of enemies) {
       if (!e.alive) continue;
       const d = Math.hypot(e.x - x, e.z - z);
@@ -1899,6 +1912,15 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     dodgeDirX = f.x;
     dodgeDirZ = f.z;
     slashT = 0.22;
+    if (cleaveArc) {
+      cleaveArc.geometry.dispose();
+      cleaveArc.geometry = new THREE.RingGeometry(Math.max(0.55, spec.range - 0.5), spec.range, 24, 1, Math.PI / 2 - 0.85, 1.7);
+      cleaveArc.position.set(px, 0.08, pz);
+      cleaveArc.rotation.order = "YXZ";
+      cleaveArc.rotation.set(-Math.PI / 2, yaw, 0);
+      cleaveArc.visible = true;
+      (cleaveArc.material as THREE.MeshBasicMaterial).opacity = 0.9;
+    }
     if (slashMesh) {
       slashMesh.visible = true;
       slashMesh.position.set(px + f.x * 1.1, py + 1.2, pz + f.z * 1.1);
@@ -2508,6 +2530,26 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     audio.combat(nearby / 8);
   }
 
+  function makeFlatTell(inner: number, outer: number, color: number, arc = Math.PI * 2) {
+    const mesh = new THREE.Mesh(
+      new THREE.RingGeometry(inner, outer, 32, 1, arc >= Math.PI * 1.99 ? 0 : Math.PI / 2 - arc / 2, arc),
+      new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0.85,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+        toneMapped: false,
+      }),
+    );
+    mesh.rotation.order = "YXZ";
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.visible = false;
+    mesh.renderOrder = 3;
+    scene.add(mesh);
+    return mesh;
+  }
+
   function alignBeam(ax: number, ay: number, az: number, bx: number, by: number, bz: number, radius: number) {
     if (!beamMesh) return;
     tmpV.set(ax, ay, az);
@@ -2578,6 +2620,13 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
           projs.splice(i, 1);
         }
       }
+    }
+    const live = projs.find((p) => p.kind === "frag" || p.kind === "gl");
+    if (blastMark && live && blastPop <= 0) {
+      blastMark.visible = true;
+      blastMark.position.set(live.x, 0.08, live.z);
+      blastMark.scale.setScalar(live.r);
+      (blastMark.material as THREE.MeshBasicMaterial).opacity = 0.7;
     }
   }
 
@@ -2869,6 +2918,17 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
         slashMesh.rotateY(dt * 8);
         (slashMesh.material as THREE.MeshBasicMaterial).opacity = slashT / 0.22;
         if (slashT <= 0) slashMesh.visible = false;
+      }
+      if (cleaveArc) {
+        (cleaveArc.material as THREE.MeshBasicMaterial).opacity = Math.max(0, slashT / 0.22) * 0.9;
+        if (slashT <= 0) cleaveArc.visible = false;
+      }
+      if (blastPop > 0 && blastMark) {
+        blastPop = Math.max(0, blastPop - dt);
+        const u = 1 - blastPop / 0.28;
+        blastMark.scale.setScalar(blastR * (1 + u * 0.28));
+        (blastMark.material as THREE.MeshBasicMaterial).opacity = Math.max(0, 0.85 * (1 - u));
+        if (blastPop <= 0) blastMark.visible = false;
       }
     }
     for (const f of floaters) f.life -= dt;

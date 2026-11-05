@@ -36,6 +36,8 @@ Print the missing piece on the hull CNC, or vacuum it off the street. Scrap, gun
 
 On the ship, open **Ops**. Under the district list, spend banked scrap to drill Frag, Overdrive, Cleave, and Scan up to three ranks. Each rank widens the skill and shortens the cooldown. The pips under the skill keys show the rank you are carrying into the drop.
 
+Cleave paints an ember arc on the street for the swing's reach. A frag or grenade draws an orange ring on the ground until it pops. A hit ticks four marks over the street instead of a word.
+
 ## Play
 
 | Input | Action |
