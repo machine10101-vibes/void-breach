@@ -1,6 +1,6 @@
 export type WeaponId = "ar" | "shotgun" | "smg" | "dmr" | "cannon" | "lmg" | "rail" | "gl" | "pulse" | "pike";
 export type AmmoId = "rifle" | "shell" | "compact" | "heavy" | "cell";
-export type EnemyKind = "husk" | "stalker" | "brute" | "harbinger" | "spitter" | "wraith" | "cantor";
+export type EnemyKind = "husk" | "stalker" | "brute" | "harbinger" | "spitter" | "wraith" | "cantor" | "cinder";
 export type MissionId = "ashfall" | "ember" | "spire";
 export type LevelTheme = "ash" | "rail" | "spire";
 export type RunOutcome = "none" | "wipe" | "extract" | "clear";

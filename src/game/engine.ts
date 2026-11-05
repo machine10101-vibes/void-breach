@@ -115,7 +115,7 @@ type Weapon = {
   reload: number;
 };
 
-type EnemyIntent = "none" | "melee" | "slam" | "shot" | "blink" | "beam" | "hymn";
+type EnemyIntent = "none" | "melee" | "slam" | "shot" | "blink" | "beam" | "hymn" | "burst";
 
 type Enemy = {
   id: number;
@@ -205,7 +205,9 @@ function enemyStats(kind: EnemyKind, id: MissionId = "ashfall") {
               ? { hp: 72, radius: 0.38, speed: 6.4, dmg: 15 }
               : kind === "cantor"
                 ? { hp: 148, radius: 0.5, speed: 2.45, dmg: 12 }
-                : { hp: 78, radius: 0.42, speed: 5.0, dmg: 13 };
+                : kind === "cinder"
+                  ? { hp: 64, radius: 0.4, speed: 6.1, dmg: 22 }
+                  : { hp: 78, radius: 0.42, speed: 5.0, dmg: 13 };
   const sc = missionScale(id);
   return {
     hp: Math.round(base.hp * sc.hp),
@@ -1230,7 +1232,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     comboT = 2.4;
     combo++;
     const xpGain =
-      (e.kind === "harbinger" ? 800 : e.kind === "brute" ? 120 : e.kind === "cantor" ? 80 : e.kind === "spitter" ? 70 : e.kind === "wraith" ? 55 : 40) *
+      (e.kind === "harbinger" ? 800 : e.kind === "brute" ? 120 : e.kind === "cantor" ? 80 : e.kind === "spitter" ? 70 : e.kind === "cinder" ? 48 : e.kind === "wraith" ? 55 : 40) *
       (1 + Math.min(combo, 8) * 0.05) *
       (e.elite ? 1.75 : 1);
     xp += xpGain;
@@ -2197,7 +2199,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     e.blinkX = blinkX;
     e.blinkZ = blinkZ;
     const color =
-      intent === "hymn" ? 0x818cf8 : intent === "shot" || intent === "beam" ? 0x5eead4 : intent === "blink" ? 0xc4b5fd : intent === "slam" ? 0xfb923c : 0xe85d04;
+      intent === "hymn" ? 0x818cf8 : intent === "burst" ? 0xfb923c : intent === "shot" || intent === "beam" ? 0x5eead4 : intent === "blink" ? 0xc4b5fd : intent === "slam" ? 0xfb923c : 0xe85d04;
     (e.ring.material as THREE.MeshBasicMaterial).color.setHex(color);
     pingTell();
   }
@@ -2309,7 +2311,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
         e.stateT = 0;
       } else if (e.state === "windup") {
         e.stateT -= dt;
-        if ((e.intent === "melee" || e.intent === "slam") && dist > e.radius + 0.8) {
+        if ((e.intent === "melee" || e.intent === "slam" || e.intent === "burst") && dist > e.radius + 0.55) {
           const creep = e.speed * dt * 0.45;
           e.x += nx * creep;
           e.z += nz * creep;
@@ -2349,6 +2351,11 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
             e.z = c.z;
             particles.spray(e.x, 1.1, e.z, nx, 0.2, nz, 8, 0x5eead4, 6, 0.2, 0.08);
             if (Math.hypot(px - e.x, pz - e.z) < 1.75 && !losBlocked(e.x, e.z, px, pz)) hurtPlayer(bite);
+          } else if (e.intent === "burst") {
+            const rad = e.elite ? 3.5 : 2.8;
+            killEnemy(e);
+            explode(e.x, 0.45, e.z, bite, rad);
+            hint = "Cinder popped — stay off the ring";
           } else if (e.intent === "melee") {
             e.kbX += nx * (e.elite ? 11 : 9);
             e.kbZ += nz * (e.elite ? 11 : 9);
@@ -2398,6 +2405,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
           );
           if (friend) beginWindup(e, "hymn", e.elite ? 0.48 : 0.62);
           else beginWindup(e, "shot", 0.4);
+        } else if (e.kind === "cinder" && dist < 3.2) {
+          beginWindup(e, "burst", e.elite ? 0.48 : 0.64);
         } else if (e.kind === "husk" && dist < 2.35) {
           beginWindup(e, "melee", e.elite ? 0.32 : 0.42);
         } else if (e.kind === "brute" && dist < 2.55) {
@@ -2435,6 +2444,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
         }
       }
       if (e.kind === "cantor" && e.rig.ring) e.rig.ring.rotation.z += dt * (e.state === "windup" ? 2.8 : 1.15);
+      if (e.kind === "cinder" && e.rig.core) e.rig.core.rotation.y += dt * (e.state === "windup" ? 8 : 2.4);
 
       const lift = e.state === "windup" ? 1 - e.stateT / Math.max(0.05, e.windMax) : 0;
       if (e.stagger > 0) {
@@ -2443,7 +2453,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       } else if (e.state === "windup" && (e.intent === "melee" || e.intent === "slam")) {
         e.rig.leftArm.rotation.x = -1.15 * lift;
         e.rig.rightArm.rotation.x = -1.2 * lift;
-      } else if (e.state === "windup" && e.intent === "hymn") {
+      } else if (e.state === "windup" && (e.intent === "hymn" || e.intent === "burst")) {
         e.rig.leftArm.rotation.x = -1.25 * lift;
         e.rig.rightArm.rotation.x = -1.25 * lift;
       } else if (e.state === "windup" && e.intent === "shot") {
@@ -2468,7 +2478,9 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       if (e.state === "windup") {
         const u = 1 - e.stateT / Math.max(0.05, e.windMax);
         e.ring.visible = true;
-        e.ring.scale.setScalar(e.intent === "slam" ? 1.15 + u * 1.9 : e.intent === "beam" ? 0.9 + u * 0.55 : 0.8 + u * 0.75);
+        e.ring.scale.setScalar(
+          e.intent === "burst" ? 1.5 + u * 2.2 : e.intent === "slam" ? 1.15 + u * 1.9 : e.intent === "beam" ? 0.9 + u * 0.55 : 0.8 + u * 0.75,
+        );
         ringMat.opacity = 0.2 + u * 0.72;
         if (e.intent === "blink") e.ring.position.set(e.blinkX, 0.07, e.blinkZ);
         else e.ring.position.set(e.x, 0.07, e.z);
