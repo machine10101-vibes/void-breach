@@ -155,13 +155,13 @@ function buildAshfall(): LevelDef {
       {
         id: "street",
         zTrigger: -14,
-        message: "Boulevard ambush",
+        message: "Boulevard — a cinder is in the pack",
         enemies: [
+          { kind: "cinder", x: 0, z: -26 },
           { kind: "husk", x: -3, z: -22 },
           { kind: "husk", x: 3.5, z: -24 },
           { kind: "stalker", x: -2, z: -30 },
           { kind: "stalker", x: 3, z: -33 },
-          { kind: "husk", x: 0, z: -28 },
           { kind: "husk", x: 2, z: -36 },
         ],
       },
@@ -360,13 +360,13 @@ function buildEmberRail(): LevelDef {
       {
         id: "platform",
         zTrigger: 5,
-        message: "Ember Rail — platform contact",
+        message: "Ember Rail — a cinder on the platform",
         enemies: [
+          { kind: "cinder", x: 2, z: -7 },
           { kind: "husk", x: -4, z: -4 },
           { kind: "husk", x: 4, z: -5 },
           { kind: "spitter", x: 0, z: -8 },
           { kind: "wraith", x: -2, z: -10 },
-          { kind: "husk", x: 2, z: -7 },
           { kind: "spitter", x: -3, z: -12 },
         ],
       },
@@ -583,11 +583,11 @@ function buildNullSpire(): LevelDef {
       {
         id: "forecourt",
         zTrigger: 7,
-        message: "Spire forecourt — wraiths",
+        message: "Spire forecourt — a cinder with the wraiths",
         enemies: [
+          { kind: "cinder", x: 0, z: -8 },
           { kind: "wraith", x: -5, z: -5 },
           { kind: "wraith", x: 5, z: -6 },
-          { kind: "husk", x: 0, z: -8 },
           { kind: "spitter", x: 2, z: -12 },
           { kind: "wraith", x: -2, z: -10 },
           { kind: "husk", x: 3, z: -4 },

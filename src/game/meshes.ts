@@ -1266,7 +1266,19 @@ export function createShade(kind: EnemyKind, mat: Materials): EnemyRig {
   if (kind === "spitter") return createSpitter(mat);
   if (kind === "wraith") return createWraith(mat);
   if (kind === "cantor") return createCantor(mat);
+  if (kind === "cinder") return createCinder(mat);
   return createHusk(mat);
+}
+
+function createCinder(mat: Materials): EnemyRig {
+  const rig = createHusk(mat);
+  rig.kind = "cinder";
+  const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.16, 0), cloneGlow(mat.ember));
+  core.position.set(0, 1.42, 0.04);
+  rig.group.add(core);
+  rig.glow.push(core);
+  rig.core = core;
+  return rig;
 }
 
 function createCantor(mat: Materials): EnemyRig {

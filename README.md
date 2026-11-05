@@ -18,6 +18,8 @@ Each street has cover, a route mark, and an extract pad. Hold the pad when the b
 
 An **Ash Cantor** hangs behind a pack and wards the Shade around it. Their ring turns indigo and shots print WARD until you drop the singer. The **Sever Pike** (rifle ammo, hull CNC or a rare drop) cuts that ward and staggers.
 
+A **Cinder** sprints the pack and swells an orange ring. When the ring fills, it pops. Step off the ring or shoot it before the swell finishes. One runs the Ashfall boulevard, the Ember platform, and the Spire forecourt.
+
 ## Loot
 
 Colored drops are common, magic, rare, or legendary. Magic and better guns and plates roll **affixes** (damage, magazine, spread, reload, range, fire rate, plate, shield, servos). The numbers on the loadout are the numbers the gun uses.
