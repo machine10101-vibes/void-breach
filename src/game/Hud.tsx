@@ -311,6 +311,11 @@ export function Hud({
               <span className="relative font-display text-sm font-semibold">
                 {s.ready ? s.name : s.cd.toFixed(1)}
               </span>
+              <span className="relative mt-0.5 flex gap-0.5">
+                {[0, 1, 2].map((i) => (
+                  <span key={i} className={`h-1 w-1 rounded-full ${i < s.rank ? "bg-accent" : "bg-faint/40"}`} />
+                ))}
+              </span>
             </div>
           );
         })}

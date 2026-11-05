@@ -1,5 +1,6 @@
 import { isMissionUnlocked, MISSIONS } from "./campaign";
-import type { MissionId } from "./types";
+import { nextSkillCost, SKILL_ORDER, SKILL_TRACK } from "./skills";
+import type { MissionId, SkillId } from "./types";
 
 export function MissionPanel({
   open,
@@ -7,12 +8,18 @@ export function MissionPanel({
   selected,
   cleared,
   onSelect,
+  scrapBank,
+  skillRanks,
+  onDrill,
 }: {
   open: boolean;
   onClose: () => void;
   selected: MissionId;
   cleared: MissionId[];
   onSelect: (id: MissionId) => void;
+  scrapBank: number;
+  skillRanks: Record<SkillId, number>;
+  onDrill: (id: SkillId) => void;
 }) {
   if (!open) return null;
   return (
@@ -66,6 +73,40 @@ export function MissionPanel({
             );
           })}
         </div>
+        <section className="mt-5">
+          <h3 className="font-mono text-[10px] uppercase tracking-widest text-accent">Chimera drills</h3>
+          <p className="mt-1 text-sm text-muted">Spend banked scrap. Ranks stay on the suit between drops. {scrapBank} scrap in the hopper.</p>
+          <div className="mt-3 flex flex-col gap-2">
+            {SKILL_ORDER.map((id) => {
+              const track = SKILL_TRACK[id];
+              const rank = skillRanks[id] ?? 0;
+              const cost = nextSkillCost(id, rank);
+              const can = cost != null && scrapBank >= cost;
+              return (
+                <div key={id} className="rounded-lg border border-border bg-elevated px-3 py-3">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <p className="font-display text-lg font-semibold">{track.name}</p>
+                    <p className="font-mono text-[10px] uppercase tracking-widest text-faint">
+                      {[0, 1, 2].map((i) => (i < rank ? "●" : "○")).join(" ")}
+                    </p>
+                  </div>
+                  <p className="mt-1 text-sm text-muted">{track.blurb}</p>
+                  <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-accent">
+                    {cost == null ? "Maxed" : track.lines[rank]}
+                  </p>
+                  <button
+                    type="button"
+                    disabled={!can}
+                    onClick={() => onDrill(id)}
+                    className="mt-2 rounded-md border border-border bg-bg/50 px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-fg disabled:opacity-40"
+                  >
+                    {cost == null ? "Logged" : can ? `Drill ${rank + 1} · ${cost} scrap` : `Need ${cost} scrap`}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </section>
       </div>
     </div>
   );
