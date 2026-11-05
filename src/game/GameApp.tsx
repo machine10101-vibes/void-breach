@@ -209,8 +209,11 @@ export function GameApp() {
           onInstall={() => void installEvt?.prompt()}
           apkUrl="https://github.com/machine10101-vibes/void-breach/releases/latest"
           best={hud.best}
+          missionId={hud.missionId}
           missionName={hud.missionName}
           missionBlurb={hud.missionBlurb}
+          cleared={hud.clearedMissions}
+          onSelectMission={(id) => handleRef.current?.selectMission(id)}
         />
       ) : (
         <Hud

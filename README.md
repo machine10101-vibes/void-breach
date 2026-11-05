@@ -6,7 +6,7 @@ Suit up, hold the ash streets, vacuum loot off the Shade, and burn the Harbinger
 
 ## Campaign
 
-Pick a drop on the ship, then **Deploy**.
+Pick a drop on the title or on the ship, then **Deploy**. A locked district stays dark until the previous gate is cleared.
 
 | Drop | What it is |
 | --- | --- |

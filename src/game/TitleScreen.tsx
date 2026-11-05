@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Download, Play, Settings, Smartphone } from "lucide-react";
 import { ApkPinSheet } from "./ApkPinSheet";
 import { assetUrl } from "@/lib/asset-url";
-import type { BestRun } from "./types";
+import { isMissionUnlocked, MISSIONS } from "./campaign";
+import type { BestRun, MissionId } from "./types";
 
 type Props = {
   onDeploy: () => void;
@@ -12,8 +13,11 @@ type Props = {
   canInstall: boolean;
   apkUrl?: string;
   best?: BestRun | null;
+  missionId?: MissionId;
   missionName?: string;
   missionBlurb?: string;
+  cleared?: MissionId[];
+  onSelectMission?: (id: MissionId) => void;
 };
 
 function formatTime(t: number) {
@@ -31,8 +35,11 @@ export function TitleScreen({
   canInstall,
   apkUrl,
   best,
+  missionId = "ashfall",
   missionName = "Ashfall Gate",
   missionBlurb,
+  cleared = [],
+  onSelectMission,
 }: Props) {
   const [apkOpen, setApkOpen] = useState(false);
   return (
@@ -60,6 +67,28 @@ export function TitleScreen({
           <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-faint desk:text-xs">
             Selected · {missionName}
           </p>
+          <div className="mt-2 grid w-full max-w-md grid-cols-3 gap-1.5">
+            {MISSIONS.map((m) => {
+              const unlocked = isMissionUnlocked(m.id, cleared);
+              const active = m.id === missionId;
+              const short = m.id === "ashfall" ? "Gate" : m.id === "ember" ? "Rail" : "Spire";
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  disabled={!unlocked}
+                  aria-pressed={active}
+                  onClick={() => onSelectMission?.(m.id)}
+                  className={`flex h-11 flex-col items-center justify-center rounded-md border px-1 font-mono text-[10px] uppercase leading-tight tracking-widest disabled:opacity-40 ${
+                    active ? "border-accent bg-elevated text-fg" : "border-border bg-surface/80 text-muted"
+                  }`}
+                >
+                  <span>{m.code}</span>
+                  <span>{unlocked ? short : "Locked"}</span>
+                </button>
+              );
+            })}
+          </div>
 
           {best && best.runs > 0 ? (
             <p className="mt-3 hidden font-mono text-[10px] uppercase tracking-widest text-muted desk:block">
