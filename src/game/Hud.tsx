@@ -323,7 +323,12 @@ export function Hud({
 
       <div className="pointer-events-none absolute left-1/2 top-[36%] -translate-x-1/2">
         {hud.hitMarker > 0 ? (
-          <p className="font-display text-sm font-semibold text-void">HIT</p>
+          <div className="relative mx-auto h-7 w-7" style={{ opacity: Math.min(1, hud.hitMarker * 6) }}>
+            <span className="absolute left-1/2 top-0 h-2 w-0.5 -translate-x-1/2 bg-void" />
+            <span className="absolute bottom-0 left-1/2 h-2 w-0.5 -translate-x-1/2 bg-void" />
+            <span className="absolute left-0 top-1/2 h-0.5 w-2 -translate-y-1/2 bg-void" />
+            <span className="absolute right-0 top-1/2 h-0.5 w-2 -translate-y-1/2 bg-void" />
+          </div>
         ) : null}
         {hud.combo > 1 ? (
           <p className="mt-2 text-center font-display text-2xl font-semibold text-accent">{hud.combo}x</p>
