@@ -30,7 +30,11 @@ Three two-piece kits change the suit when both pieces are worn:
 | Rail Stride | Rail cuirass + Rail greaves | Move faster |
 | Null Mantle | Null helm + Null mantle | Take less damage |
 
-Print the missing piece on the hull CNC, or vacuum it off the street. Scrap, guns, plates, ammo, and cleared districts persist on this device.
+Print the missing piece on the hull CNC, or vacuum it off the street. Scrap, guns, plates, ammo, cleared districts, and Chimera drills persist on this device.
+
+## Drills
+
+On the ship, open **Ops**. Under the district list, spend banked scrap to drill Frag, Overdrive, Cleave, and Scan up to three ranks. Each rank widens the skill and shortens the cooldown. The pips under the skill keys show the rank you are carrying into the drop.
 
 ## Play
 

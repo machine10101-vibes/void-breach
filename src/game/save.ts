@@ -1,4 +1,5 @@
 import { ensureAmmoPools, ensureIssueKit, sanitizeItem, starterLoadout } from "./items";
+import { emptySkillRanks, sanitizeRanks, type SkillRanks } from "./skills";
 import type { EquippedArmor, InvItem, MissionId } from "./types";
 
 export type SaveData = {
@@ -18,6 +19,7 @@ export type SaveData = {
   clearedMissions: MissionId[];
   selectedMission: MissionId;
   stimReady: boolean;
+  skillRanks: SkillRanks;
 };
 
 const KEY = "void-breach-v1";
@@ -45,6 +47,7 @@ export function defaultSave(): SaveData {
     clearedMissions: [],
     selectedMission: "ashfall",
     stimReady: false,
+    skillRanks: emptySkillRanks(),
   };
 }
 
@@ -81,6 +84,7 @@ export function loadSave(): SaveData {
           ? parsed.selectedMission
           : "ashfall",
       stimReady: Boolean(parsed.stimReady),
+      skillRanks: sanitizeRanks(parsed.skillRanks),
     };
   } catch {
     return defaults;

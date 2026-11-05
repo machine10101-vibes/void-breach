@@ -58,6 +58,7 @@ const bootHud: HudSnapshot = {
   invertLookX: false,
   invertLookY: false,
   scrapBank: 0,
+  skillRanks: { frag: 0, overdrive: 0, cleave: 0, scan: 0 },
   inventory: [],
   equippedWeapon: null,
   equippedArmor: emptyArmor,
@@ -339,6 +340,9 @@ export function GameApp() {
         selected={hud.missionId}
         cleared={hud.clearedMissions}
         onSelect={(id) => handleRef.current?.selectMission(id)}
+        scrapBank={hud.scrapBank}
+        skillRanks={hud.skillRanks}
+        onDrill={(id) => handleRef.current?.buySkill(id)}
       />
       <SettingsSheet
         open={settingsOpen}

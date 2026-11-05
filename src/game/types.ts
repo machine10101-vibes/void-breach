@@ -63,6 +63,7 @@ export type HudSkill = {
   cd: number;
   max: number;
   ready: boolean;
+  rank: number;
 };
 
 export type LootToast = {
@@ -149,6 +150,7 @@ export type HudSnapshot = {
   invertLookX: boolean;
   invertLookY: boolean;
   scrapBank: number;
+  skillRanks: Record<SkillId, number>;
   inventory: InvItem[];
   equippedWeapon: string | null;
   equippedArmor: EquippedArmor;

@@ -78,9 +78,11 @@ import type {
   Phase,
   Rarity,
   RunOutcome,
+  SkillId,
   AmmoId,
   WeaponId,
 } from "./types";
+import { nextSkillCost, skillSpec, SKILL_TRACK } from "./skills";
 
 const PLAYER_R = 0.38;
 const PLAYER_H = 1.72;
@@ -241,6 +243,7 @@ export type GameHandle = {
   equipItem: (uid: string) => void;
   craftRecipe: (id: string) => void;
   scrapItem: (uid: string) => void;
+  buySkill: (id: SkillId) => void;
 };
 
 export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => void): GameHandle {
@@ -1762,8 +1765,9 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
 
   function triggerScan() {
     if (skillCd.scan > 0) return;
-    skillCd.scan = 12;
-    scanT = 7;
+    const spec = skillSpec("scan", save.skillRanks.scan);
+    skillCd.scan = spec.cd;
+    scanT = spec.duration;
     particles.burst(px, py + 1.4, pz, 22, 0x5eead4, 4.2, 0.45, 0.1, 1);
     audio.fire("rail");
   }
@@ -1785,6 +1789,29 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     writeSave(save);
     hint = "Medbay stim loaded — next deploy +50 HP / +20 shield";
     pushLoot("Medbay stim primed", "rare");
+    emitHud(true);
+  }
+
+  function buySkill(id: SkillId) {
+    if (phase !== "ship") return;
+    const rank = save.skillRanks[id] ?? 0;
+    const cost = nextSkillCost(id, rank);
+    const track = SKILL_TRACK[id];
+    if (cost == null) {
+      hint = `${track.name} drills are maxed`;
+      emitHud(true);
+      return;
+    }
+    if (save.scrapBank < cost) {
+      hint = `Need ${cost} scrap for the next ${track.name} drill`;
+      emitHud(true);
+      return;
+    }
+    save.scrapBank -= cost;
+    save.skillRanks[id] = rank + 1;
+    writeSave(save);
+    hint = `${track.name} drill ${rank + 1} — ${track.lines[rank]}`;
+    pushLoot(`${track.name} ${rank + 1}`, "magic");
     emitHud(true);
   }
 
@@ -1823,7 +1850,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
 
   function throwFrag() {
     if (skillCd.frag > 0 || !mat) return;
-    skillCd.frag = 8;
+    const spec = skillSpec("frag", save.skillRanks.frag);
+    skillCd.frag = spec.cd;
     audio.fire("frag");
     const f = forward();
     const mesh = createGrenade(mat);
@@ -1839,8 +1867,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       vy: 7.2,
       vz: f.z * 17,
       life: 1.15,
-      dmg: 140,
-      r: 5.4,
+      dmg: spec.dmg,
+      r: spec.radius,
     });
   }
 
@@ -1862,9 +1890,10 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
 
   function cleave() {
     if (skillCd.cleave > 0) return;
-    skillCd.cleave = 7;
+    const spec = skillSpec("cleave", save.skillRanks.cleave);
+    skillCd.cleave = spec.cd;
     audio.fire("shotgun");
-    invuln = 0.28;
+    invuln = spec.iframes;
     const f = forward();
     dodgeT = 0.18;
     dodgeDirX = f.x;
@@ -1881,7 +1910,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       const dx = e.x - px;
       const dz = e.z - pz;
       const dist = Math.hypot(dx, dz);
-      if (dist < 3.4 && dx * f.x + dz * f.z > 0) damageEnemy(e, 90, f.x, f.z, 5.6);
+      if (dist < spec.range && dx * f.x + dz * f.z > 0) damageEnemy(e, spec.dmg, f.x, f.z, 5.6);
     }
   }
 
@@ -2621,10 +2650,10 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       hint,
       route: routeLabel,
       skills: [
-        { id: "frag", key: "Q", name: "Frag", cd: skillCd.frag, max: 8, ready: skillCd.frag <= 0 },
-        { id: "overdrive", key: "E", name: "Overdrive", cd: skillCd.overdrive, max: 16, ready: skillCd.overdrive <= 0 },
-        { id: "cleave", key: "F", name: "Cleave", cd: skillCd.cleave, max: 7, ready: skillCd.cleave <= 0 },
-        { id: "scan", key: "G", name: "Scan", cd: skillCd.scan, max: 12, ready: skillCd.scan <= 0 },
+        { id: "frag", key: "Q", name: "Frag", cd: skillCd.frag, max: skillSpec("frag", save.skillRanks.frag).cd, ready: skillCd.frag <= 0, rank: save.skillRanks.frag },
+        { id: "overdrive", key: "E", name: "Overdrive", cd: skillCd.overdrive, max: skillSpec("overdrive", save.skillRanks.overdrive).cd, ready: skillCd.overdrive <= 0, rank: save.skillRanks.overdrive },
+        { id: "cleave", key: "F", name: "Cleave", cd: skillCd.cleave, max: skillSpec("cleave", save.skillRanks.cleave).cd, ready: skillCd.cleave <= 0, rank: save.skillRanks.cleave },
+        { id: "scan", key: "G", name: "Scan", cd: skillCd.scan, max: skillSpec("scan", save.skillRanks.scan).cd, ready: skillCd.scan <= 0, rank: save.skillRanks.scan },
       ],
       loot,
       reloading: reloadT > 0,
@@ -2656,6 +2685,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       invertLookX: save.invertLookX,
       invertLookY: save.invertLookY,
       scrapBank: save.scrapBank,
+      skillRanks: save.skillRanks,
       inventory: save.inventory,
       equippedWeapon: save.equippedWeapon,
       equippedArmor: save.equippedArmor,
@@ -2984,8 +3014,9 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     if (justPressed("KeyR")) startReload();
     if (justPressed("KeyQ") || (held.frag && skillCd.frag <= 0)) throwFrag();
     if ((justPressed("KeyE") || held.overdrive) && skillCd.overdrive <= 0) {
-      skillCd.overdrive = 16;
-      overdriveT = kitMods(save.inventory, save.equippedArmor).overdriveSeconds;
+      const drive = skillSpec("overdrive", save.skillRanks.overdrive);
+      skillCd.overdrive = drive.cd;
+      overdriveT = kitMods(save.inventory, save.equippedArmor).overdriveSeconds + drive.extraSeconds;
       particles.burst(px, py + 1.2, pz, 16, 0xe85d04, 3, 0.4, 0.1, 1);
     }
     if (justPressed("KeyF") || (held.cleave && skillCd.cleave <= 0)) cleave();
@@ -3374,6 +3405,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       applyMission(id);
     },
     buyStim,
+    buySkill,
     startMission() {
       audio.unlock();
       if (!worldBuilt) setupWorld();
@@ -3475,8 +3507,9 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       if (name === "cleave") cleave();
       if (name === "scan") triggerScan();
       if (name === "overdrive" && skillCd.overdrive <= 0) {
-        skillCd.overdrive = 16;
-        overdriveT = kitMods(save.inventory, save.equippedArmor).overdriveSeconds;
+        const drive = skillSpec("overdrive", save.skillRanks.overdrive);
+        skillCd.overdrive = drive.cd;
+        overdriveT = kitMods(save.inventory, save.equippedArmor).overdriveSeconds + drive.extraSeconds;
       }
       if (name === "reload") startReload();
       if (name === "w1") selectWeaponSlot(0);
