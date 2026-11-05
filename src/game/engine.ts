@@ -113,7 +113,7 @@ type Weapon = {
   reload: number;
 };
 
-type EnemyIntent = "none" | "melee" | "slam" | "shot" | "blink" | "beam";
+type EnemyIntent = "none" | "melee" | "slam" | "shot" | "blink" | "beam" | "hymn";
 
 type Enemy = {
   id: number;
@@ -148,6 +148,8 @@ type Enemy = {
   mark: THREE.Object3D | null;
   bar: THREE.Mesh | null;
   core: number;
+  ward: number;
+  wardFrom: number;
 };
 
 type BulletFx = { mesh: THREE.Line; life: number };
@@ -199,7 +201,9 @@ function enemyStats(kind: EnemyKind, id: MissionId = "ashfall") {
             ? { hp: 110, radius: 0.5, speed: 2.9, dmg: 18 }
             : kind === "wraith"
               ? { hp: 72, radius: 0.38, speed: 6.4, dmg: 15 }
-              : { hp: 78, radius: 0.42, speed: 5.0, dmg: 13 };
+              : kind === "cantor"
+                ? { hp: 148, radius: 0.5, speed: 2.45, dmg: 12 }
+                : { hp: 78, radius: 0.42, speed: 5.0, dmg: 13 };
   const sc = missionScale(id);
   return {
     hp: Math.round(base.hp * sc.hp),
@@ -1074,7 +1078,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       gem.position.set(Math.cos(a) * 0.16, 0, Math.sin(a) * 0.16);
       g.add(gem);
     }
-    const crown = kind === "brute" ? 2.55 : kind === "stalker" ? 2.4 : kind === "harbinger" ? 3.15 : 2.12;
+    const crown = kind === "brute" ? 2.55 : kind === "stalker" ? 2.4 : kind === "harbinger" ? 3.15 : kind === "cantor" ? 2.55 : 2.12;
     g.position.y = crown;
     return g;
   }
@@ -1132,6 +1136,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       mark,
       bar,
       core: 0,
+      ward: 0,
+      wardFrom: -1,
     });
     if (kind === "harbinger") bossAlive = true;
     if (marked) pushFloat("MARKED", x, 2.4, z, "legendary");
@@ -1215,7 +1221,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     comboT = 2.4;
     combo++;
     const xpGain =
-      (e.kind === "harbinger" ? 800 : e.kind === "brute" ? 120 : e.kind === "spitter" ? 70 : e.kind === "wraith" ? 55 : 40) *
+      (e.kind === "harbinger" ? 800 : e.kind === "brute" ? 120 : e.kind === "cantor" ? 80 : e.kind === "spitter" ? 70 : e.kind === "wraith" ? 55 : 40) *
       (1 + Math.min(combo, 8) * 0.05) *
       (e.elite ? 1.75 : 1);
     xp += xpGain;
@@ -1238,6 +1244,15 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       gold += Math.round(28 * missionScale(level.id).scrapMult);
       pushFloat("MARKED DOWN", e.x, 2.4, e.z, "legendary");
     }
+    if (e.kind === "cantor") {
+      for (const o of enemies) {
+        if (o.wardFrom === e.id) {
+          o.ward = 0;
+          o.wardFrom = -1;
+        }
+      }
+      hint = "The song dropped";
+    }
     if (e.kind === "harbinger") {
       bossAlive = false;
       outcome = "clear";
@@ -1251,12 +1266,20 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     }
   }
 
-  function damageEnemy(e: Enemy, dmg: number, hx: number, hz: number, kb = 2.8) {
+  function damageEnemy(e: Enemy, dmg: number, hx: number, hz: number, kb = 2.8, punchWard = false) {
     if (!e.alive) return;
     const burning = e.kind === "harbinger" && e.core > 0;
     const plated = e.kind === "harbinger" && e.core <= 0;
     const seam = e.kind !== "harbinger" && (e.state === "windup" || e.stagger > 0);
+    const warded = e.ward > 0 && e.kind !== "cantor";
     let dealt = dmg;
+    if (warded && punchWard) {
+      dealt *= 1.15;
+      if (e.flash <= 0) pushFloat("CUT", e.x, 1.9, e.z, "legendary");
+    } else if (warded) {
+      dealt *= 0.62;
+      if (e.flash <= 0) pushFloat("WARD", e.x, 1.9, e.z, "void");
+    }
     if (burning) {
       dealt *= 1.85;
       if (kb >= 4.2) e.core = Math.min(2.1, e.core + 0.22);
@@ -1604,6 +1627,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     if (id === "rail") return "rail" as const;
     if (id === "cannon") return "cannon" as const;
     if (id === "shotgun" || id === "gl") return "shotgun" as const;
+    if (id === "pike") return "cannon" as const;
     if (id === "smg" || id === "lmg") return "smg" as const;
     return "ar" as const;
   }
@@ -1669,7 +1693,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     const ads = 1 - adsT * (w.id === "dmr" || w.id === "rail" ? 0.72 : 0.55);
     const heatSpread = w.id === "lmg" ? 1.7 - lmgHeat * 0.85 : 1;
     const pierce = w.id === "rail" ? 5 : w.id === "dmr" ? 2 : 1;
-    const kb = w.id === "cannon" ? 6.4 : w.id === "shotgun" ? 5.4 : w.id === "rail" || w.id === "gl" ? 4.6 : 2.8;
+    const kb = w.id === "cannon" ? 6.4 : w.id === "shotgun" ? 5.4 : w.id === "pike" ? 5.2 : w.id === "rail" || w.id === "gl" ? 4.6 : 2.8;
     const kit = 1 + armorBonuses(save.inventory, save.equippedArmor).dmg / 100 + (pLevel - 1) * 0.03;
     for (let p = 0; p < w.pellets; p++) {
       const spread = w.spread * (1 + (1 - mag / w.mag) * 0.4) * ads * heatSpread;
@@ -1693,7 +1717,14 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       along.sort((a, b) => a.t - b.t);
       const struck = along.slice(0, pierce);
       for (const hit of struck) {
-        damageEnemy(hit.e, w.dmg * kit * (overdriveT > 0 ? kitMods(save.inventory, save.equippedArmor).overdriveMult : 1) * (0.85 + Math.random() * 0.3), tmpV2.x, tmpV2.z, kb);
+        damageEnemy(
+          hit.e,
+          w.dmg * kit * (overdriveT > 0 ? kitMods(save.inventory, save.equippedArmor).overdriveMult : 1) * (0.85 + Math.random() * 0.3),
+          tmpV2.x,
+          tmpV2.z,
+          kb,
+          w.id === "pike",
+        );
       }
       const bestT = struck.length ? struck[struck.length - 1].t : wallT;
       if (!struck.length && worldT !== null) {
@@ -2090,8 +2121,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       tier === 1
         ? ["husk", "husk", "stalker", "husk"]
         : tier === 2
-          ? ["husk", "stalker", "spitter", "wraith", "husk", "stalker"]
-          : ["stalker", "wraith", "brute", "spitter", "husk", "wraith", "stalker"];
+          ? ["husk", "stalker", "spitter", "cantor", "wraith", "stalker"]
+          : ["stalker", "wraith", "brute", "spitter", "cantor", "wraith", "stalker"];
     const markAt = 1 + Math.floor(Math.random() * (ring.length - 1));
     const sx = level.spawn.x;
     const sz = level.spawn.z;
@@ -2115,9 +2146,28 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     e.blinkX = blinkX;
     e.blinkZ = blinkZ;
     const color =
-      intent === "shot" || intent === "beam" ? 0x5eead4 : intent === "blink" ? 0xc4b5fd : intent === "slam" ? 0xfb923c : 0xe85d04;
+      intent === "hymn" ? 0x818cf8 : intent === "shot" || intent === "beam" ? 0x5eead4 : intent === "blink" ? 0xc4b5fd : intent === "slam" ? 0xfb923c : 0xe85d04;
     (e.ring.material as THREE.MeshBasicMaterial).color.setHex(color);
     pingTell();
+  }
+
+  function singWard(e: Enemy) {
+    const reach = e.elite ? 8.6 : 7.4;
+    const hold = e.elite ? 5.2 : 4;
+    let n = 0;
+    for (const o of enemies) {
+      if (!o.alive || o.id === e.id || o.kind === "harbinger" || o.kind === "cantor") continue;
+      if (Math.hypot(o.x - e.x, o.z - e.z) > reach) continue;
+      o.ward = hold;
+      o.wardFrom = e.id;
+      n++;
+    }
+    particles.burst(e.x, 1.5, e.z, 14, 0x818cf8, 3.4, 0.42, 0.08, 1);
+    if (n > 0) {
+      hint = "Cantor is warding the pack — drop the singer";
+      pushFloat("WARD", e.x, 2.35, e.z, "void");
+      pingTell();
+    }
   }
 
   function launchBolt(e: Enemy, dmg: number) {
@@ -2175,6 +2225,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       if (!e.alive) continue;
       nearby++;
       e.attackCd -= dt;
+      e.ward = Math.max(0, e.ward - dt);
+      if (e.ward <= 0) e.wardFrom = -1;
       e.stagger = Math.max(0, e.stagger - dt);
       e.flash = Math.max(0, e.flash - dt);
       e.kbX *= Math.pow(0.08, dt);
@@ -2197,7 +2249,9 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
               ? 3.4
               : e.kind === "wraith"
                 ? 2.1
-                : e.radius + 1.2;
+                : e.kind === "cantor"
+                  ? 8.8
+                  : e.radius + 1.2;
 
       if (e.stagger > 0) {
         e.state = "chase";
@@ -2231,6 +2285,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
             if (dist < (e.elite ? 3.7 : 3.3) && !losBlocked(e.x, e.z, px, pz)) hurtPlayer(bite);
             else if (dist < (e.elite ? 3.7 : 3.3)) particles.burst(e.x + nx * 1.1, 0.7, e.z + nz * 1.1, 8, 0x9aa6b2, 2.4, 0.16, 0.05, 0);
             trauma = Math.min(1, trauma + 0.28);
+          } else if (e.intent === "hymn") {
+            singWard(e);
           } else if (e.intent === "shot") {
             launchBolt(e, bite);
           } else if (e.intent === "blink") {
@@ -2265,7 +2321,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
         }
         if (e.stateT <= 0) {
           const cd =
-            e.intent === "beam" ? 2.15 : e.intent === "slam" ? 1.5 : e.intent === "shot" ? (e.kind === "spitter" ? 1.45 : 1.15) : e.intent === "blink" ? 1.2 : 0.95;
+            e.intent === "beam" ? 2.15 : e.intent === "hymn" ? 2.4 : e.intent === "slam" ? 1.5 : e.intent === "shot" ? (e.kind === "spitter" ? 1.45 : 1.15) : e.intent === "blink" ? 1.2 : 0.95;
           e.state = "chase";
           e.intent = "none";
           e.attackCd = cd * (e.elite ? 0.88 : 1);
@@ -2285,6 +2341,12 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
         } else if (e.kind === "wraith" && dist < 8.4) {
           if (dist < 2.3) beginWindup(e, "blink", 0.28, px + nz * 1.7, pz - nx * 1.7);
           else beginWindup(e, "blink", 0.34, px - nx * 1.15, pz - nz * 1.15);
+        } else if (e.kind === "cantor" && dist < 16 && dist > 2.4) {
+          const friend = enemies.some(
+            (o) => o.alive && o.id !== e.id && o.kind !== "harbinger" && o.kind !== "cantor" && Math.hypot(o.x - e.x, o.z - e.z) < 9,
+          );
+          if (friend) beginWindup(e, "hymn", e.elite ? 0.48 : 0.62);
+          else beginWindup(e, "shot", 0.4);
         } else if (e.kind === "husk" && dist < 2.35) {
           beginWindup(e, "melee", e.elite ? 0.32 : 0.42);
         } else if (e.kind === "brute" && dist < 2.55) {
@@ -2321,6 +2383,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
           e.rig.core.scale.setScalar(swell);
         }
       }
+      if (e.kind === "cantor" && e.rig.ring) e.rig.ring.rotation.z += dt * (e.state === "windup" ? 2.8 : 1.15);
 
       const lift = e.state === "windup" ? 1 - e.stateT / Math.max(0.05, e.windMax) : 0;
       if (e.stagger > 0) {
@@ -2329,6 +2392,9 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       } else if (e.state === "windup" && (e.intent === "melee" || e.intent === "slam")) {
         e.rig.leftArm.rotation.x = -1.15 * lift;
         e.rig.rightArm.rotation.x = -1.2 * lift;
+      } else if (e.state === "windup" && e.intent === "hymn") {
+        e.rig.leftArm.rotation.x = -1.25 * lift;
+        e.rig.rightArm.rotation.x = -1.25 * lift;
       } else if (e.state === "windup" && e.intent === "shot") {
         e.rig.rightArm.rotation.x = -0.2 - lift * 1.25;
         e.rig.leftArm.rotation.x = -0.4;
@@ -2355,6 +2421,12 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
         ringMat.opacity = 0.2 + u * 0.72;
         if (e.intent === "blink") e.ring.position.set(e.blinkX, 0.07, e.blinkZ);
         else e.ring.position.set(e.x, 0.07, e.z);
+      } else if (e.ward > 0) {
+        e.ring.visible = true;
+        e.ring.position.set(e.x, 0.06, e.z);
+        e.ring.scale.setScalar(1.05);
+        ringMat.color.setHex(0x818cf8);
+        ringMat.opacity = 0.55;
       } else if (e.kind === "harbinger" && e.core > 0) {
         e.ring.visible = true;
         e.ring.position.set(e.x, 0.06, e.z);

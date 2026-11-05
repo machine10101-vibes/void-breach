@@ -11,10 +11,12 @@ Pick a drop on the ship, then **Deploy**.
 | Drop | What it is |
 | --- | --- |
 | 01 Ashfall Gate | Short boulevard. Husk packs, then the Void Harbinger. |
-| 02 Ember Rail | Metro spine. Spitters, wraiths, and the Rail Warden. Unlocks after Ashfall. |
-| 03 Null Spire | Longest nest. Wraiths, brutes, and the Null Sovereign. Unlocks after Ember Rail. |
+| 02 Ember Rail | Metro spine. Cantors ward the pack. Spitters, wraiths, and the Rail Warden. Unlocks after Ashfall. |
+| 03 Null Spire | Longest nest. Cantors, wraiths, brutes, and the Null Sovereign. Unlocks after Ember Rail. |
 
 Each street has cover, a route mark, and an extract pad. Hold the pad when the breach hits, or push to the gate and burn the boss while its core is open.
+
+An **Ash Cantor** hangs behind a pack and wards the Shade around it. Their ring turns indigo and shots print WARD until you drop the singer. The **Sever Pike** (rifle ammo, hull CNC or a rare drop) cuts that ward and staggers.
 
 ## Loot
 
