@@ -2406,6 +2406,13 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
         const c = collidePlayer(level.boxes, e.x, 0, e.z, e.radius, 1.8);
         e.x = c.x;
         e.z = c.z;
+      } else if (e.kind === "spitter" && dist < 7.2) {
+        const sp = e.speed * dt * (e.stagger > 0 ? 0.35 : 1);
+        e.x -= nx * sp * 1.1;
+        e.z -= nz * sp * 1.1;
+        const c = collidePlayer(level.boxes, e.x, 0, e.z, e.radius, 1.8);
+        e.x = c.x;
+        e.z = c.z;
       }
 
       if (e.stagger <= 0 && e.state === "chase" && e.attackCd <= 0) {
