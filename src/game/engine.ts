@@ -505,6 +505,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   let blastMark: THREE.Mesh | null = null;
   let blastPop = 0;
   let blastR = 4;
+  let scanRing: THREE.Mesh | null = null;
+  let scanPop = 0;
   const tracerMat = new THREE.LineBasicMaterial({
     color: 0xffc58a,
     transparent: true,
@@ -640,6 +642,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     scene.add(slashMesh);
     cleaveArc = makeFlatTell(2.9, 3.4, 0xe85d04, 1.7);
     blastMark = makeFlatTell(0.82, 1.02, 0xfb923c);
+    scanRing = makeFlatTell(0.7, 0.92, 0x5eead4);
     aimReticle = createAimReticle();
     scene.add(aimReticle);
     walkMark = createWalkMark();
@@ -1785,6 +1788,13 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     const spec = skillSpec("scan", save.skillRanks.scan);
     skillCd.scan = spec.cd;
     scanT = spec.duration;
+    scanPop = 0.45;
+    if (scanRing) {
+      scanRing.position.set(px, 0.08, pz);
+      scanRing.scale.setScalar(1.2);
+      scanRing.visible = true;
+      (scanRing.material as THREE.MeshBasicMaterial).opacity = 0.85;
+    }
     particles.burst(px, py + 1.4, pz, 22, 0x5eead4, 4.2, 0.45, 0.1, 1);
     audio.fire("rail");
   }
@@ -2960,13 +2970,21 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
         (cleaveArc.material as THREE.MeshBasicMaterial).opacity = Math.max(0, slashT / 0.22) * 0.9;
         if (slashT <= 0) cleaveArc.visible = false;
       }
-      if (blastPop > 0 && blastMark) {
-        blastPop = Math.max(0, blastPop - dt);
-        const u = 1 - blastPop / 0.28;
-        blastMark.scale.setScalar(blastR * (1 + u * 0.28));
-        (blastMark.material as THREE.MeshBasicMaterial).opacity = Math.max(0, 0.85 * (1 - u));
-        if (blastPop <= 0) blastMark.visible = false;
-      }
+    }
+    if (blastPop > 0 && blastMark) {
+      blastPop = Math.max(0, blastPop - dt);
+      const u = 1 - blastPop / 0.28;
+      blastMark.scale.setScalar(blastR * (1 + u * 0.28));
+      (blastMark.material as THREE.MeshBasicMaterial).opacity = Math.max(0, 0.85 * (1 - u));
+      if (blastPop <= 0) blastMark.visible = false;
+    }
+    if (scanPop > 0 && scanRing) {
+      scanPop = Math.max(0, scanPop - dt);
+      const u = 1 - scanPop / 0.45;
+      scanRing.position.set(px, 0.08, pz);
+      scanRing.scale.setScalar(1.4 + u * 7.2);
+      (scanRing.material as THREE.MeshBasicMaterial).opacity = Math.max(0, 0.8 * (1 - u));
+      if (scanPop <= 0) scanRing.visible = false;
     }
     for (const f of floaters) f.life -= dt;
     floaters = floaters.filter((f) => f.life > 0);
