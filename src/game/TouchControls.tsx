@@ -1,28 +1,32 @@
 import { useCallback, useRef } from "react";
 import type { GameHandle } from "./engine";
+import type { SkillId } from "./types";
 
 type Props = {
   handle: GameHandle | null;
   visible: boolean;
   deckOnly?: boolean;
   extractReady?: boolean;
+  skillRanks?: Partial<Record<SkillId, number>>;
 };
 
 function Pill({
   label,
   ready = true,
+  rank,
   onDown,
   onUp,
 }: {
   label: string;
   ready?: boolean;
+  rank?: number;
   onDown: () => void;
   onUp?: () => void;
 }) {
   return (
     <button
       type="button"
-      className={`flex h-10 min-w-10 items-center justify-center rounded-md border px-2 font-display text-xs font-semibold uppercase tracking-wide short:h-8 short:min-w-8 short:px-1.5 short:text-[10px] ${
+      className={`flex h-11 min-w-10 flex-col items-center justify-center rounded-md border px-2 font-display text-xs font-semibold uppercase tracking-wide short:h-9 short:min-w-8 short:px-1.5 short:text-[10px] ${
         ready ? "border-border bg-surface/55 text-fg" : "border-border/60 bg-surface/30 text-faint"
       }`}
       onPointerDown={(e) => {
@@ -37,12 +41,19 @@ function Pill({
       }}
       onPointerCancel={onUp}
     >
-      {label}
+      <span>{label}</span>
+      {rank != null ? (
+        <span className="mt-0.5 flex gap-0.5">
+          {[0, 1, 2].map((i) => (
+            <span key={i} className={`h-1 w-1 rounded-full ${i < rank ? "bg-accent" : "bg-faint/40"}`} />
+          ))}
+        </span>
+      ) : null}
     </button>
   );
 }
 
-export function TouchControls({ handle, visible, deckOnly, extractReady }: Props) {
+export function TouchControls({ handle, visible, deckOnly, extractReady, skillRanks }: Props) {
   const moveId = useRef<number | null>(null);
   const lookId = useRef<number | null>(null);
   const origin = useRef({ x: 0, y: 0 });
@@ -148,10 +159,10 @@ export function TouchControls({ handle, visible, deckOnly, extractReady }: Props
       {!deckOnly ? (
         <div className="pointer-events-auto absolute right-[max(0.4rem,env(safe-area-inset-right))] bottom-[max(0.5rem,calc(env(safe-area-inset-bottom)+0.25rem))] z-30 flex flex-col items-end gap-2 short:bottom-[max(0.4rem,env(safe-area-inset-bottom))] short:top-auto short:translate-y-0 short:gap-1.5">
           <div className="flex gap-1.5 short:flex-col">
-            <Pill label="Frag" onDown={() => handle?.pulse("frag")} />
-            <Pill label="Drive" onDown={() => handle?.pulse("overdrive")} />
-            <Pill label="Cleave" onDown={() => handle?.pulse("cleave")} />
-            <Pill label="Scan" onDown={() => handle?.pulse("scan")} />
+            <Pill label="Frag" rank={skillRanks?.frag ?? 0} onDown={() => handle?.pulse("frag")} />
+            <Pill label="Drive" rank={skillRanks?.overdrive ?? 0} onDown={() => handle?.pulse("overdrive")} />
+            <Pill label="Cleave" rank={skillRanks?.cleave ?? 0} onDown={() => handle?.pulse("cleave")} />
+            <Pill label="Scan" rank={skillRanks?.scan ?? 0} onDown={() => handle?.pulse("scan")} />
             {extractReady ? (
               <Pill
                 label="Extract"

@@ -277,6 +277,12 @@ export function GameApp() {
         visible={(playing || onShip) && !settingsOpen && !inventoryOpen && !cncOpen && !opsOpen && (touchUi || onShip)}
         deckOnly={onShip}
         extractReady={hud.extractReady}
+        skillRanks={{
+          frag: hud.skills.find((s) => s.id === "frag")?.rank ?? 0,
+          overdrive: hud.skills.find((s) => s.id === "overdrive")?.rank ?? 0,
+          cleave: hud.skills.find((s) => s.id === "cleave")?.rank ?? 0,
+          scan: hud.skills.find((s) => s.id === "scan")?.rank ?? 0,
+        }}
       />
       {phase === "paused" && !settingsOpen ? (
         <PauseOverlay
