@@ -194,11 +194,11 @@ function buildAshfall(): LevelDef {
       {
         id: "gate",
         zTrigger: -86,
-        message: "Void Gate — burn the Harbinger",
+        message: "Void Gate — a leech is with the Harbinger",
         enemies: [
           { kind: "harbinger", x: 0, z: -102 },
           { kind: "husk", x: -6, z: -98 },
-          { kind: "husk", x: 6, z: -98 },
+          { kind: "leech", x: 6, z: -98 },
           { kind: "stalker", x: -4, z: -104 },
           { kind: "stalker", x: 4, z: -104 },
           { kind: "brute", x: 0, z: -96 },
@@ -610,7 +610,7 @@ function buildNullSpire(): LevelDef {
       {
         id: "annex",
         zTrigger: -28,
-        message: "Annex — blink pack",
+        message: "Annex — a leech in the blink pack",
         enemies: [
           { kind: "wraith", x: -4, z: -38 },
           { kind: "wraith", x: 4, z: -40 },
@@ -618,7 +618,7 @@ function buildNullSpire(): LevelDef {
           { kind: "spitter", x: -2, z: -36 },
           { kind: "spitter", x: 3, z: -44 },
           { kind: "brute", x: 0, z: -46 },
-          { kind: "husk", x: -3, z: -41 },
+          { kind: "leech", x: -3, z: -41 },
         ],
       },
       {
