@@ -20,7 +20,7 @@ An **Ash Cantor** hangs behind a pack and wards the Shade around it. Their ring 
 
 A **Cinder** sprints the pack and swells an orange ring. When the ring fills, it pops. Step off the ring or shoot it before the swell finishes. One runs the Ashfall boulevard, the Ember platform, and the Spire forecourt.
 
-A **Stalker** does not stand in the lane. Inside its shot, it weaves across the street while the rifle comes up.
+A **Stalker** does not stand in the lane. Inside its shot, it weaves across the street while the rifle comes up. A **Spitter** backs off when you close, and keeps the lob going.
 
 ## Loot
 
