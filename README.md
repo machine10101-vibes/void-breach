@@ -24,7 +24,7 @@ A **Stalker** does not stand in the lane. Inside its shot, it weaves across the 
 
 ## Loot
 
-Colored drops are common, magic, rare, or legendary. Magic and better guns and plates roll **affixes** (damage, magazine, spread, reload, range, fire rate, open seam, plate, shield, servos). The numbers on the loadout are the numbers the gun uses. **Open seam** hits harder through a cantor's ward and through an open boss core. It is not baked into the listed damage.
+Colored drops are common, magic, rare, or legendary. Magic and better guns and plates roll **affixes** (damage, magazine, spread, reload, range, fire rate, open seam, plate, shield, servos). The numbers on the loadout are the numbers the gun uses. **Open seam** hits harder through a cantor's ward and through an open boss core. It is not baked into the listed damage. **Brace** on a plate lengthens the dodge roll, up to three pieces. Print Braced greaves on the hull if the street has not dropped one.
 
 Three two-piece kits change the suit when both pieces are worn:
 

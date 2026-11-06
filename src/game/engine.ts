@@ -3144,8 +3144,9 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
         wishZ /= wm;
       }
       if ((justPressed("Space") || held.dodge) && dodgeT <= 0) {
-        dodgeT = 0.32;
-        invuln = 0.32;
+        const roll = 0.32 + armorBonuses(save.inventory, save.equippedArmor).dodge;
+        dodgeT = roll;
+        invuln = roll;
         audio.dodge();
         const magw = Math.hypot(wishX, wishZ) || 1;
         dodgeDirX = wishX / magw || basis.f.x;

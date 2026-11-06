@@ -52,6 +52,7 @@ export const AFFIXES: Record<AffixId, { name: string; kind: "weapon" | "armor"; 
   plating: { name: "Plating", kind: "armor", line: "+14 plate" },
   mesh: { name: "Mesh", kind: "armor", line: "+12 shield" },
   servo: { name: "Servos", kind: "armor", line: "+4% damage" },
+  brace: { name: "Brace", kind: "armor", line: "+0.06s dodge" },
 };
 
 export const KIT_SETS: Record<SetId, { name: string; slots: ArmorSlot[]; line: string }> = {
@@ -433,6 +434,12 @@ export const RECIPES: Recipe[] = [
     output: { kind: "armor", name: "Strider greaves", rarity: "magic", slot: "legs", hpBonus: 14, shieldBonus: 16, dmgBonus: 0, affixes: ["plating"] },
   },
   {
+    id: "legs-brace",
+    name: "Braced greaves",
+    cost: 75,
+    output: { kind: "armor", name: "Braced greaves", rarity: "magic", slot: "legs", hpBonus: 12, shieldBonus: 14, dmgBonus: 0, affixes: ["brace"] },
+  },
+  {
     id: "chest-null",
     name: "Null mantle",
     cost: 160,
@@ -473,6 +480,7 @@ export function armorBonuses(items: InvItem[], equipped: Record<ArmorSlot, strin
   let hp = 0;
   let shield = 0;
   let dmg = 0;
+  let dodge = 0;
   for (const slot of Object.keys(equipped) as ArmorSlot[]) {
     const it = wornPiece(items, equipped, slot);
     if (!it) continue;
@@ -483,9 +491,10 @@ export function armorBonuses(items: InvItem[], equipped: Record<ArmorSlot, strin
       if (id === "plating") hp += 14;
       if (id === "mesh") shield += 12;
       if (id === "servo") dmg += 4;
+      if (id === "brace") dodge += 0.06;
     }
   }
-  return { hp, shield, dmg };
+  return { hp, shield, dmg, dodge: Math.min(0.18, dodge) };
 }
 
 export type KitMods = {

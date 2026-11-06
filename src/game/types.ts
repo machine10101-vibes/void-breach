@@ -18,7 +18,8 @@ export type AffixId =
   | "seam"
   | "plating"
   | "mesh"
-  | "servo";
+  | "servo"
+  | "brace";
 export type SetId = "ember" | "rail" | "null";
 
 export type InvItem = {
