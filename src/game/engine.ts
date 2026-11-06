@@ -1352,11 +1352,14 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       const s = Math.min(shield, rest);
       shield -= s;
       rest -= s;
-      if (shield <= 0 && hadShield) audio.shieldBreak();
+      if (shield <= 0 && hadShield) {
+        audio.shieldBreak();
+        pushFloat("CRACK", px, py + 1.7, pz, "health");
+      }
     }
     if (rest > 0) hp -= rest;
     shieldCd = 3.2;
-    hitFlash = 0.38;
+    hitFlash = hadShield && shield <= 0 ? 0.55 : 0.38;
     trauma = Math.min(1, trauma + 0.42);
     audio.hurt();
     rumble(90, 0.7);
