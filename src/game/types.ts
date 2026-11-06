@@ -15,6 +15,7 @@ export type AffixId =
   | "extended"
   | "longbarrel"
   | "rapid"
+  | "seam"
   | "plating"
   | "mesh"
   | "servo";

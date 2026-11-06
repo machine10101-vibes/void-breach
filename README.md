@@ -22,7 +22,7 @@ A **Cinder** sprints the pack and swells an orange ring. When the ring fills, it
 
 ## Loot
 
-Colored drops are common, magic, rare, or legendary. Magic and better guns and plates roll **affixes** (damage, magazine, spread, reload, range, fire rate, plate, shield, servos). The numbers on the loadout are the numbers the gun uses.
+Colored drops are common, magic, rare, or legendary. Magic and better guns and plates roll **affixes** (damage, magazine, spread, reload, range, fire rate, open seam, plate, shield, servos). The numbers on the loadout are the numbers the gun uses. **Open seam** hits harder through a cantor's ward and through an open boss core. It is not baked into the listed damage.
 
 Three two-piece kits change the suit when both pieces are worn:
 

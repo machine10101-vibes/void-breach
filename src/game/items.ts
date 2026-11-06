@@ -46,6 +46,7 @@ export const AFFIXES: Record<AffixId, { name: string; kind: "weapon" | "armor"; 
   extended: { name: "Extended", kind: "weapon", line: "+25% magazine" },
   longbarrel: { name: "Long barrel", kind: "weapon", line: "+18% range" },
   rapid: { name: "Rapid cycle", kind: "weapon", line: "+12% fire rate" },
+  seam: { name: "Open seam", kind: "weapon", line: "Hits harder through wards and open cores" },
   plating: { name: "Plating", kind: "armor", line: "+14 plate" },
   mesh: { name: "Mesh", kind: "armor", line: "+12 shield" },
   servo: { name: "Servos", kind: "armor", line: "+4% damage" },
