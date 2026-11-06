@@ -16,7 +16,7 @@ Pick a drop on the title or on the ship, then **Deploy**. A locked district stay
 
 Each street has cover, a route mark, and an extract pad. When a barricade breaks the nearest Shade's line, the HUD reads Cover. Hold the pad when the breach hits, or push to the gate and burn the boss while its core is open.
 
-An **Ash Cantor** hangs behind a pack and wards the Shade around it. Their ring turns indigo and shots print WARD until you drop the singer. The **Sever Pike** (rifle ammo, hull CNC or a rare drop) cuts that ward and staggers. The **Ash Howl** is a short rifle-ammo hand cannon from the hull CNC. It staggers and ships with Open seam. A **Seam ARX** prints on the hull for 110 scrap, and the Ashfall field cache stamps Open seam on a gun.
+An **Ash Cantor** hangs behind a pack and wards the Shade around it. Their ring turns indigo and shots print WARD until you drop the singer. The **Sever Pike** (rifle ammo, hull CNC or a rare drop) cuts that ward and staggers. The **Ash Howl** is a short rifle-ammo hand cannon from the hull CNC. It staggers and ships with Open seam. A **Seam ARX** prints on the hull for 110 scrap. Every district's field cache stamps Open seam on a gun.
 
 A **Cinder** sprints the pack and swells an orange ring. When the ring fills, it pops. Step off the ring or shoot it before the swell finishes. They run the Ashfall boulevard, the Ember platform, the Ember service cut, and the Spire forecourt.
 
