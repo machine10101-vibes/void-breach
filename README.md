@@ -10,7 +10,7 @@ Pick a drop on the title or on the ship, then **Deploy**. A locked district stay
 
 | Drop | What it is |
 | --- | --- |
-| 01 Ashfall Gate | Short boulevard. Husk packs, then the Void Harbinger. |
+| 01 Ashfall Gate | Short boulevard. Husks, a cinder, then a spitter and a wraith in the atrium, then the Void Harbinger. |
 | 02 Ember Rail | Metro spine. Cantors ward the pack. Spitters, wraiths, and the Rail Warden. Unlocks after Ashfall. |
 | 03 Null Spire | Longest nest. Cantors, wraiths, brutes, and the Null Sovereign. Unlocks after Ember Rail. |
 

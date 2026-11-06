@@ -181,14 +181,14 @@ function buildAshfall(): LevelDef {
       {
         id: "atrium",
         zTrigger: -64,
-        message: "Atrium — heavy units",
+        message: "Atrium — a spitter and a wraith",
         enemies: [
           { kind: "brute", x: -4, z: -74 },
           { kind: "brute", x: 5, z: -76 },
-          { kind: "husk", x: -2, z: -70 },
+          { kind: "spitter", x: -2, z: -70 },
           { kind: "husk", x: 2, z: -80 },
           { kind: "stalker", x: 0, z: -78 },
-          { kind: "stalker", x: -5, z: -82 },
+          { kind: "wraith", x: -5, z: -82 },
         ],
       },
       {
