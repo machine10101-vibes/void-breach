@@ -509,6 +509,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   let blastR = 4;
   let scanRing: THREE.Mesh | null = null;
   let scanPop = 0;
+  let driveRing: THREE.Mesh | null = null;
   const tracerMat = new THREE.LineBasicMaterial({
     color: 0xffc58a,
     transparent: true,
@@ -645,6 +646,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     cleaveArc = makeFlatTell(2.9, 3.4, 0xe85d04, 1.7);
     blastMark = makeFlatTell(0.82, 1.02, 0xfb923c);
     scanRing = makeFlatTell(0.7, 0.92, 0x5eead4);
+    driveRing = makeFlatTell(1.05, 1.28, 0xe85d04);
     aimReticle = createAimReticle();
     scene.add(aimReticle);
     walkMark = createWalkMark();
@@ -3017,6 +3019,14 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       scanRing.scale.setScalar(1.4 + u * 7.2);
       (scanRing.material as THREE.MeshBasicMaterial).opacity = Math.max(0, 0.8 * (1 - u));
       if (scanPop <= 0) scanRing.visible = false;
+    }
+    if (driveRing) {
+      if (overdriveT > 0 && phase === "playing") {
+        driveRing.visible = true;
+        driveRing.position.set(px, 0.07, pz);
+        driveRing.scale.setScalar(1.15);
+        (driveRing.material as THREE.MeshBasicMaterial).opacity = 0.45 + Math.sin(performance.now() * 0.01) * 0.2;
+      } else driveRing.visible = false;
     }
     for (const f of floaters) f.life -= dt;
     floaters = floaters.filter((f) => f.life > 0);
