@@ -1070,6 +1070,24 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     routeLabel = aim.label;
   }
 
+  function playerCovered() {
+    if (phase !== "playing") return false;
+    let best = 99;
+    let ex = 0;
+    let ez = 0;
+    for (const e of enemies) {
+      if (!e.alive) continue;
+      const d = Math.hypot(e.x - px, e.z - pz);
+      if (d < best) {
+        best = d;
+        ex = e.x;
+        ez = e.z;
+      }
+    }
+    if (best < 1.4 || best > 24) return false;
+    return losBlocked(ex, ez, px, pz);
+  }
+
   function makeThreatRing(color: number) {
     const mesh = new THREE.Mesh(
       new THREE.RingGeometry(0.62, 0.78, 28),
@@ -2745,6 +2763,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       objective,
       hint,
       route: routeLabel,
+      covered: playerCovered(),
       skills: [
         { id: "frag", key: "Q", name: "Frag", cd: skillCd.frag, max: skillSpec("frag", save.skillRanks.frag).cd, ready: skillCd.frag <= 0, rank: save.skillRanks.frag },
         { id: "overdrive", key: "E", name: "Overdrive", cd: skillCd.overdrive, max: skillSpec("overdrive", save.skillRanks.overdrive).cd, ready: skillCd.overdrive <= 0, rank: save.skillRanks.overdrive },

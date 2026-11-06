@@ -125,6 +125,7 @@ export type HudSnapshot = {
   objective: string;
   hint: string;
   route: string;
+  covered: boolean;
   skills: HudSkill[];
   loot: LootToast[];
   reloading: boolean;

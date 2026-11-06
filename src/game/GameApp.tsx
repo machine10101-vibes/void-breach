@@ -31,6 +31,7 @@ const bootHud: HudSnapshot = {
   objective: "",
   hint: "",
   route: "",
+  covered: false,
   skills: [],
   loot: [],
   reloading: false,
