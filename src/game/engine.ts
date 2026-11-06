@@ -1644,7 +1644,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     if (id === "rail") return "rail" as const;
     if (id === "cannon") return "cannon" as const;
     if (id === "shotgun" || id === "gl") return "shotgun" as const;
-    if (id === "pike") return "cannon" as const;
+    if (id === "pike" || id === "howl") return "cannon" as const;
     if (id === "smg" || id === "lmg") return "smg" as const;
     return "ar" as const;
   }
@@ -1669,8 +1669,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     mag -= 1;
     shots += w.pellets;
     audio.fire(fireSound(w.id));
-    trauma = Math.min(1, trauma + (w.id === "shotgun" || w.id === "cannon" || w.id === "gl" ? 0.22 : w.id === "rail" ? 0.28 : 0.07));
-    recoil = Math.min(1, recoil + (w.id === "shotgun" || w.id === "cannon" || w.id === "gl" ? 0.88 : w.id === "rail" ? 0.72 : 0.4));
+    trauma = Math.min(1, trauma + (w.id === "shotgun" || w.id === "cannon" || w.id === "gl" ? 0.22 : w.id === "howl" || w.id === "rail" ? 0.18 : 0.07));
+    recoil = Math.min(1, recoil + (w.id === "shotgun" || w.id === "cannon" || w.id === "gl" ? 0.88 : w.id === "howl" ? 0.7 : w.id === "rail" ? 0.72 : 0.4));
     pitch += w.id === "shotgun" || w.id === "cannon" ? 0.028 : 0.01;
     yaw += (Math.random() - 0.5) * (w.id === "shotgun" ? 0.02 : 0.006);
     muzzleLight.intensity = w.id === "rail" ? 9 : 7;
@@ -1710,7 +1710,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     const ads = 1 - adsT * (w.id === "dmr" || w.id === "rail" ? 0.72 : 0.55);
     const heatSpread = w.id === "lmg" ? 1.7 - lmgHeat * 0.85 : 1;
     const pierce = w.id === "rail" ? 5 : w.id === "dmr" ? 2 : 1;
-    const kb = w.id === "cannon" ? 6.4 : w.id === "shotgun" ? 5.4 : w.id === "pike" ? 5.2 : w.id === "rail" || w.id === "gl" ? 4.6 : 2.8;
+    const kb = w.id === "cannon" ? 6.4 : w.id === "howl" ? 5.8 : w.id === "shotgun" ? 5.4 : w.id === "pike" ? 5.2 : w.id === "rail" || w.id === "gl" ? 4.6 : 2.8;
     const kit = 1 + armorBonuses(save.inventory, save.equippedArmor).dmg / 100 + (pLevel - 1) * 0.03;
     for (let p = 0; p < w.pellets; p++) {
       const spread = w.spread * (1 + (1 - mag / w.mag) * 0.4) * ads * heatSpread;

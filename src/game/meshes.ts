@@ -1126,7 +1126,9 @@ export function createWeaponMesh(id: WeaponId, mat: Materials, rarity: Rarity = 
                     ? createPulse(mat)
                     : id === "pike"
                       ? createPike(mat)
-                      : createRifle(mat);
+                      : id === "howl"
+                        ? createHowl(mat)
+                        : createRifle(mat);
   addRarityStripe(g, mat, rarity);
   return g;
 }
@@ -1154,6 +1156,22 @@ export function createPulse(mat: Materials) {
   sph(mat.voidCore, 0.016, 0, 0.1, 0.32, g, 6);
   box(mat.warning, 0.02, 0.03, 0.05, 0.04, 0.08, -0.12, g);
   firearmKit(mat, g, { magH: 0.14, magZ: 0.04, optic: "holo", muzzle: "supp", muzzleZ: 0.72 });
+  return g;
+}
+
+export function createHowl(mat: Materials) {
+  const g = new THREE.Group();
+  box(mat.dark, 0.08, 0.1, 0.22, 0, 0.02, 0.02, g);
+  barrel(mat.metal, 0.028, 0.34, 0, 0.05, 0.28, g);
+  barrel(mat.ember, 0.016, 0.12, 0, 0.05, 0.5, g);
+  box(mat.ember, 0.1, 0.08, 0.1, 0, 0.02, 0.02, g);
+  box(mat.metal, 0.012, 0.08, 0.012, 0.05, 0.02, 0.02, g);
+  box(mat.metal, 0.012, 0.08, 0.012, -0.05, 0.02, 0.02, g);
+  box(mat.dark, 0.045, 0.16, 0.07, 0, -0.12, -0.04, g);
+  box(mat.rubber, 0.04, 0.05, 0.06, 0, -0.2, -0.02, g);
+  box(mat.armor, 0.09, 0.035, 0.14, 0, -0.02, 0.06, g);
+  box(mat.warning, 0.02, 0.02, 0.04, 0.04, 0.08, 0.08, g);
+  firearmKit(mat, g, { magH: 0.06, magZ: -0.02, optic: "iron", muzzle: "none", stock: false });
   return g;
 }
 
