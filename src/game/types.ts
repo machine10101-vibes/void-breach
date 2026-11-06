@@ -20,7 +20,7 @@ export type AffixId =
   | "mesh"
   | "servo"
   | "brace";
-export type SetId = "ember" | "rail" | "null";
+export type SetId = "ember" | "rail" | "null" | "coil";
 
 export type InvItem = {
   uid: string;
