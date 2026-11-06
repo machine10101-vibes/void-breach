@@ -97,6 +97,7 @@ export function Hud({
         <div className="min-w-0 flex-1">
           <p className="truncate font-mono text-[10px] uppercase tracking-[0.22em] text-accent">{hud.objective}</p>
           {hud.route ? <p className="truncate font-mono text-[9px] uppercase tracking-[0.16em] text-faint">{hud.route}</p> : null}
+          {hud.covered ? <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-void">Cover</p> : null}
           {hud.extractReady && hud.phase === "playing" ? (
             <p className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.18em] text-void">
               {hud.nearExtract
@@ -156,6 +157,7 @@ export function Hud({
         </div>
         <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-accent">{hud.objective}</p>
         {hud.route ? <p className="-mt-1 font-mono text-[10px] uppercase tracking-[0.22em] text-faint">{hud.route}</p> : null}
+        {hud.covered ? <p className="-mt-1 font-mono text-[10px] uppercase tracking-[0.22em] text-void">Cover</p> : null}
         {hud.boss ? (
           <div className="w-full max-w-md">
             <div className="mb-1 flex justify-between font-mono text-[10px] uppercase tracking-widest text-muted">
