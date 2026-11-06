@@ -1285,6 +1285,12 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       gold += Math.round(28 * missionScale(level.id).scrapMult);
       pushFloat("MARKED DOWN", e.x, 2.4, e.z, "legendary");
     }
+    const coil = kitMods(save.inventory, save.equippedArmor).shieldOnKill;
+    if (coil > 0 && shield < maxShield) {
+      const back = Math.min(maxShield - shield, coil + (save.skillRanks.cleave ?? 0) * 2);
+      shield += back;
+      pushFloat(`+${back}`, px, py + 1.55, pz, "fg");
+    }
     if (e.kind === "cantor") {
       for (const o of enemies) {
         if (o.wardFrom === e.id) {

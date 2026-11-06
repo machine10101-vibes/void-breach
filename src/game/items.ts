@@ -59,12 +59,14 @@ export const KIT_SETS: Record<SetId, { name: string; slots: ArmorSlot[]; line: s
   ember: { name: "Ember Protocol", slots: ["helm", "arms"], line: "Overdrive lasts longer and hits harder" },
   rail: { name: "Rail Stride", slots: ["chest", "legs"], line: "Move faster on the street" },
   null: { name: "Null Mantle", slots: ["helm", "chest"], line: "Take less damage" },
+  coil: { name: "Ash Coil", slots: ["arms", "legs"], line: "Kills put shield back on the suit" },
 };
 
 const SET_PIECE_NAMES: Record<SetId, Partial<Record<ArmorSlot, string>>> = {
   ember: { helm: "Ember visor", arms: "Ember gauntlets" },
   rail: { chest: "Rail cuirass", legs: "Rail greaves" },
   null: { helm: "Null helm", chest: "Null mantle" },
+  coil: { arms: "Ash coils", legs: "Ash treads" },
 };
 
 const AFFIX_IDS = Object.keys(AFFIXES) as AffixId[];
@@ -464,6 +466,18 @@ export const RECIPES: Recipe[] = [
     output: { kind: "armor", name: "Rail cuirass", rarity: "rare", slot: "chest", hpBonus: 30, shieldBonus: 20, dmgBonus: 0, setId: "rail", affixes: ["mesh"] },
   },
   {
+    id: "arms-coil",
+    name: "Ash coils",
+    cost: 95,
+    output: { kind: "armor", name: "Ash coils", rarity: "magic", slot: "arms", hpBonus: 10, shieldBonus: 8, dmgBonus: 4, setId: "coil", affixes: ["servo"] },
+  },
+  {
+    id: "legs-coil",
+    name: "Ash treads",
+    cost: 95,
+    output: { kind: "armor", name: "Ash treads", rarity: "magic", slot: "legs", hpBonus: 12, shieldBonus: 16, dmgBonus: 0, setId: "coil", affixes: ["brace"] },
+  },
+  {
     id: "helm-null",
     name: "Null helm",
     cost: 170,
@@ -510,6 +524,7 @@ export type KitMods = {
   overdriveMult: number;
   speed: number;
   taken: number;
+  shieldOnKill: number;
 };
 
 export function kitMods(items: InvItem[], equipped: Record<ArmorSlot, string | null>): KitMods {
@@ -526,6 +541,7 @@ export function kitMods(items: InvItem[], equipped: Record<ArmorSlot, string | n
     overdriveMult: active.includes("ember") ? 1.46 : 1.28,
     speed: active.includes("rail") ? 1.1 : 1,
     taken: active.includes("null") ? 0.88 : 1,
+    shieldOnKill: active.includes("coil") ? 8 : 0,
   };
 }
 
