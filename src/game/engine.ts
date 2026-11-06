@@ -2390,10 +2390,16 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
           e.intent = "none";
           e.attackCd = cd * (e.elite ? 0.88 : 1);
         }
-      } else if (dist > stop) {
+      } else if (dist > stop || (e.kind === "stalker" && e.state === "chase" && dist > 3.4)) {
         const sp = e.speed * dt * (e.stagger > 0 ? 0.25 : 1);
-        e.x += nx * sp;
-        e.z += nz * sp;
+        const closing = dist > stop ? 1 : 0.15;
+        e.x += nx * sp * closing;
+        e.z += nz * sp * closing;
+        if (e.kind === "stalker" && e.stagger <= 0) {
+          const weave = Math.sin(performance.now() * 0.0016 + e.id) >= 0 ? 1 : -1;
+          e.x += -nz * sp * 0.9 * weave;
+          e.z += nx * sp * 0.9 * weave;
+        }
         const c = collidePlayer(level.boxes, e.x, 0, e.z, e.radius, 1.8);
         e.x = c.x;
         e.z = c.z;
