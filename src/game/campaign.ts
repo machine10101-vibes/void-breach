@@ -47,7 +47,7 @@ export function rollMissionRarity(id: MissionId, kind: EnemyKind): Rarity {
   if (tier === 1) {
     if (kind === "brute" && r > 0.7) return "rare";
     if (r > 0.94) return "rare";
-    if (r > 0.52) return "magic";
+    if (r > (kind === "husk" || kind === "cinder" || kind === "leech" ? 0.34 : 0.52)) return "magic";
     return "common";
   }
   if (tier === 2) {

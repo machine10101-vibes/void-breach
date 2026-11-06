@@ -24,7 +24,7 @@ A **Husk** paints a gold ring, then lunges. Dodge the rush. Inside arm's reach i
 
 ## Loot
 
-Colored drops are common, magic, rare, or legendary. Magic and better guns and plates roll **affixes** (damage, magazine, spread, reload, range, fire rate, open seam, plate, shield, servos). The numbers on the loadout are the numbers the gun uses. **Open seam** hits harder through a cantor's ward and through an open boss core. It is not baked into the listed damage. **Brace** on a plate lengthens the dodge roll, up to three pieces. Print Braced greaves on the hull if the street has not dropped one.
+Colored drops are common, magic, rare, or legendary. On Ashfall Gate, husks, cinders, and leeches drop magic more often. Ember Rail and Null Spire keep their own tables. Magic and better guns and plates roll **affixes** (damage, magazine, spread, reload, range, fire rate, open seam, plate, shield, servos). The numbers on the loadout are the numbers the gun uses. **Open seam** hits harder through a cantor's ward and through an open boss core. It is not baked into the listed damage. **Brace** on a plate lengthens the dodge roll, up to three pieces. Print Braced greaves on the hull if the street has not dropped one.
 
 Three two-piece kits change the suit when both pieces are worn:
 
