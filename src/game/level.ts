@@ -144,11 +144,11 @@ function buildAshfall(): LevelDef {
       {
         id: "plaza",
         zTrigger: 7,
-        message: "Shade contact — plaza",
+        message: "Shade contact — a marked husk lunges",
         enemies: [
           { kind: "husk", x: -5, z: -6 },
           { kind: "husk", x: 6, z: -7 },
-          { kind: "husk", x: 0, z: -9 },
+          { kind: "husk", x: 0, z: -9, elite: true },
           { kind: "husk", x: -3, z: -11 },
         ],
       },

@@ -220,7 +220,7 @@ export type ControlsProbe = {
     missionTime: number;
     x: number;
     z: number;
-    foes: { kind: string; x: number; z: number; state: string }[];
+    foes: { kind: string; x: number; z: number; state: string; elite?: boolean; intent?: string }[];
   };
   lineBlocked?: (ax: number, az: number, bx: number, bz: number) => boolean;
 };
@@ -247,5 +247,5 @@ export type Spawner = {
   id: string;
   zTrigger: number;
   message: string;
-  enemies: { kind: EnemyKind; x: number; z: number }[];
+  enemies: { kind: EnemyKind; x: number; z: number; elite?: boolean }[];
 };

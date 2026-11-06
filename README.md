@@ -20,7 +20,7 @@ An **Ash Cantor** hangs behind a pack and wards the Shade around it. Their ring 
 
 A **Cinder** sprints the pack and swells an orange ring. When the ring fills, it pops. Step off the ring or shoot it before the swell finishes. They run the Ashfall boulevard, the Ember platform, the Ember service cut, and the Spire forecourt.
 
-A **Husk** paints a gold ring, then lunges. Dodge the rush. Inside arm's reach it still swings. A **Stalker** does not stand in the lane. Inside its shot, it weaves across the street while the rifle comes up. A **Spitter** backs off when you close, and keeps the lob going. A **Leech** closes and drinks the shield. The street prints SIPHON. Break contact or kill it. One waits at the Ashfall gate, and one in the Spire annex.
+A **Husk** paints a gold ring, then lunges. Dodge the rush. Inside arm's reach it still swings. The Ashfall plaza always marks the center husk so the first pack teaches the seam. A **Stalker** does not stand in the lane. Inside its shot, it weaves across the street while the rifle comes up. A **Spitter** backs off when you close, and keeps the lob going. A **Leech** closes and drinks the shield. The street prints SIPHON. Break contact or kill it. One waits at the Ashfall gate, and one in the Spire annex.
 
 ## Loot
 

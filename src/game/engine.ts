@@ -2180,7 +2180,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       if (pz > s.zTrigger) continue;
       spawned.add(s.id);
       const pool = s.enemies.map((e, i) => i).filter((i) => s.enemies[i].kind !== "harbinger");
-      const markAt = pool.length >= 3 ? pool[Math.floor(Math.random() * pool.length)] : -1;
+      const scripted = s.enemies.findIndex((e) => e.elite);
+      const markAt = scripted >= 0 ? scripted : pool.length >= 3 ? pool[Math.floor(Math.random() * pool.length)] : -1;
       objective = s.message;
       hint = s.enemies.some((en) => en.kind === "harbinger")
         ? `Burn the ${level.bossName} — core opens after the beam`
@@ -3548,7 +3549,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       missionTime,
       x: px,
       z: pz,
-      foes: enemies.filter((e) => e.alive).slice(0, 8).map((e) => ({ kind: e.kind, x: +e.x.toFixed(1), z: +e.z.toFixed(1), state: e.state })),
+      foes: enemies.filter((e) => e.alive).slice(0, 8).map((e) => ({ kind: e.kind, x: +e.x.toFixed(1), z: +e.z.toFixed(1), state: e.state, elite: e.elite, intent: e.intent })),
     }),
     lineBlocked: (ax, az, bx, bz) => losBlocked(ax, az, bx, bz),
   };
