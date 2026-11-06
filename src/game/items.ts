@@ -308,6 +308,12 @@ export const RECIPES: Recipe[] = [
     output: { kind: "weapon", rarity: "magic", weaponId: "ar", ...WEAPON_BASE.ar, name: "Tuned ARX", dmg: 26, rpm: 620, mag: 34, reserve: 170, spread: 0.014, range: 86, reload: 1.3, affixes: ["rapid"] },
   },
   {
+    id: "ar-seam",
+    name: "Seam ARX",
+    cost: 110,
+    output: { kind: "weapon", rarity: "magic", weaponId: "ar", ...WEAPON_BASE.ar, name: "Seam ARX", dmg: 24, affixes: ["seam"] },
+  },
+  {
     id: "dmr",
     name: "Kestrel DMR",
     cost: 150,

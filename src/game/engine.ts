@@ -1838,6 +1838,9 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     addAmmoToItems(save.inventory, WEAPON_AMMO[currentWeapon().id], 20);
     const cacheRarity = sc.tier === 3 ? "legendary" : sc.tier === 2 ? "rare" : "magic";
     const cacheGear = Math.random() > 0.5 ? rollLootWeapon(cacheRarity, sc.tier) : rollLootArmor(cacheRarity, sc.tier);
+    if (level.id === "ashfall" && cacheGear.kind === "weapon" && !cacheGear.affixes?.includes("seam")) {
+      cacheGear.affixes = [...(cacheGear.affixes ?? []), "seam"];
+    }
     if (save.inventory.length < INVENTORY_CAP) {
       save.inventory.push(cacheGear);
       pushLoot(cacheGear.name, cacheGear.rarity);
