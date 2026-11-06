@@ -116,7 +116,7 @@ type Weapon = {
   reload: number;
 };
 
-type EnemyIntent = "none" | "melee" | "slam" | "shot" | "blink" | "beam" | "hymn" | "burst" | "drain";
+type EnemyIntent = "none" | "melee" | "slam" | "shot" | "blink" | "beam" | "hymn" | "burst" | "drain" | "lunge";
 
 type Enemy = {
   id: number;
@@ -2243,7 +2243,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     e.blinkX = blinkX;
     e.blinkZ = blinkZ;
     const color =
-      intent === "hymn" ? 0x818cf8 : intent === "drain" ? 0x22d3ee : intent === "burst" ? 0xfb923c : intent === "shot" || intent === "beam" ? 0x5eead4 : intent === "blink" ? 0xc4b5fd : intent === "slam" ? 0xfb923c : 0xe85d04;
+      intent === "hymn" ? 0x818cf8 : intent === "drain" ? 0x22d3ee : intent === "lunge" ? 0xfbbf24 : intent === "burst" ? 0xfb923c : intent === "shot" || intent === "beam" ? 0x5eead4 : intent === "blink" ? 0xc4b5fd : intent === "slam" ? 0xfb923c : 0xe85d04;
     (e.ring.material as THREE.MeshBasicMaterial).color.setHex(color);
     pingTell();
   }
@@ -2408,6 +2408,17 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
               pushFloat("SIPHON", px, py + 1.6, pz, "void");
               hint = "Leech is drinking the shield — break contact";
             }
+          } else if (e.intent === "lunge") {
+            const step = Math.min(Math.max(0, dist - 0.9), e.elite ? 3.1 : 2.5);
+            e.x += nx * step;
+            e.z += nz * step;
+            const landed = collidePlayer(level.boxes, e.x, 0, e.z, e.radius, 1.8);
+            e.x = landed.x;
+            e.z = landed.z;
+            particles.spray(e.x, 0.4, e.z, nx, 0.15, nz, 8, 0xfbbf24, 4, 0.2, 0.06);
+            const nd = Math.hypot(px - e.x, pz - e.z);
+            if (nd < e.radius + 1.35 && !losBlocked(e.x, e.z, px, pz)) hurtPlayer(bite);
+            else if (nd < e.radius + 1.35) particles.burst(e.x + nx * 0.6, 0.8, e.z + nz * 0.6, 6, 0x9aa6b2, 2.2, 0.14, 0.05, 0);
           } else if (e.intent === "melee") {
             e.kbX += nx * (e.elite ? 11 : 9);
             e.kbZ += nz * (e.elite ? 11 : 9);
@@ -2474,6 +2485,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
           beginWindup(e, "burst", e.elite ? 0.48 : 0.64);
         } else if (e.kind === "leech" && dist < 1.75) {
           beginWindup(e, "drain", e.elite ? 0.34 : 0.46);
+        } else if (e.kind === "husk" && dist < 5.6 && dist > 2.6) {
+          beginWindup(e, "lunge", e.elite ? 0.3 : 0.42);
         } else if (e.kind === "husk" && dist < 2.35) {
           beginWindup(e, "melee", e.elite ? 0.32 : 0.42);
         } else if (e.kind === "brute" && dist < 2.55) {
@@ -2518,7 +2531,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       if (e.stagger > 0) {
         e.rig.leftArm.rotation.x = 0.95;
         e.rig.rightArm.rotation.x = 1.05;
-      } else if (e.state === "windup" && (e.intent === "melee" || e.intent === "slam" || e.intent === "drain")) {
+      } else if (e.state === "windup" && (e.intent === "melee" || e.intent === "slam" || e.intent === "drain" || e.intent === "lunge")) {
         e.rig.leftArm.rotation.x = -1.15 * lift;
         e.rig.rightArm.rotation.x = -1.2 * lift;
       } else if (e.state === "windup" && (e.intent === "hymn" || e.intent === "burst")) {
@@ -2547,7 +2560,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
         const u = 1 - e.stateT / Math.max(0.05, e.windMax);
         e.ring.visible = true;
         e.ring.scale.setScalar(
-          e.intent === "burst" ? 1.5 + u * 2.2 : e.intent === "slam" ? 1.15 + u * 1.9 : e.intent === "beam" ? 0.9 + u * 0.55 : 0.8 + u * 0.75,
+          e.intent === "lunge" ? 1.1 + u * 1.6 : e.intent === "burst" ? 1.5 + u * 2.2 : e.intent === "slam" ? 1.15 + u * 1.9 : e.intent === "beam" ? 0.9 + u * 0.55 : 0.8 + u * 0.75,
         );
         ringMat.opacity = 0.2 + u * 0.72;
         if (e.intent === "blink") e.ring.position.set(e.blinkX, 0.07, e.blinkZ);
