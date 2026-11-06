@@ -116,7 +116,7 @@ type Weapon = {
   reload: number;
 };
 
-type EnemyIntent = "none" | "melee" | "slam" | "shot" | "blink" | "beam" | "hymn" | "burst";
+type EnemyIntent = "none" | "melee" | "slam" | "shot" | "blink" | "beam" | "hymn" | "burst" | "drain";
 
 type Enemy = {
   id: number;
@@ -208,7 +208,9 @@ function enemyStats(kind: EnemyKind, id: MissionId = "ashfall") {
                 ? { hp: 148, radius: 0.5, speed: 2.45, dmg: 12 }
                 : kind === "cinder"
                   ? { hp: 64, radius: 0.4, speed: 6.1, dmg: 22 }
-                  : { hp: 78, radius: 0.42, speed: 5.0, dmg: 13 };
+                  : kind === "leech"
+                    ? { hp: 96, radius: 0.44, speed: 3.4, dmg: 11 }
+                    : { hp: 78, radius: 0.42, speed: 5.0, dmg: 13 };
   const sc = missionScale(id);
   return {
     hp: Math.round(base.hp * sc.hp),
@@ -1258,7 +1260,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     comboT = 2.4;
     combo++;
     const xpGain =
-      (e.kind === "harbinger" ? 800 : e.kind === "brute" ? 120 : e.kind === "cantor" ? 80 : e.kind === "spitter" ? 70 : e.kind === "cinder" ? 48 : e.kind === "wraith" ? 55 : 40) *
+      (e.kind === "harbinger" ? 800 : e.kind === "brute" ? 120 : e.kind === "cantor" ? 80 : e.kind === "spitter" ? 70 : e.kind === "leech" ? 62 : e.kind === "cinder" ? 48 : e.kind === "wraith" ? 55 : 40) *
       (1 + Math.min(combo, 8) * 0.05) *
       (e.elite ? 1.75 : 1);
     xp += xpGain;
@@ -2239,7 +2241,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     e.blinkX = blinkX;
     e.blinkZ = blinkZ;
     const color =
-      intent === "hymn" ? 0x818cf8 : intent === "burst" ? 0xfb923c : intent === "shot" || intent === "beam" ? 0x5eead4 : intent === "blink" ? 0xc4b5fd : intent === "slam" ? 0xfb923c : 0xe85d04;
+      intent === "hymn" ? 0x818cf8 : intent === "drain" ? 0x22d3ee : intent === "burst" ? 0xfb923c : intent === "shot" || intent === "beam" ? 0x5eead4 : intent === "blink" ? 0xc4b5fd : intent === "slam" ? 0xfb923c : 0xe85d04;
     (e.ring.material as THREE.MeshBasicMaterial).color.setHex(color);
     pingTell();
   }
@@ -2396,6 +2398,14 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
             killEnemy(e);
             explode(e.x, 0.45, e.z, bite, rad);
             hint = "Cinder popped — stay off the ring";
+          } else if (e.intent === "drain") {
+            if (dist < e.radius + 1.35 && invuln <= 0) {
+              hurtPlayer(Math.max(6, bite * 0.45));
+              e.hp = Math.min(e.max, e.hp + (e.elite ? 22 : 14));
+              if (e.bar) e.bar.scale.x = Math.max(0.05, e.hp / e.max);
+              pushFloat("SIPHON", px, py + 1.6, pz, "void");
+              hint = "Leech is drinking the shield — break contact";
+            }
           } else if (e.intent === "melee") {
             e.kbX += nx * (e.elite ? 11 : 9);
             e.kbZ += nz * (e.elite ? 11 : 9);
@@ -2460,6 +2470,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
           else beginWindup(e, "shot", 0.4);
         } else if (e.kind === "cinder" && dist < 3.2) {
           beginWindup(e, "burst", e.elite ? 0.48 : 0.64);
+        } else if (e.kind === "leech" && dist < 1.75) {
+          beginWindup(e, "drain", e.elite ? 0.34 : 0.46);
         } else if (e.kind === "husk" && dist < 2.35) {
           beginWindup(e, "melee", e.elite ? 0.32 : 0.42);
         } else if (e.kind === "brute" && dist < 2.55) {
@@ -2498,12 +2510,13 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       }
       if (e.kind === "cantor" && e.rig.ring) e.rig.ring.rotation.z += dt * (e.state === "windup" ? 2.8 : 1.15);
       if (e.kind === "cinder" && e.rig.core) e.rig.core.rotation.y += dt * (e.state === "windup" ? 8 : 2.4);
+      if (e.kind === "leech" && e.rig.core) e.rig.core.rotation.y += dt * (e.state === "windup" ? 6 : 1.6);
 
       const lift = e.state === "windup" ? 1 - e.stateT / Math.max(0.05, e.windMax) : 0;
       if (e.stagger > 0) {
         e.rig.leftArm.rotation.x = 0.95;
         e.rig.rightArm.rotation.x = 1.05;
-      } else if (e.state === "windup" && (e.intent === "melee" || e.intent === "slam")) {
+      } else if (e.state === "windup" && (e.intent === "melee" || e.intent === "slam" || e.intent === "drain")) {
         e.rig.leftArm.rotation.x = -1.15 * lift;
         e.rig.rightArm.rotation.x = -1.2 * lift;
       } else if (e.state === "windup" && (e.intent === "hymn" || e.intent === "burst")) {
