@@ -18,7 +18,7 @@ Each street has cover, a route mark, and an extract pad. Hold the pad when the b
 
 An **Ash Cantor** hangs behind a pack and wards the Shade around it. Their ring turns indigo and shots print WARD until you drop the singer. The **Sever Pike** (rifle ammo, hull CNC or a rare drop) cuts that ward and staggers. The **Ash Howl** is a short rifle-ammo hand cannon from the hull CNC. It staggers and ships with Open seam. A **Seam ARX** prints on the hull for 110 scrap, and the Ashfall field cache stamps Open seam on a gun.
 
-A **Cinder** sprints the pack and swells an orange ring. When the ring fills, it pops. Step off the ring or shoot it before the swell finishes. One runs the Ashfall boulevard, the Ember platform, and the Spire forecourt.
+A **Cinder** sprints the pack and swells an orange ring. When the ring fills, it pops. Step off the ring or shoot it before the swell finishes. They run the Ashfall boulevard, the Ember platform, the Ember service cut, and the Spire forecourt.
 
 A **Stalker** does not stand in the lane. Inside its shot, it weaves across the street while the rifle comes up. A **Spitter** backs off when you close, and keeps the lob going.
 
