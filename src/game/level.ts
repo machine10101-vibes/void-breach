@@ -387,13 +387,13 @@ function buildEmberRail(): LevelDef {
       {
         id: "cut",
         zTrigger: -28,
-        message: "Service cut — mixed pack",
+        message: "Service cut — a cinder in the mix",
         enemies: [
           { kind: "brute", x: 0, z: -36 },
           { kind: "spitter", x: -4, z: -34 },
           { kind: "spitter", x: 4, z: -38 },
           { kind: "wraith", x: -2, z: -40 },
-          { kind: "husk", x: 2, z: -33 },
+          { kind: "cinder", x: 2, z: -33 },
           { kind: "husk", x: -3, z: -41 },
         ],
       },
