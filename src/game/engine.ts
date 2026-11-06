@@ -80,6 +80,7 @@ import type {
   RunOutcome,
   SkillId,
   AmmoId,
+  AffixId,
   WeaponId,
 } from "./types";
 import { nextSkillCost, skillSpec, SKILL_TRACK } from "./skills";
@@ -908,6 +909,10 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   function currentWeapon() {
     return (weaponIdx >= 0 ? weapons[weaponIdx] : undefined) ?? weapons[0];
   }
+  function equippedAffix(id: AffixId) {
+    const it = save.inventory.find((i) => i.uid === save.equippedWeapon);
+    return Boolean(it?.affixes?.includes(id));
+  }
   function keySet() {
     return qaKeys.active ? new Set(qaKeys.codes) : keys;
   }
@@ -1283,16 +1288,17 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     const plated = e.kind === "harbinger" && e.core <= 0;
     const seam = e.kind !== "harbinger" && (e.state === "windup" || e.stagger > 0);
     const warded = e.ward > 0 && e.kind !== "cantor";
+    const openSeam = equippedAffix("seam");
     let dealt = dmg;
     if (warded && punchWard) {
       dealt *= 1.15;
       if (e.flash <= 0) pushFloat("CUT", e.x, 1.9, e.z, "legendary");
     } else if (warded) {
-      dealt *= 0.62;
+      dealt *= openSeam ? 0.9 : 0.62;
       if (e.flash <= 0) pushFloat("WARD", e.x, 1.9, e.z, "void");
     }
     if (burning) {
-      dealt *= 1.85;
+      dealt *= openSeam ? 2.2 : 1.85;
       if (kb >= 4.2) e.core = Math.min(2.1, e.core + 0.22);
     } else if (plated) dealt *= 0.22;
     else if (seam) dealt *= e.elite ? 1.65 : 1.4;
