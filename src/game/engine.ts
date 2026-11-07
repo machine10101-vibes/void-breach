@@ -153,6 +153,8 @@ type Enemy = {
   core: number;
   ward: number;
   wardFrom: number;
+  gait: number;
+  shot: number;
 };
 
 type BulletFx = { mesh: THREE.Line; life: number };
@@ -302,6 +304,9 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   let fireCd = 0;
   let tellCd = 0;
   let recoil = 0;
+  let muzzle = 0;
+  let shoulder = 0;
+  let prevStrike = 0;
   let gaitT = 0;
   let moveW = 0;
   let sprintW = 0;
@@ -310,7 +315,6 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   let skillCd = { frag: 0, overdrive: 0, cleave: 0, scan: 0 };
   let trauma = 0;
   let hitFlash = 0;
-  let footT = 0;
   let objective = "Push through Ashfall Gate";
   let hint = "WASD move · Mouse aim · Click fire";
   let loot: HudSnapshot["loot"] = [];
@@ -1180,6 +1184,8 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       core: 0,
       ward: 0,
       wardFrom: -1,
+      gait: Math.random() * Math.PI * 2,
+      shot: 0,
     });
     if (kind === "harbinger") bossAlive = true;
     if (marked) pushFloat("MARKED", x, 2.4, z, "legendary");
@@ -1514,6 +1520,9 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     velX = 0;
     velZ = 0;
     recoil = 0;
+    muzzle = 0;
+    shoulder = 0;
+    prevStrike = 0;
     gaitT = 0;
     moveW = 0;
     sprintW = 0;
@@ -1705,7 +1714,11 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     shots += w.pellets;
     audio.fire(fireSound(w.id));
     trauma = Math.min(1, trauma + (w.id === "shotgun" || w.id === "cannon" || w.id === "gl" ? 0.22 : w.id === "howl" || w.id === "rail" ? 0.18 : 0.07));
-    recoil = Math.min(1, recoil + (w.id === "shotgun" || w.id === "cannon" || w.id === "gl" ? 0.88 : w.id === "howl" ? 0.7 : w.id === "rail" ? 0.72 : 0.4));
+    const heavy = w.id === "shotgun" || w.id === "cannon" || w.id === "gl" || w.id === "howl" || w.id === "pike";
+    const auto = w.id === "smg" || w.id === "lmg" || w.id === "ar";
+    muzzle = Math.min(1, muzzle + (heavy ? 0.92 : auto ? 0.28 : 0.5));
+    shoulder = Math.min(1, shoulder + (heavy ? 0.62 : auto ? 0.16 : 0.34));
+    recoil = Math.min(1, muzzle * 0.62 + shoulder);
     pitch += w.id === "shotgun" || w.id === "cannon" ? 0.028 : 0.01;
     yaw += (Math.random() - 0.5) * (w.id === "shotgun" ? 0.02 : 0.006);
     muzzleLight.intensity = w.id === "rail" ? 9 : 7;
@@ -2004,36 +2017,37 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     reload: number;
     drive?: number;
     strafe?: number;
+    speed?: number;
   }) {
     if (!playerRig) return;
     const dt = args.dt;
     moveW = THREE.MathUtils.damp(moveW, args.moving ? 1 : 0, 10.5, dt);
     sprintW = THREE.MathUtils.damp(sprintW, args.moving && args.sprint ? 1 : 0, 8.2, dt);
-    const cadence = THREE.MathUtils.lerp(7.6, 11.6, sprintW);
-    gaitT += dt * THREE.MathUtils.lerp(1.05, cadence, moveW);
+    const pace = THREE.MathUtils.clamp((args.speed ?? (args.moving ? 5.6 : 0)) / 5.6, 0.4, 1.65);
+    const cadence = THREE.MathUtils.lerp(6.2, 10.4, sprintW) * pace;
+    gaitT += dt * THREE.MathUtils.lerp(0.85, cadence, moveW);
     const ph = gaitT;
     const hipCurve = (p: number) => {
       const s = Math.sin(p);
-      const c = Math.cos(p);
-      return s * (1.04 + 0.18 * c) + Math.sin(p * 2) * 0.055;
+      const lift = -Math.pow(Math.max(0, -s), 0.82);
+      const drive = Math.pow(Math.max(0, s), 0.62);
+      return (lift + drive) * (1.02 + 0.06 * Math.cos(p * 2));
     };
     const kneeCurve = (p: number) => {
       const s = Math.sin(p);
-      const lift = Math.max(0, -s);
-      const crumple = Math.max(0, Math.cos(p + 0.28));
-      const plant = Math.max(0, s) * 0.12;
-      return 0.14 + (lift * THREE.MathUtils.lerp(1.02, 1.32, sprintW) + crumple * 0.3 + plant) * moveW;
+      const swing = Math.pow(Math.max(0, -s), 0.75);
+      const plant = Math.max(0, Math.cos(p + 0.35));
+      return (0.08 + swing * THREE.MathUtils.lerp(1.15, 1.42, sprintW) + plant * 0.22) * moveW;
     };
     const footCurve = (p: number) => {
       const s = Math.sin(p);
-      const c = Math.cos(p);
-      const swing = Math.max(0, c) * Math.max(0, 0.25 - s);
-      const plant = Math.max(0, -c);
-      return (plant * 0.1 - swing * 0.38) * moveW;
+      const toe = Math.max(0, Math.sin(p + 0.9));
+      const swing = Math.max(0, -s);
+      return (toe * 0.16 - swing * 0.28) * moveW;
     };
     const L = hipCurve(ph);
     const R = hipCurve(ph + Math.PI);
-    const hipAmp = THREE.MathUtils.lerp(0.64, 0.92, sprintW) * moveW;
+    const hipAmp = THREE.MathUtils.lerp(0.52, 0.84, Math.min(1, pace)) * THREE.MathUtils.lerp(1, 1.14, sprintW) * moveW;
     const idle = Math.sin(args.now * 0.0024) * 0.018 * (1 - moveW * 0.65);
     const breath = Math.sin(args.now * 0.00155) * 0.012;
     const sway = Math.sin(args.now * 0.00105) * 0.03 * (1 - moveW);
@@ -2041,7 +2055,9 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     const aim = THREE.MathUtils.clamp(args.aim, 0, 1);
     const hop =
       (moveW * plant * THREE.MathUtils.lerp(0.034, 0.056, sprintW) + idle * 0.4) * (0.58 + (1 - aim) * 0.42);
-    const kick = recoil;
+    const kickUp = muzzle;
+    const kickBack = shoulder;
+    const kick = kickUp * 0.65 + kickBack * 0.45;
     const dodgeLean = Math.min(1, args.dodge * 3.4);
     const rel = Math.sin(args.reload * Math.PI);
     const drive = THREE.MathUtils.clamp(args.drive ?? (args.moving ? 1 : 0), -1, 1);
@@ -2068,17 +2084,17 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       THREE.MathUtils.lerp(0.03, THREE.MathUtils.lerp(0.1, 0.18, sprintW), moveW) * (1 - aim * 0.55) +
       aim * 0.1 +
       rel * 0.1 +
-      kick * 0.14 +
+      kickBack * 0.07 +
       dodgeLean * 0.22;
     playerRig.torso.rotation.y = L * THREE.MathUtils.lerp(0.09, 0.035, aim) * moveW;
     playerRig.torso.rotation.z = -L * 0.04 * moveW + dodgeLean * 0.16 + strafe * 0.07;
 
     playerRig.head.position.y = 1.66 + breath * 0.55 + hop * 0.1;
-    playerRig.head.rotation.x = args.pitch * 0.34 + idle * 0.55 - aim * 0.08 - kick * 0.1 + rel * 0.08;
+    playerRig.head.rotation.x = args.pitch * 0.34 + idle * 0.55 - aim * 0.08 - kickUp * 0.16 + rel * 0.08;
     playerRig.head.rotation.y = -playerRig.torso.rotation.y * 0.55 + L * 0.02 * moveW;
     playerRig.head.rotation.z = -playerRig.torso.rotation.z * 0.4 + dodgeLean * 0.06;
 
-    playerRig.backpack.rotation.x = -L * 0.055 * moveW + idle * 0.35 - kick * 0.18;
+    playerRig.backpack.rotation.x = -L * 0.055 * moveW + idle * 0.35 - kickBack * 0.22;
     playerRig.backpack.rotation.z = L * 0.03 * moveW;
     playerRig.backpack.position.y = 0.16 + hop * 0.22 + breath * 0.35;
 
@@ -2094,21 +2110,26 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       playerRig.rightForearm.rotation.x = 0.12 + Math.max(0, -R) * 0.36 * moveW;
     } else {
       if (playerRig.gun) playerRig.gun.visible = true;
-      const pump = THREE.MathUtils.lerp(0.055, 0.016, aim) * moveW;
-      playerRig.leftArm.rotation.x = THREE.MathUtils.lerp(-0.32, -1.05, aim) - L * hipAmp * pump - kick * 0.08 + rel * 0.22;
-      playerRig.leftArm.rotation.y = THREE.MathUtils.lerp(0.2, 0.1, aim) + rel * 0.18;
-      playerRig.leftArm.rotation.z = THREE.MathUtils.lerp(0.2, 0.12, aim) + Math.abs(L) * hipAmp * 0.025;
-      playerRig.leftForearm.rotation.x = THREE.MathUtils.lerp(0.55, 0.16, aim) + rel * 0.28;
+      const pump = THREE.MathUtils.lerp(0.11, 0.02, aim) * moveW;
+      const bob = Math.sin(ph * 2) * 0.02 * moveW * (1 - aim * 0.85);
+      playerRig.leftArm.rotation.x = THREE.MathUtils.lerp(-0.32, -1.05, aim) - L * hipAmp * pump + kickUp * 0.06 + rel * 0.55;
+      playerRig.leftArm.rotation.y = THREE.MathUtils.lerp(0.2, 0.1, aim) + rel * 0.28;
+      playerRig.leftArm.rotation.z = THREE.MathUtils.lerp(0.2, 0.12, aim) + Math.abs(L) * hipAmp * 0.03;
+      playerRig.leftForearm.rotation.x = THREE.MathUtils.lerp(0.55, 0.16, aim) + kickUp * 0.14 + rel * 0.72;
       playerRig.rightArm.rotation.x =
-        THREE.MathUtils.lerp(-0.18, -1.18, aim) + R * hipAmp * pump * 0.4 - kick * 0.38 - rel * 0.55;
-      playerRig.rightArm.rotation.y = THREE.MathUtils.lerp(0.22, -0.08, aim) + rel * 0.38;
-      playerRig.rightArm.rotation.z = THREE.MathUtils.lerp(0.16, 0.0, aim) + kick * 0.1 + dodgeLean * 0.08;
-      playerRig.rightForearm.rotation.x = THREE.MathUtils.lerp(0.52, 0.02, aim) + kick * 0.22 + rel * 0.62;
-      playerRig.gunGrip.rotation.x = THREE.MathUtils.lerp(1.42, 0.52, aim) + kick * 0.22 + rel * 0.28;
-      playerRig.gunGrip.rotation.y = THREE.MathUtils.lerp(0.22, 0.0, aim) + rel * 0.16;
-      playerRig.gunGrip.rotation.z = THREE.MathUtils.lerp(-0.14, 0.02, aim);
-      playerRig.gunGrip.position.y = THREE.MathUtils.lerp(-0.4, -0.16, aim) + rel * 0.04;
-      playerRig.gunGrip.position.z = THREE.MathUtils.lerp(0.0, 0.22, aim) - kick * 0.05;
+        THREE.MathUtils.lerp(-0.18, -1.18, aim) + R * hipAmp * pump * 0.35 - kickBack * 0.55 - rel * 0.22;
+      playerRig.rightArm.rotation.y = THREE.MathUtils.lerp(0.22, -0.08, aim) + rel * 0.12;
+      playerRig.rightArm.rotation.z = THREE.MathUtils.lerp(0.16, 0.0, aim) + kickUp * 0.08 + dodgeLean * 0.08;
+      playerRig.rightForearm.rotation.x = THREE.MathUtils.lerp(0.52, 0.02, aim) + kickUp * 0.28 + rel * 0.18;
+      playerRig.gunGrip.rotation.x = THREE.MathUtils.lerp(1.42, 0.52, aim) - kickUp * 0.36 + rel * 0.16;
+      playerRig.gunGrip.rotation.y = THREE.MathUtils.lerp(0.22, 0.0, aim) + kickUp * 0.04;
+      playerRig.gunGrip.rotation.z = THREE.MathUtils.lerp(-0.14, 0.02, aim) + kickBack * 0.05;
+      playerRig.gunGrip.position.y = THREE.MathUtils.lerp(-0.4, -0.16, aim) + bob + kickUp * 0.03;
+      playerRig.gunGrip.position.z = THREE.MathUtils.lerp(0.0, 0.22, aim) - kickBack * 0.08;
+      if (playerRig.gun) {
+        playerRig.gun.position.set(0.01, 0.01 + kickUp * 0.015, 0.26 - kickBack * 0.05);
+        playerRig.gun.rotation.set(0.04 - kickUp * 0.22, 0.02, 0.01);
+      }
     }
 
     const visorPulse = 2.35 + breath * 14 + kick * 1.4;
@@ -2118,6 +2139,15 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       const gm = glow.material as THREE.MeshStandardMaterial;
       if (gm.emissiveIntensity !== undefined) gm.emissiveIntensity = visorPulse * 0.55 + 1.2;
     }
+
+    if (phase === "playing" && moveW > 0.62) {
+      const strike = Math.sin(ph);
+      if (prevStrike > 0.2 && strike <= 0.2) {
+        audio.foot();
+        particles.spawn(px, 0.08, pz, 0, 0.35, 0, 0.22, 0.06, 0x8a847c, 3, -1);
+      }
+      prevStrike = strike;
+    } else prevStrike = Math.sin(ph);
 
     playerRig.group.position.set(px, args.lift + hop, pz);
     playerRig.group.rotation.set(
@@ -2329,11 +2359,14 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       }
       if (!e.alive) continue;
       nearby++;
+      const ox = e.x;
+      const oz = e.z;
       e.attackCd -= dt;
       e.ward = Math.max(0, e.ward - dt);
       if (e.ward <= 0) e.wardFrom = -1;
       e.stagger = Math.max(0, e.stagger - dt);
       e.flash = Math.max(0, e.flash - dt);
+      e.shot = Math.max(0, e.shot - dt * 6.2);
       e.kbX *= Math.pow(0.08, dt);
       e.kbZ *= Math.pow(0.08, dt);
       e.x += e.kbX * dt;
@@ -2393,6 +2426,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
           } else if (e.intent === "hymn") {
             singWard(e);
           } else if (e.intent === "shot") {
+            e.shot = 1;
             launchBolt(e, bite);
           } else if (e.intent === "blink") {
             particles.spray(e.x, 1.1, e.z, 0, 0.4, 0, 8, 0xc4b5fd, 6, 0.2, 0.08);
@@ -2548,16 +2582,31 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       } else if (e.state === "windup" && e.intent === "shot") {
         e.rig.rightArm.rotation.x = -0.2 - lift * 1.25;
         e.rig.leftArm.rotation.x = -0.4;
-      } else if (e.state === "attack" && (e.intent === "melee" || e.intent === "slam")) {
-        e.rig.rightArm.rotation.x = 0.75;
-        e.rig.leftArm.rotation.x = 0.25;
+      } else if (e.state === "attack" && (e.intent === "melee" || e.intent === "slam" || e.intent === "lunge")) {
+        const reach = e.intent === "lunge" ? 0.95 : 0.75;
+        e.rig.rightArm.rotation.x = reach;
+        e.rig.leftArm.rotation.x = e.intent === "lunge" ? 0.7 : 0.25;
       } else {
-        const bob = e.kind === "harbinger" ? 0 : Math.sin(performance.now() * 0.008 + e.id) * 0.35;
-        e.rig.leftArm.rotation.x = bob;
-        e.rig.rightArm.rotation.x = -bob;
+        const moved = Math.hypot(e.x - ox, e.z - oz);
+        const stepping = e.state === "chase" && e.stagger <= 0 && moved > 0.004;
+        e.gait += dt * (stepping ? 6.4 + e.speed * 0.28 : 1.1);
+        const stride = stepping ? Math.min(1, moved / Math.max(0.016, dt * 3.2)) : 0;
+        const swing = Math.sin(e.gait) * (e.kind === "harbinger" ? 0.18 : 0.62) * Math.max(stride, e.kind === "harbinger" ? 0.35 : 0);
+        e.rig.leftArm.rotation.x = swing - e.shot * 0.15;
+        e.rig.rightArm.rotation.x = -swing * 0.9 - e.shot * 0.95;
+        e.rig.leftArm.rotation.z = 0.12 + Math.abs(swing) * 0.08;
+        e.rig.rightArm.rotation.z = -0.1;
       }
-      e.rig.group.position.set(e.x, e.y, e.z);
+      e.rig.group.position.set(e.x, e.kind === "harbinger" ? e.y : e.y + Math.max(0, Math.sin(e.gait * 2)) * 0.035, e.z);
       e.rig.group.lookAt(px, e.y, pz);
+      if (e.kind !== "harbinger" && e.state === "chase") {
+        const moved = Math.hypot(e.x - ox, e.z - oz);
+        const stride = Math.min(1, moved / Math.max(0.016, dt * 3.2));
+        e.rig.group.rotateX(stride * 0.07 - e.shot * 0.08);
+        e.rig.group.rotateZ(Math.sin(e.gait) * 0.05 * stride);
+      } else if (e.shot > 0) {
+        e.rig.group.rotateX(-e.shot * 0.06);
+      }
       if (e.mark) e.mark.rotation.y += dt * 1.7;
       if (e.bar) {
         e.bar.lookAt(camera.position);
@@ -2914,6 +2963,9 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     mag = currentWeapon().mag;
     fireCd = 0;
     recoil = 0;
+    muzzle = 0;
+    shoulder = 0;
+    prevStrike = 0;
     gaitT = 0;
     moveW = 0;
     sprintW = 0;
@@ -3208,7 +3260,10 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
     aimT = THREE.MathUtils.damp(aimT, wantAim ? 1 : 0, wantAim ? 16 : 7, dt);
 
     fireCd = Math.max(0, fireCd - dt);
-    recoil = Math.max(0, recoil - dt * 7.6);
+    const braced = adsT > 0.45;
+    muzzle = Math.max(0, muzzle - dt * (braced ? 12.5 : 7.4));
+    shoulder = THREE.MathUtils.damp(shoulder, 0, braced ? 9.5 : 5.2, dt);
+    recoil = Math.min(1, muzzle * 0.62 + shoulder);
     if (reloadT > 0) {
       reloadT -= dt;
       if (reloadT <= 0) finishReload();
@@ -3274,16 +3329,6 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
         grounded = true;
       } else grounded = false;
 
-      const moving = Math.hypot(velX, velZ) > 0.6 && grounded;
-      if (moving) {
-        footT += sim * (sprint ? 2.4 : 1.7);
-        if (footT > 1) {
-          footT = 0;
-          audio.foot();
-          particles.spawn(px, 0.08, pz, 0, 0.4, 0, 0.25, 0.07, 0x8a847c, 3, -1);
-        }
-      }
-
       if (held.fire || k.has("Mouse0") || pad.fire) fireWeapon();
       else lmgHeat = Math.max(0, lmgHeat - sim * 1.6);
 
@@ -3347,6 +3392,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
         reload: reloadT > 0 ? Math.min(1, 1 - reloadT / Math.max(0.4, currentWeapon()?.reload ?? 1)) : 0,
         drive: (velX * f.x + velZ * f.z) / spd,
         strafe: (velX * right.x + velZ * right.z) / spd,
+        speed: Math.hypot(velX, velZ),
       });
       if (overdriveT > 0) {
         (playerRig.visor.material as THREE.MeshStandardMaterial).emissiveIntensity = 5;

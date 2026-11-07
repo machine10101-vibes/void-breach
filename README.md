@@ -6,6 +6,8 @@ Suit up, hold the ash streets, vacuum loot off the Shade, and burn the Harbinger
 
 The street is lit like a dusk shooter: machined plate on the suit and guns, woven undersuit, stone and mortar on the blocks, glass in the windows, and a curved visor. Shade hide teeth, cables, and ribs under the same light.
 
+The suit walks with a heel strike and a counter-swing. A shot climbs the muzzle, then the stock settles back into the shoulder. Shade on the move swing their arms, and a shot rocks the shooter.
+
 ## Campaign
 
 Pick a drop on the title or on the ship, then **Deploy**. A locked district stays dark until the previous gate is cleared.
