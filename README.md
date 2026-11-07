@@ -6,7 +6,7 @@ Suit up, hold the ash streets, vacuum loot off the Shade, and burn the Harbinger
 
 The street is lit like a dusk shooter: machined plate on the suit and guns, woven undersuit, stone and mortar on the blocks, glass in the windows, and a curved visor. Shade hide teeth, cables, and ribs under the same light.
 
-The suit walks with a heel strike and a counter-swing. A shot climbs the muzzle, then the stock settles back into the shoulder. Shade on the move swing their arms, and a shot rocks the shooter.
+The suit rolls from heel to toe and shifts its weight onto the planted boot. The pelvis turns against the shoulders, and a stop leans through before it settles. A shot climbs on a spring — muzzle first, stock after — then the action cycles home. A reload drops the support hand and racks the bolt. Shade take a step as they close, and a shot rolls the shooter.
 
 ## Campaign
 
