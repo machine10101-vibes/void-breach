@@ -14,11 +14,12 @@ function box(
   rx = 0,
   ry = 0,
   rz = 0,
+  shadow = true,
 ) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
   m.position.set(x, y, z);
   m.rotation.set(rx, ry, rz);
-  m.castShadow = true;
+  m.castShadow = shadow;
   m.receiveShadow = true;
   parent.add(m);
   return m;
@@ -243,8 +244,12 @@ function paintCrosswalk(scene: THREE.Object3D, z: number, _mat: Materials) {
 export function paintStreetSurfaces(scene: THREE.Object3D, mat: Materials, theme: LevelTheme) {
   const roadCol = theme === "spire" ? 0x14181e : theme === "rail" ? 0x1c1614 : 0x1c1b1a;
   const walkCol = theme === "spire" ? 0x2e343c : 0x322e2a;
-  const roadMat = new THREE.MeshBasicMaterial({ color: roadCol });
-  const walkLit = new THREE.MeshLambertMaterial({ color: walkCol });
+  const roadMat = mat.asphalt.clone();
+  roadMat.color.setHex(roadCol);
+  roadMat.roughness = 0.9;
+  roadMat.metalness = 0.1;
+  const walkLit = mat.sidewalk.clone();
+  walkLit.color.setHex(walkCol);
   const streetLen = 210;
   const streetZ = -78;
   const road = new THREE.Mesh(new THREE.BoxGeometry(6.4, 0.06, streetLen), roadMat);
@@ -277,7 +282,8 @@ export function paintStreetSurfaces(scene: THREE.Object3D, mat: Materials, theme
     }
   }
 
-  const dirtMat = new THREE.MeshBasicMaterial({ color: 0x141210 });
+  const dirtMat = mat.lot.clone();
+  dirtMat.color.setHex(0x141210);
   for (const x of [-7.7, 7.7]) {
     const dirt = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.05, streetLen), dirtMat);
     dirt.position.set(x, 0.02, streetZ);
@@ -597,22 +603,21 @@ export function paintAtmosphere(scene: THREE.Object3D, mat: Materials, theme: Le
   scene.add(haze);
 
   const shaftCol = theme === "spire" ? 0x4aa8bc : 0xff7a28;
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 4; i++) {
     const shaft = new THREE.Mesh(
-      new THREE.PlaneGeometry(7 + i * 2.2, 52),
+      new THREE.PlaneGeometry(1.6, 28),
       new THREE.MeshBasicMaterial({
         color: shaftCol,
         transparent: true,
-        opacity: 0.045 + i * 0.008,
+        opacity: 0.03,
         depthWrite: false,
         side: THREE.DoubleSide,
         toneMapped: false,
-        fog: false,
       }),
     );
-    shaft.position.set(theme === "spire" ? 28 - i * 8 : -38 + i * 9, 18, -70 - i * 6);
-    shaft.rotation.z = theme === "spire" ? 0.42 : -0.55;
-    shaft.rotation.y = theme === "spire" ? -0.35 : 0.4;
+    shaft.position.set(theme === "spire" ? 12 - i * 6 : -8 + i * 6, 24, -98 - i * 12);
+    shaft.rotation.z = theme === "spire" ? 0.18 : -0.16;
+    shaft.rotation.y = 0.12;
     scene.add(shaft);
   }
 
@@ -744,10 +749,22 @@ export function dressBuildingMass(
         const wy = b.miny + 2.6 + row * 1.55;
         if (wy > b.maxy - 0.55) continue;
         const wx = b.minx + 1.1 + col * ((w - 2.2) / Math.max(endCols - 1, 1));
+        const outward = ez < cz ? -1 : 1;
         const lit = (row + col + building) % 5 !== 0;
-        box(lit ? ((row + building) % 2 ? mat.ember : mat.neon) : mat.dark, 0.72, 0.95, 0.08, wx, wy, ez, scene);
+        box(mat.dark, 0.86, 1.08, 0.06, wx, wy, ez, scene, 0, 0, 0, false);
+        box(lit ? mat.glass : mat.lot, 0.6, 0.76, 0.03, wx, wy, ez + outward * 0.028, scene, 0, 0, 0, false);
+        if (lit && (row + col + building) % 4 === 0) {
+          box((row + building) % 2 ? mat.ember : mat.neon, 0.26, 0.16, 0.02, wx, wy - 0.14, ez - outward * 0.02, scene, 0, 0, 0, false);
+        }
       }
     }
+  }
+
+  const floors = Math.max(1, Math.floor((h - 1.4) / 1.7));
+  for (let f = 1; f <= floors; f++) {
+    const fy = b.miny + f * 1.65;
+    if (fy > b.maxy - 0.35) break;
+    box(mat.concrete, 0.14, 0.08, d + 0.06, fx + face * 0.04, fy, cz, scene, 0, 0, 0, false);
   }
 
   if (building % 2) {

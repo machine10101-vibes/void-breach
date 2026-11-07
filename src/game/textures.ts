@@ -76,11 +76,91 @@ export function makeNormalFromHeight(height: Uint8Array, size: number, strength 
   return tex;
 }
 
-export function makeRoughnessMap(size = 256, base = 0.62, variation = 0.28) {
-  const height = makeSeamlessNoise(size, 9, 4.2);
+export type SurfaceProfile = "noise" | "panel" | "weave" | "stone" | "course";
+
+function clampByte(n: number) {
+  return Math.max(0, Math.min(255, n));
+}
+
+function makePanelHeight(size: number) {
+  const data = new Uint8Array(size * size);
+  const cell = Math.floor(size / 8);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const fx = (x % cell) / cell;
+      const fy = (y % cell) / cell;
+      const edge = fx < 0.07 || fy < 0.07 || fx > 0.93 || fy > 0.93;
+      const rivet =
+        (fx > 0.12 && fx < 0.18 && fy > 0.12 && fy < 0.18) ||
+        (fx > 0.82 && fx < 0.88 && fy > 0.12 && fy < 0.18) ||
+        (fx > 0.12 && fx < 0.18 && fy > 0.82 && fy < 0.88);
+      const scratch = Math.abs(Math.sin(x * 0.71 + y * 0.17)) > 0.992;
+      let h = edge ? 78 : 148;
+      if (rivet) h = 214;
+      if (scratch) h = 64;
+      data[y * size + x] = h;
+    }
+  }
+  return data;
+}
+
+function makeWeaveHeight(size: number) {
+  const data = new Uint8Array(size * size);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const warp = 0.5 + 0.5 * Math.sin((x / size) * Math.PI * 64);
+      const weft = 0.5 + 0.5 * Math.sin((y / size) * Math.PI * 64);
+      const fiber = warp * 0.65 + weft * 0.35;
+      data[y * size + x] = clampByte(90 + fiber * 110);
+    }
+  }
+  return data;
+}
+
+function makeStoneHeight(size: number) {
+  const data = new Uint8Array(size * size);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const u = x / size;
+      const v = y / size;
+      const grit = valueNoise(u * 28 + 2.2, v * 28 + 1.4);
+      const pit = valueNoise(u * 9 + 6, v * 9 + 3);
+      const crack = Math.abs(Math.sin(u * 40 + v * 6)) > 0.985 ? 0.35 : 0;
+      data[y * size + x] = clampByte((grit * 0.72 + pit * 0.28 - crack) * 255);
+    }
+  }
+  return data;
+}
+
+function makeCourseHeight(size: number) {
+  const data = new Uint8Array(size * size);
+  const row = Math.floor(size / 10);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const fy = (y % row) / row;
+      const brick = fy < 0.08 || fy > 0.94;
+      const mortar = ((x + (Math.floor(y / row) % 2) * (row / 2)) % row) / row < 0.06;
+      const grit = hash(x * 0.15, y * 0.15);
+      let h = brick || mortar ? 70 : 150 + grit * 40;
+      data[y * size + x] = clampByte(h);
+    }
+  }
+  return data;
+}
+
+function heightFor(profile: SurfaceProfile, size: number, metal: boolean) {
+  if (profile === "panel") return makePanelHeight(size);
+  if (profile === "weave") return makeWeaveHeight(size);
+  if (profile === "stone") return makeStoneHeight(size);
+  if (profile === "course") return makeCourseHeight(size);
+  return makeSeamlessNoise(size, metal ? 14 : 7, metal ? 2.2 : 1.4);
+}
+
+export function makeRoughnessMap(size = 256, base = 0.62, variation = 0.28, height?: Uint8Array) {
+  const src = height ?? makeSeamlessNoise(size, 9, 4.2);
   const data = new Uint8Array(size * size * 4);
   for (let i = 0; i < size * size; i++) {
-    const n = height[i] / 255;
+    const n = src[i] / 255;
     const r = Math.max(0, Math.min(1, base + (n - 0.5) * variation * 2));
     const o = i * 4;
     const v = r * 255;
@@ -118,15 +198,17 @@ export function makeEmissiveCrackMap(size = 256) {
 export function bindPbr(
   mat: THREE.MeshStandardMaterial,
   map: THREE.Texture | undefined,
-  opts?: { repeat?: number; metal?: boolean; glow?: boolean; bump?: number },
+  opts?: { repeat?: number; metal?: boolean; glow?: boolean; bump?: number; profile?: SurfaceProfile },
 ) {
   const size = 256;
-  const height = makeSeamlessNoise(size, opts?.metal ? 14 : 7, opts?.metal ? 2.2 : 1.4);
+  const profile = opts?.profile ?? "noise";
+  const height = heightFor(profile, size, Boolean(opts?.metal));
   const bump = opts?.bump ?? (opts?.metal ? 0.72 : 0.95);
-  mat.normalMap = makeNormalFromHeight(height, size, opts?.metal ? 2.1 : 3.6);
+  const machined = profile === "panel" || profile === "course";
+  mat.normalMap = makeNormalFromHeight(height, size, opts?.metal || machined ? 2.4 : 3.2);
   mat.normalScale = new THREE.Vector2(bump, bump);
-  mat.roughnessMap = makeRoughnessMap(size, opts?.metal ? 0.32 : 0.74, 0.28);
-  mat.envMapIntensity = opts?.metal ? 1.15 : 0.72;
+  mat.roughnessMap = makeRoughnessMap(size, opts?.metal ? 0.28 : 0.72, profile === "weave" ? 0.16 : 0.3, height);
+  mat.envMapIntensity = opts?.metal ? 1.28 : 0.78;
   if (map) {
     mat.map = map;
     map.wrapS = map.wrapT = THREE.RepeatWrapping;

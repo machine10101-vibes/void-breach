@@ -71,17 +71,22 @@ export function makeMaterials(tex: {
     roughness: 0.92,
     metalness: 0.04,
   });
-  const metal = new THREE.MeshStandardMaterial({
-    color: 0x6a655c,
+  const metal = new THREE.MeshPhysicalMaterial({
+    color: 0x8d8680,
     map: tex.metal ?? null,
-    roughness: 0.42,
-    metalness: 0.78,
+    roughness: 0.34,
+    metalness: 0.86,
+    clearcoat: 0.35,
+    clearcoatRoughness: 0.4,
+    envMapIntensity: 1.2,
   });
-  const armor = new THREE.MeshStandardMaterial({
-    color: 0x8a7a62,
-    roughness: 0.42,
-    metalness: 0.58,
-    envMapIntensity: 0.95,
+  const armor = new THREE.MeshPhysicalMaterial({
+    color: 0x9a8b74,
+    roughness: 0.38,
+    metalness: 0.72,
+    clearcoat: 0.55,
+    clearcoatRoughness: 0.28,
+    envMapIntensity: 1.15,
   });
   const shade = new THREE.MeshStandardMaterial({
     color: 0x14161c,
@@ -91,34 +96,36 @@ export function makeMaterials(tex: {
     emissive: 0x0a3c38,
     emissiveIntensity: 0.42,
   });
-  bindPbr(concrete, tex.ground, { repeat: 1, bump: 1.15 });
-  bindPbr(wall, undefined, { bump: 0.72 });
-  bindPbr(brick, undefined, { bump: 0.9 });
-  bindPbr(lot, undefined, { bump: 1.15 });
-  bindPbr(sidewalk, undefined, { bump: 1.05 });
-  bindPbr(metal, tex.metal, { metal: true, repeat: 1 });
-  bindPbr(armor, undefined, { metal: true, repeat: 1.4, bump: 0.95 });
-  bindPbr(shade, tex.shade, { glow: true, repeat: 1.2 });
-  const dark = new THREE.MeshStandardMaterial({
-    color: 0x2a3038,
-    roughness: 0.46,
-    metalness: 0.62,
-    envMapIntensity: 1.05,
+  bindPbr(concrete, tex.ground, { repeat: 1, bump: 1.05, profile: "stone" });
+  bindPbr(wall, undefined, { bump: 0.8, profile: "course" });
+  bindPbr(brick, undefined, { bump: 1.05, profile: "course" });
+  bindPbr(lot, undefined, { bump: 1.1, profile: "stone" });
+  bindPbr(sidewalk, undefined, { bump: 0.85, profile: "stone" });
+  bindPbr(metal, tex.metal, { metal: true, repeat: 1, profile: "panel", bump: 0.62 });
+  bindPbr(armor, undefined, { metal: true, repeat: 1.4, bump: 0.7, profile: "panel" });
+  bindPbr(shade, tex.shade, { glow: true, repeat: 1.2, profile: "stone", bump: 1.15 });
+  const dark = new THREE.MeshPhysicalMaterial({
+    color: 0x242a32,
+    roughness: 0.4,
+    metalness: 0.74,
+    clearcoat: 0.22,
+    clearcoatRoughness: 0.45,
+    envMapIntensity: 1.12,
   });
-  bindPbr(dark, undefined, { metal: true, bump: 0.88 });
+  bindPbr(dark, undefined, { metal: true, bump: 0.7, profile: "panel" });
   const rust = new THREE.MeshStandardMaterial({
     color: 0x7a4a36,
     map: tex.metal ?? null,
     roughness: 0.72,
     metalness: 0.38,
   });
-  bindPbr(rust, tex.metal, { metal: true, bump: 1.15 });
+  bindPbr(rust, tex.metal, { metal: true, bump: 1.15, profile: "stone" });
   const asphalt = new THREE.MeshStandardMaterial({
     color: 0x1c1b1a,
-    roughness: 0.92,
-    metalness: 0.06,
+    roughness: 0.9,
+    metalness: 0.08,
   });
-  bindPbr(asphalt, undefined, { bump: 0.85 });
+  bindPbr(asphalt, undefined, { bump: 1.25, profile: "stone" });
   return {
     concrete,
     wall,
@@ -129,13 +136,15 @@ export function makeMaterials(tex: {
     armor,
     shade,
     dark,
-    visor: new THREE.MeshStandardMaterial({
-      color: 0x2a1006,
-      emissive: 0xff7a1a,
+    visor: new THREE.MeshPhysicalMaterial({
+      color: 0x1a0c06,
+      emissive: 0xff6a12,
       emissiveIntensity: 4.2,
-      roughness: 0.08,
-      metalness: 0.18,
-      envMapIntensity: 1.4,
+      roughness: 0.05,
+      metalness: 0.22,
+      clearcoat: 1,
+      clearcoatRoughness: 0.06,
+      envMapIntensity: 1.7,
       toneMapped: false,
     }),
     shadeGlow: new THREE.MeshStandardMaterial({
@@ -155,29 +164,37 @@ export function makeMaterials(tex: {
       toneMapped: false,
     }),
     rubber: new THREE.MeshStandardMaterial({ color: 0x2a2e34, roughness: 0.94, metalness: 0.04 }),
-    suit: new THREE.MeshStandardMaterial({
-      color: 0x343c48,
-      roughness: 0.82,
-      metalness: 0.12,
-      envMapIntensity: 0.48,
-    }),
-    plate: (() => {
-      const p = new THREE.MeshStandardMaterial({
-        color: 0x9aa6b2,
-        roughness: 0.28,
-        metalness: 0.78,
-        envMapIntensity: 1.12,
+    suit: (() => {
+      const s = new THREE.MeshStandardMaterial({
+        color: 0x2e3642,
+        roughness: 0.78,
+        metalness: 0.08,
+        envMapIntensity: 0.42,
       });
-      bindPbr(p, undefined, { metal: true, bump: 0.78 });
+      bindPbr(s, undefined, { profile: "weave", bump: 0.42 });
+      return s;
+    })(),
+    plate: (() => {
+      const p = new THREE.MeshPhysicalMaterial({
+        color: 0xb4bcc4,
+        roughness: 0.3,
+        metalness: 0.88,
+        clearcoat: 0.78,
+        clearcoatRoughness: 0.18,
+        envMapIntensity: 1.35,
+      });
+      bindPbr(p, undefined, { metal: true, bump: 0.72, profile: "panel" });
       return p;
     })(),
-    glass: new THREE.MeshStandardMaterial({
-      color: 0x6aa8c4,
+    glass: new THREE.MeshPhysicalMaterial({
+      color: 0x9ec4d4,
       roughness: 0.04,
-      metalness: 0.12,
+      metalness: 0.06,
       transparent: true,
-      opacity: 0.34,
-      envMapIntensity: 1.6,
+      opacity: 0.42,
+      clearcoat: 1,
+      clearcoatRoughness: 0.04,
+      envMapIntensity: 1.85,
     }),
     voidCore: new THREE.MeshStandardMaterial({
       color: 0x02040a,
@@ -243,11 +260,12 @@ function box(
   rx = 0,
   ry = 0,
   rz = 0,
+  shadow = true,
 ) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
   m.position.set(x, y, z);
   m.rotation.set(rx, ry, rz);
-  m.castShadow = true;
+  m.castShadow = shadow;
   m.receiveShadow = true;
   parent.add(m);
   return m;
@@ -375,6 +393,12 @@ function firearmKit(
     cyl(mat.dark, 0.022, 0.022, 0.03, 0, 0.132, -0.06, g, Math.PI / 2, 0, 10);
   }
   const mz = opts.muzzleZ ?? 0.7;
+  box(mat.dark, 0.018, 0.028, 0.07, 0.034, 0.02, 0.04, g, 0, 0, 0, false);
+  box(mat.metal, 0.008, 0.012, 0.045, 0.042, 0.026, 0.04, g, 0, 0, 0, false);
+  for (let i = 0; i < 5; i++) {
+    const bolt = sph(mat.metal, 0.006, 0.032, 0.046, -0.1 + i * 0.055, g, 6);
+    bolt.castShadow = false;
+  }
   if (opts.muzzle === "brake") {
     cyl(mat.metal, 0.02, 0.026, 0.048, 0, 0.028, mz, g, Math.PI / 2, 0, 10);
     box(mat.dark, 0.038, 0.016, 0.028, 0, 0.028, mz + 0.03, g);
@@ -630,8 +654,9 @@ export function createExoSuit(mat: Materials): PlayerRig {
   cheekR.scale.set(0.82, 0.92, 1.05);
   box(dark, 0.15, 0.02, 0.032, 0, 0.108, 0.108, head);
   box(plate, 0.16, 0.018, 0.04, 0, 0.122, 0.1, head);
-  const visor = new THREE.Mesh(new THREE.BoxGeometry(0.172, 0.03, 0.055), mat.visor);
-  visor.position.set(0, 0.084, 0.122);
+  const visor = new THREE.Mesh(new THREE.SphereGeometry(0.092, 22, 14, 0, Math.PI * 2, 0.42, 0.95), mat.visor);
+  visor.scale.set(1.22, 0.46, 0.62);
+  visor.position.set(0, 0.09, 0.078);
   visor.castShadow = true;
   head.add(visor);
   box(dark, 0.07, 0.016, 0.02, 0, 0.04, 0.12, head);
@@ -1243,7 +1268,9 @@ export function createAmmoMesh(id: AmmoId, mat: Materials) {
 
 export function createHealthOrb(mat: Materials) {
   const g = new THREE.Group();
-  sph(mat.ember, 0.11, 0, 0.1, 0, g, 12);
+  sph(mat.ember, 0.09, 0, 0.1, 0, g, 14);
+  sph(mat.glass, 0.14, 0, 0.1, 0, g, 16);
+  ring(mat.metal, 0.1, 0.012, 0, 0.1, 0, g);
   box(mat.dark, 0.04, 0.16, 0.04, 0, 0.1, 0, g);
   box(mat.dark, 0.16, 0.04, 0.04, 0, 0.1, 0, g);
   const glow = new THREE.Mesh(
@@ -1306,6 +1333,9 @@ function createCinder(mat: Materials): EnemyRig {
   const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.16, 0), cloneGlow(mat.ember));
   core.position.set(0, 1.42, 0.04);
   rig.group.add(core);
+  for (let i = 0; i < 3; i++) {
+    rig.glow.push(box(mat.ember, 0.05, 0.012, 0.02, 0.1, 1.28 - i * 0.09, 0.22, rig.group, 0, 0, 0, false));
+  }
   rig.glow.push(core);
   rig.core = core;
   return rig;
@@ -1346,6 +1376,8 @@ function createCantor(mat: Materials): EnemyRig {
   cap(mat.shade, 0.07, 0.5, -0.1, 0.42, 0, group);
   cap(mat.shade, 0.07, 0.5, 0.1, 0.42, 0, group);
   box(mat.dark, 0.28, 0.55, 0.06, 0, 1.05, -0.12, group);
+  ring(mat.metal, 0.1, 0.012, 0, 1.32, 0.04, group);
+  ring(mat.metal, 0.08, 0.008, 0, 1.18, 0.05, group);
   group.scale.setScalar(1.18);
   return { group, kind: "cantor", leftArm: mkArm(-1), rightArm: mkArm(1), glow, ring: halo };
 }
@@ -1460,6 +1492,8 @@ function createSpitter(mat: Materials): EnemyRig {
   cap(flesh, 0.07, 0.42, 0.12, 0.48, 0.04, group);
   sph(mat.shade, 0.08, -0.12, 0.16, 0.1, group, 8);
   sph(mat.shade, 0.08, 0.12, 0.16, 0.1, group, 8);
+  sph(mat.ember, 0.09, 0, 1.2, -0.18, group, 10);
+  ring(mat.rust, 0.11, 0.014, 0, 1.2, -0.18, group);
   group.scale.setScalar(1.28);
   return { group, kind: "spitter", leftArm, rightArm, glow };
 }
@@ -1512,6 +1546,7 @@ function createWraith(mat: Materials): EnemyRig {
   cap(ghost, 0.06, 0.72, -0.11, 0.48, 0, group);
   cap(ghost, 0.06, 0.72, 0.11, 0.48, 0, group);
   box(hood, 0.36, 0.7, 0.08, 0, 1.1, -0.16, group, 0.25);
+  for (let i = 0; i < 4; i++) box(mat.metal, 0.2, 0.012, 0.035, 0, 1.42 - i * 0.12, 0.14, group, 0, 0, 0, false);
   group.scale.setScalar(1.22);
   return { group, kind: "wraith", leftArm: mkArm(-1), rightArm: mkArm(1), glow };
 }
@@ -1571,6 +1606,8 @@ function createHusk(mat: Materials): EnemyRig {
   skull.scale.set(0.95, 1.08, 1.05);
   const jaw = sph(mat.shade, 0.07, 0, 1.6, 0.14, group, 12);
   jaw.scale.set(1.2, 0.5, 1.05);
+  for (let i = 0; i < 5; i++) cap(mat.bone, 0.007, 0.028, -0.036 + i * 0.018, 1.55, 0.19, group, 0.55);
+  cyl(mat.dark, 0.012, 0.008, 0.42, 0.2, 1.22, -0.02, group, 0.7);
   const cheekL = sph(mat.shade, 0.045, 0.09, 1.7, 0.12, group, 10);
   cheekL.scale.set(0.8, 0.9, 1);
   const cheekR = sph(mat.shade, 0.045, -0.09, 1.7, 0.12, group, 10);
@@ -1682,6 +1719,8 @@ function createStalker(mat: Materials): EnemyRig {
   glow.push(box(gMat, 0.06, 0.06, 0.1, 0.04, -0.1, 0.54, rightArm));
   barrel(mat.dark, 0.02, 0.2, 0.04, -0.08, 0.68, rightArm);
   barrel(mat.metal, 0.028, 0.06, 0.04, -0.08, 0.8, rightArm);
+  cyl(mat.dark, 0.018, 0.018, 0.09, 0.04, -0.02, 0.34, rightArm, Math.PI / 2, 0, 10);
+  cyl(mat.glass, 0.012, 0.012, 0.02, 0.04, -0.02, 0.39, rightArm, Math.PI / 2, 0, 8);
   cap(flesh, 0.062, 0.36, -0.1, 0.72, 0.04, group, 0.22);
   cap(flesh, 0.062, 0.36, 0.1, 0.72, -0.02, group, -0.16);
   sph(mat.shade, 0.055, -0.1, 0.48, 0.06, group, 8);
@@ -1721,6 +1760,10 @@ function createBrute(mat: Materials): EnemyRig {
   const pecR = sph(mat.metal, 0.2, -0.18, 1.48, 0.22, group, 14);
   pecR.scale.set(1.25, 0.7, 0.9);
   box(mat.metal, 0.7, 0.14, 0.42, 0, 1.68, 0.06, group);
+  for (let i = 0; i < 5; i++) {
+    const rivet = sph(mat.dark, 0.018, -0.24 + i * 0.12, 1.68, 0.28, group, 6);
+    rivet.castShadow = false;
+  }
   box(mat.rust, 0.64, 0.12, 0.4, 0, 1.1, 0.08, group);
   glowSlit(gMat, 0.32, 0.2, 0.08, 0, 1.36, 0.34, group, glow);
   glow.push(box(gMat, 0.055, 0.16, 0.04, 0.16, 1.36, 0.38, group));
@@ -1817,6 +1860,7 @@ function createHarbinger(mat: Materials): EnemyRig {
     group,
   );
   box(mat.shade, 0.5, 0.22, 0.36, 0, 2.74, 0.04, group);
+  for (let i = 0; i < 4; i++) box(mat.metal, 0.06, 0.012, 0.22, -0.18 + i * 0.12, 2.62, 0.22, group, 0, 0, 0, false);
   for (let i = 0; i < 7; i++) {
     const a = (i - 3) * 0.26;
     cap(mat.shade, 0.028, 0.36, Math.sin(a) * 0.24, 3.08, Math.cos(a) * 0.1, group);
@@ -2088,15 +2132,9 @@ const WALL_TINTS = [0x2c2824, 0x241e1a, 0x322820, 0x1e1c1a, 0x2a221c, 0x181614];
 
 export function addWorldFromBoxes(scene: THREE.Object3D, boxes: AABB[], mat: Materials) {
   const geoCache = new Map<string, THREE.BoxGeometry>();
-  const shopGlass = new THREE.MeshStandardMaterial({
-    color: 0x1a2832,
-    roughness: 0.1,
-    metalness: 0.22,
-    transparent: true,
-    opacity: 0.78,
-    emissive: 0x243844,
-    emissiveIntensity: 0.45,
-  });
+  const shopGlass = mat.glass.clone();
+  shopGlass.color.setHex(0x8eb4c4);
+  shopGlass.opacity = 0.55;
   let building = 0;
   for (const b of boxes) {
     const w = b.maxx - b.minx;
@@ -2150,11 +2188,13 @@ export function addWorldFromBoxes(scene: THREE.Object3D, boxes: AABB[], mat: Mat
           if (wy > b.maxy - 0.5) continue;
           const wx = b.minx + 1.4 + col * ((w - 2.8) / Math.max(cols - 1, 1));
           const lit = (row + col + building) % 5 !== 0;
-          const pane = new THREE.Mesh(
-            new THREE.BoxGeometry(0.85, 1.05, 0.08),
-            lit ? ((row + building) % 2 ? mat.ember : mat.neon) : mat.dark,
-          );
+          const frame = new THREE.Mesh(new THREE.BoxGeometry(0.98, 1.18, 0.08), mat.dark);
+          frame.position.set(wx, wy, faceZ);
+          frame.castShadow = false;
+          scene.add(frame);
+          const pane = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.86, 0.04), lit ? mat.glass : mat.lot);
           pane.position.set(wx, wy, faceZ);
+          pane.castShadow = false;
           scene.add(pane);
         }
       }
@@ -2192,11 +2232,16 @@ export function addWorldFromBoxes(scene: THREE.Object3D, boxes: AABB[], mat: Mat
     lintel.position.set(fx + face * 0.02, b.miny + 1.95, cz);
     scene.add(lintel);
 
-    const awning = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.08, shopW + 0.15), building % 2 ? mat.rust : mat.ember);
+    const awning = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.05, shopW + 0.15), building % 2 ? mat.rust : mat.suit);
     awning.position.set(fx + face * 0.48, b.miny + 2.22, cz);
     awning.rotation.z = face * 0.16;
     awning.castShadow = true;
     scene.add(awning);
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(1.02, 0.02, 0.14), mat.warning);
+    stripe.position.set(fx + face * 0.52, b.miny + 2.18, cz);
+    stripe.rotation.z = face * 0.16;
+    stripe.castShadow = false;
+    scene.add(stripe);
     const stoop = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.18, 1.5), mat.concrete);
     stoop.position.set(fx + face * 0.32, b.miny + 0.09, cz);
     stoop.receiveShadow = true;
@@ -2227,15 +2272,23 @@ export function addWorldFromBoxes(scene: THREE.Object3D, boxes: AABB[], mat: Mat
         if (wy > b.maxy - 0.7) continue;
         const wz = b.minz + 1.15 + col * ((d - 2.3) / Math.max(cols - 1, 1));
         const lit = (row + col + building) % 4 !== 0;
-        const pane = new THREE.Mesh(
-          new THREE.BoxGeometry(0.08, 1.15, 0.85),
-          lit ? ((row + building) % 2 ? mat.ember : mat.neon) : mat.dark,
-        );
-        pane.position.set(fx + face * 0.02, wy, wz);
-        scene.add(pane);
-        const frame = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.28, 0.98), mat.dark);
-        frame.position.set(fx - face * 0.02, wy, wz);
+        const frame = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.28, 0.98), mat.dark);
+        frame.position.set(fx - face * 0.01, wy, wz);
+        frame.castShadow = false;
         scene.add(frame);
+        const pane = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.96, 0.7), lit ? mat.glass : mat.lot);
+        pane.position.set(fx + face * 0.04, wy, wz);
+        pane.castShadow = false;
+        scene.add(pane);
+        if (lit && (row + col + building) % 3 === 0) {
+          const lamp = new THREE.Mesh(
+            new THREE.BoxGeometry(0.02, 0.22, 0.28),
+            (row + building) % 2 ? mat.ember : mat.neon,
+          );
+          lamp.position.set(fx - face * 0.01, wy - 0.22, wz);
+          lamp.castShadow = false;
+          scene.add(lamp);
+        }
       }
     }
 
@@ -2360,15 +2413,26 @@ export function dressWorld(scene: THREE.Object3D, mat: Materials, theme: LevelTh
     for (let r = 0; r < 6; r++) {
       for (let c = 0; c < 4; c++) {
         if ((r + c + i) % 4 === 0) continue;
+        const wy = h * 0.12 + r * h * 0.13;
+        const wz = z - d * 0.32 + c * d * 0.21;
+        const yaw = x > 0 ? -Math.PI / 2 : Math.PI / 2;
+        const frame = new THREE.Mesh(
+          new THREE.PlaneGeometry(w * 0.13, h * 0.08),
+          new THREE.MeshBasicMaterial({ color: 0x14181c }),
+        );
+        frame.position.set(x + face, wy, wz);
+        frame.rotation.y = yaw;
+        skyline.add(frame);
+        const lit = (r + c + i) % 3 !== 0;
         const glowWin = new THREE.Mesh(
-          new THREE.PlaneGeometry(w * 0.1, h * 0.065),
+          new THREE.PlaneGeometry(w * 0.08, h * 0.05),
           new THREE.MeshBasicMaterial({
-            color: (r + i) % 2 ? 0xe85d04 : 0x22d3ee,
-            toneMapped: false,
+            color: lit ? ((r + i) % 2 ? 0xc46a32 : 0x2a8a96) : 0x0c0e12,
+            toneMapped: lit,
           }),
         );
-        glowWin.position.set(x + face, h * 0.12 + r * h * 0.13, z - d * 0.32 + c * d * 0.21);
-        glowWin.rotation.y = x > 0 ? -Math.PI / 2 : Math.PI / 2;
+        glowWin.position.set(x + face * 1.02, wy, wz);
+        glowWin.rotation.y = yaw;
         skyline.add(glowWin);
       }
     }

@@ -4,6 +4,8 @@ Isometric top-down survival looter-shooter. Year 2172. Earth is ash after the Sh
 
 Suit up, hold the ash streets, vacuum loot off the Shade, and burn the Harbinger.
 
+The street is lit like a dusk shooter: machined plate on the suit and guns, woven undersuit, stone and mortar on the blocks, glass in the windows, and a curved visor. Shade hide teeth, cables, and ribs under the same light.
+
 ## Campaign
 
 Pick a drop on the title or on the ship, then **Deploy**. A locked district stays dark until the previous gate is cleared.
