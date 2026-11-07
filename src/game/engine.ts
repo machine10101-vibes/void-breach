@@ -352,7 +352,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.18;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFShadowMap;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x1a120c);
@@ -394,8 +394,9 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
   sun.shadow.camera.right = 22;
   sun.shadow.camera.top = 22;
   sun.shadow.camera.bottom = -22;
-  sun.shadow.bias = -0.00028;
-  sun.shadow.normalBias = 0.04;
+  sun.shadow.bias = -0.00022;
+  sun.shadow.normalBias = 0.028;
+  sun.shadow.radius = 1.6;
   scene.add(sun);
   scene.add(sun.target);
   const fill = new THREE.DirectionalLight(0x4aa8bc, 0.42);
@@ -1475,7 +1476,7 @@ export function mountGame(canvas: HTMLCanvasElement, onHud: (h: HudSnapshot) => 
       }
     } else {
       scene.background = new THREE.Color(0x14100c);
-      scene.fog = new THREE.FogExp2(0x1c1410, 0.0105);
+      scene.fog = new THREE.FogExp2(0x1c1410, 0.0084);
       hemi.color.setHex(0xffc090);
       hemi.groundColor.setHex(0x12100c);
       hemi.intensity = 0.68;
